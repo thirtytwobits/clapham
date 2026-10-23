@@ -262,6 +262,9 @@ impl ComposedSet {
             .map(|operation| operation.descriptor())
     }
     /// A compiled operation by its complete name.
+    /// This accessor applies no selection or admission policy. Use [`Self::call`]
+    /// for caller-facing dispatch; low-level `clapham.describe` invocation considers
+    /// the full gate-filtered catalogue.
     pub fn get(&self, name: &str) -> Option<&ComposedOperation> {
         self.operations.get(name).map(Arc::as_ref)
     }
@@ -338,7 +341,7 @@ pub fn compose_with_options(
             )?;
         }
     }
-    let describe = crate::builtins::Describe::new(options.gate.clone());
+    let describe = crate::builtins::Describe::new(options.gate.clone(), bounds.message_bytes);
     for (descriptor, handler) in crate::builtins::operations(describe.clone(), options.application)
     {
         insert_operation(
@@ -469,7 +472,7 @@ fn fits(value: &impl Serialize, limit: usize) -> bool {
     size_within(value, limit).is_some()
 }
 
-fn size_within(value: &impl Serialize, limit: usize) -> Option<usize> {
+pub(crate) fn size_within(value: &impl Serialize, limit: usize) -> Option<usize> {
     struct Counter {
         remaining: usize,
     }

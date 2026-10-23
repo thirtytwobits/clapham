@@ -41,6 +41,10 @@ limit starts at 2, enough for the empty array `[]` on the wire. Composition must
 the two built-in descriptors as well as the application's descriptors. Their input
 and output schemas also consume the per-schema bound; `tools` must fit at least two
 operations even when the application contributes none.
+`Bounds::validate` checks shared connection ranges and the aggregate buffering budget.
+It does not promise that a particular catalogue, including the built-ins, fits.
+Profiles sized for a small remote catalogue can be valid for connections and too small
+for composition, which reports the specific catalogue, schema or operation limit.
 
 Outputs may be any JSON shape. MCP 2026-07-28 explicitly permits arrays and scalar
 structured results; see its [tool result specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/server/tools.mdx#structured-content).

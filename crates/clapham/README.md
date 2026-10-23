@@ -66,6 +66,11 @@ pending names all refuse as `unknown_operation`. The latter returns the library'
 version and any application name and version supplied in `ComposeOptions::application`.
 Both are workspace queries and consume the same composition budgets as contributed
 operations. A selection must include a built-in operation to call it.
+Built-in results also fit `Bounds::message_bytes` as compact UTF-8 JSON; oversized
+results refuse as the declared, non-retryable `result_too_large` code in `usage`.
+Discovery is unpaged, so narrow the selection or use a named lookup when a listing
+does not fit. Gates are queried for visibility too and must not trigger or consume
+approvals as a side effect of these repeatable policy checks.
 
 `Call` carries the principal, input, asynchronous `RecordSink`, `Cancellation` and
 preview flag. A sink's acknowledgement provides backpressure. Cancellation before

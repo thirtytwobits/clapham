@@ -14,9 +14,17 @@ pub enum Admission {
     Pending,
 }
 
-/// Host policy, consulted after input validation and before every dispatch.
+/// Host policy queried for call admission and catalogue visibility.
+///
+/// Calls consult the gate after input validation. `clapham.describe` also consults
+/// it for each selected candidate, without dispatching that operation. Checks may
+/// repeat; implementations must not create approval requests, consume approvals or
+/// change authorisation state as a side effect. The host handles approval workflows
+/// after a call returns `admission_pending`; a hidden catalogue candidate is not a
+/// call attempt.
 pub trait Gate: Send + Sync {
-    /// Decide whether this principal may run this operation.
+    /// Query whether this principal may run or discover this operation.
+    /// This check must be safe to repeat without any subsequent dispatch.
     fn admit(&self, principal: &Principal, operation: &Operation) -> Admission;
 }
 

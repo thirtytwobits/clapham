@@ -503,6 +503,182 @@ fn the_published_catalogue_schema_rejects_malformed_descriptors_and_result_shape
     }
 }
 
+#[test]
+fn discovery_accepts_the_exact_utf8_result_budget_and_refuses_one_byte_less() {
+    let contribution = || {
+        let mut descriptor = operation("lists.get", Effect::Query);
+        descriptor.description = "é".repeat(5_000);
+        Contribution::new("lists").operation(descriptor, |_| async {
+            panic!("discovery must not dispatch the described operation")
+        })
+    };
+    let baseline = compose([contribution()], Bounds::default()).unwrap();
+    let result = describe(&baseline, &baseline.all(), PrincipalKind::Human, json!({}));
+    let bytes = serde_json::to_vec(&result).unwrap().len();
+    assert!(bytes >= 8192);
+    for shortfall in [0, 1] {
+        let set = compose(
+            [contribution()],
+            Bounds {
+                message_bytes: bytes - shortfall,
+                schema_bytes: 8192,
+                ..Bounds::default()
+            },
+        )
+        .unwrap();
+        let listing = call(
+            &set,
+            &set.all(),
+            PrincipalKind::Human,
+            "clapham.describe",
+            json!({}),
+        );
+        if shortfall == 0 {
+            assert_eq!(listing.unwrap().result, Some(result.clone()));
+        } else {
+            let refusal = listing.unwrap_err();
+            assert_eq!(
+                (refusal.code.as_str(), refusal.category, refusal.evidence),
+                ("result_too_large", Category::Usage, Evidence::Completed)
+            );
+            assert!(!refusal.retryable);
+            let refusal = block_on(set.get("clapham.describe").unwrap().invoke(Call::new(
+                "clapham.describe".parse().unwrap(),
+                Principal::new("list-reader", PrincipalKind::Human),
+                json!({}),
+            )))
+            .unwrap_err();
+            assert_eq!(refusal.code, "result_too_large");
+        }
+        // Named lookup remains useful when the whole catalogue does not fit.
+        assert_eq!(
+            describe(
+                &set,
+                &set.all(),
+                PrincipalKind::Human,
+                json!({"name": "lists.get"})
+            )["name"],
+            "lists.get"
+        );
+        // A named descriptor is bounded too, independently of the listing form.
+        let named_bytes = serde_json::to_vec(set.get("lists.get").unwrap().descriptor())
+            .unwrap()
+            .len();
+        let small = compose(
+            [contribution()],
+            Bounds {
+                message_bytes: named_bytes - 1,
+                schema_bytes: 8192,
+                ..Bounds::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            call(
+                &small,
+                &small.all(),
+                PrincipalKind::Human,
+                "clapham.describe",
+                json!({"name": "lists.get"})
+            )
+            .unwrap_err()
+            .code,
+            "result_too_large"
+        );
+    }
+}
+
+#[test]
+fn the_default_message_budget_applies_after_visibility_filtering() {
+    let contribution = |namespace: &str| {
+        let mut descriptor = operation(&format!("{namespace}.get"), Effect::Query);
+        descriptor.description = "Read a list. ".repeat(50_000);
+        Contribution::new(namespace).operation(descriptor, |_| async {
+            panic!("discovery must not dispatch the described operation")
+        })
+    };
+    let set = compose_with_options(
+        [contribution("lists"), contribution("items")],
+        Bounds::default(),
+        ComposeOptions {
+            gate: Arc::new(|principal: &Principal, operation: &Operation| {
+                if principal.kind == PrincipalKind::Agent && operation.name.as_str() == "items.get"
+                {
+                    Admission::Deny
+                } else {
+                    Admission::Allow
+                }
+            }),
+            ..ComposeOptions::default()
+        },
+    )
+    .unwrap();
+    assert!(
+        serde_json::to_vec(&set.operations().collect::<Vec<_>>())
+            .unwrap()
+            .len()
+            > set.bounds().message_bytes
+    );
+    assert_eq!(
+        call(
+            &set,
+            &set.all(),
+            PrincipalKind::Human,
+            "clapham.describe",
+            json!({})
+        )
+        .unwrap_err()
+        .code,
+        "result_too_large"
+    );
+    assert_eq!(
+        names(describe(&set, &set.all(), PrincipalKind::Agent, json!({}))),
+        ["clapham.describe", "clapham.version", "lists.get"]
+    );
+    assert_eq!(
+        describe(
+            &set,
+            &set.all(),
+            PrincipalKind::Human,
+            json!({"name": "items.get"})
+        )["name"],
+        "items.get"
+    );
+}
+
+#[test]
+fn oversized_application_metadata_gets_a_declared_bounded_result_refusal() {
+    let set = compose_with_options(
+        [],
+        Bounds {
+            message_bytes: 8192,
+            schema_bytes: 8192,
+            ..Bounds::default()
+        },
+        ComposeOptions {
+            application: Some(ApplicationInfo {
+                name: "é".repeat(5_000),
+                version: "1.0".into(),
+            }),
+            ..ComposeOptions::default()
+        },
+    )
+    .unwrap();
+    let refusal = call(
+        &set,
+        &set.all(),
+        PrincipalKind::Human,
+        "clapham.version",
+        json!({}),
+    )
+    .unwrap_err();
+    assert_eq!(
+        (refusal.code.as_str(), refusal.category),
+        ("result_too_large", Category::Usage)
+    );
+    assert!(!refusal.retryable);
+}
+
 struct DropHandler(Arc<AtomicBool>);
 impl Handler for DropHandler {
     fn call(&self, _: Call) -> HandlerFuture<'_> {

@@ -45,7 +45,10 @@ pub struct VersionInfo {
 pub(crate) enum Dispatch {
     Handler(Box<dyn Handler>),
     Describe(Arc<Describe>),
-    Version(VersionInfo),
+    Version {
+        info: VersionInfo,
+        message_bytes: usize,
+    },
 }
 
 impl Dispatch {
@@ -57,26 +60,27 @@ impl Dispatch {
         match self {
             Self::Handler(handler) => handler.call(call),
             Self::Describe(describe) => Box::pin(async move { describe.call(call, selection) }),
-            Self::Version(version) => Box::pin(async move {
-                Ok(Outcome::new(
-                    serde_json::to_value(version).expect("version metadata contains only strings"),
-                ))
-            }),
+            Self::Version {
+                info,
+                message_bytes,
+            } => Box::pin(async move { bounded_outcome(info, *message_bytes) }),
         }
     }
 }
 
 pub(crate) struct Describe {
     gate: Arc<dyn Gate>,
+    message_bytes: usize,
     // Only descriptors are retained, so the catalogue cannot keep handlers alive
     // through a reference cycle. Initialised before composition exposes the set.
     catalogue: OnceLock<Vec<Arc<Operation>>>,
 }
 
 impl Describe {
-    pub(crate) fn new(gate: Arc<dyn Gate>) -> Arc<Self> {
+    pub(crate) fn new(gate: Arc<dyn Gate>, message_bytes: usize) -> Arc<Self> {
         Arc::new(Self {
             gate,
+            message_bytes,
             catalogue: OnceLock::new(),
         })
     }
@@ -100,7 +104,8 @@ impl Describe {
                 .map(Arc::as_ref)
                 .collect(),
         };
-        let result = if let Some(name) = call.input.get("name").and_then(Value::as_str) {
+        // Both dispatch paths validate input, rejecting null and non-string names.
+        if let Some(name) = call.input.get("name").and_then(Value::as_str) {
             let operation = candidates
                 .into_iter()
                 .find(|operation| operation.name.as_str() == name)
@@ -112,21 +117,14 @@ impl Describe {
                         "the operation is not in the admitted catalogue",
                     )
                 })?;
-            Catalogue::Operation(Box::new(operation.clone()))
+            bounded_outcome(operation, self.message_bytes)
         } else {
-            Catalogue::Operations(
-                candidates
-                    .into_iter()
-                    .filter(|operation| {
-                        self.gate.admit(&call.principal, operation) == Admission::Allow
-                    })
-                    .cloned()
-                    .collect(),
-            )
-        };
-        Ok(Outcome::new(
-            serde_json::to_value(result).expect("descriptors contain only JSON values"),
-        ))
+            let operations: Vec<_> = candidates
+                .into_iter()
+                .filter(|operation| self.gate.admit(&call.principal, operation) == Admission::Allow)
+                .collect();
+            bounded_outcome(&operations, self.message_bytes)
+        }
     }
 }
 
@@ -134,6 +132,7 @@ pub(crate) fn operations(
     describe: Arc<Describe>,
     application: Option<ApplicationInfo>,
 ) -> [(Operation, Dispatch); 2] {
+    let message_bytes = describe.message_bytes;
     [
         (
             descriptor(
@@ -141,7 +140,11 @@ pub(crate) fn operations(
                 "Describe the selected operations admitted to this caller, or one by name.",
                 json!({ "type": "object", "properties": { "name": { "type": "string" } }, "additionalProperties": false }),
                 crate::schema::catalogue_schema(),
-                [("unknown_operation".into(), Category::NotFound)].into(),
+                [
+                    ("unknown_operation".into(), Category::NotFound),
+                    ("result_too_large".into(), Category::Usage),
+                ]
+                .into(),
             ),
             Dispatch::Describe(describe),
         ),
@@ -151,14 +154,31 @@ pub(crate) fn operations(
                 "Read the library version and the application's recorded name and version.",
                 json!({ "type": "object", "additionalProperties": false }),
                 schemars::schema_for!(VersionInfo),
-                Default::default(),
+                [("result_too_large".into(), Category::Usage)].into(),
             ),
-            Dispatch::Version(VersionInfo {
-                clapham: env!("CARGO_PKG_VERSION").into(),
-                application,
-            }),
+            Dispatch::Version {
+                info: VersionInfo {
+                    clapham: env!("CARGO_PKG_VERSION").into(),
+                    application,
+                },
+                message_bytes,
+            },
         ),
     ]
+}
+
+fn bounded_outcome(result: &impl Serialize, message_bytes: usize) -> CallResult {
+    // Count through a bounded writer before allocating the structured result.
+    if crate::composition::size_within(result, message_bytes).is_none() {
+        return Err(Refusal::new(
+            "result_too_large",
+            Category::Usage,
+            "the built-in result exceeds bounds.message_bytes",
+        ));
+    }
+    Ok(Outcome::new(
+        serde_json::to_value(result).expect("built-in results contain only JSON values"),
+    ))
 }
 
 fn descriptor(
