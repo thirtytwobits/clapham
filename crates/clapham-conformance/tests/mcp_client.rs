@@ -38,11 +38,21 @@ async fn exercise(connection: &McpConnection, local: &ComposedSet) -> ComposedSe
         catalogue.diagnostics()
     );
     let binding = catalogue
-        .bind(vec![McpSelection::new("lists.get")])
+        .bind(vec![
+            McpSelection::new("lists.get"),
+            McpSelection::new("lists.compact"),
+        ])
         .unwrap();
     assert_eq!(binding.operations()[0].name.as_str(), "remote.lists.get");
     assert_eq!(binding.operations()[0].effect, clapham::Effect::Query);
     assert_eq!(binding.operations()[0].locality, clapham::Locality::Daemon);
+    // The server's administrative marker must not widen access through a binding.
+    assert_eq!(binding.operations()[1].effect, clapham::Effect::Destructive);
+    assert!(
+        !binding.operations()[1]
+            .principals
+            .contains(&PrincipalKind::Agent)
+    );
     let remote = compose_with_options(
         [binding.contribution()],
         Bounds::default(),
@@ -52,6 +62,20 @@ async fn exercise(connection: &McpConnection, local: &ComposedSet) -> ComposedSe
         },
     )
     .unwrap();
+    let denied = remote
+        .call(
+            &remote.all(),
+            Principal::new("agent", PrincipalKind::Agent),
+            "remote.lists.compact",
+            json!({}),
+            RecordSink::default(),
+            Cancellation::new(),
+            false,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(denied.code, "not_admitted");
+    assert_eq!(denied.evidence, Evidence::NotDispatched);
     let local_result = invoke(local, "lists.get", json!({"id":"tasks"}))
         .await
         .unwrap();

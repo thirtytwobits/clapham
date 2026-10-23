@@ -47,6 +47,8 @@ fn server() -> Arc<Server> {
 }
 fn config() -> McpConfig {
     let mut config = McpConfig::new("server", "credential-scope-1");
+    // Duplex fixtures run with paused time. Once all scripted work is idle, Tokio
+    // auto-advances to this deadline; no elapsed wall time is used.
     config.operation_timeout = Duration::from_millis(500);
     config
 }
@@ -231,12 +233,15 @@ async fn notifications_and_refresh_guard_pinned_definitions() {
         .unwrap();
     server.replies_received.wait(1).await;
     let error = binding.executor().call(call()).await.unwrap_err();
+    assert_eq!(error.code, "mcp_stale");
     assert_eq!(error.evidence, Evidence::NotDispatched);
     connection.discover().await.unwrap();
     binding.executor().call(call()).await.unwrap();
     server.tools.lock().unwrap()[0]["description"] = json!("Changed");
     connection.discover().await.unwrap();
-    assert!(binding.executor().call(call()).await.is_err());
+    let error = binding.executor().call(call()).await.unwrap_err();
+    assert_eq!(error.code, "mcp_stale");
+    assert_eq!(error.evidence, Evidence::NotDispatched);
     assert_eq!(server.calls.load(Ordering::SeqCst), 1);
 }
 #[tokio::test(start_paused = true)]
@@ -336,10 +341,9 @@ async fn discovery_bounds_and_failed_refresh_invalidate_existing_bindings() {
     let binding = binding(&connection).await;
     server.mode.store(5, Ordering::SeqCst);
     assert!(matches!(connection.discover().await, Err(McpError::Limit)));
-    assert_eq!(
-        binding.executor().call(call()).await.unwrap_err().evidence,
-        Evidence::NotDispatched
-    );
+    let error = binding.executor().call(call()).await.unwrap_err();
+    assert_eq!(error.code, "mcp_stale");
+    assert_eq!(error.evidence, Evidence::NotDispatched);
     server.mode.store(0, Ordering::SeqCst);
     let mut config = config();
     config.bounds.tools = 1;
@@ -594,7 +598,7 @@ async fn effect_claims_and_principal_authority_remain_separate() {
     let operations = binding.operations();
     assert_eq!(
         operations.iter().map(|op| op.effect).collect::<Vec<_>>(),
-        vec![Effect::Query, Effect::Destructive, Effect::Mutation]
+        vec![Effect::Query, Effect::Destructive, Effect::Destructive]
     );
     assert!(!operations[0].open_world);
     assert!(operations[1].open_world && operations[1].idempotent);
@@ -720,4 +724,104 @@ async fn content_order_and_structured_null_survive_without_fetching_references()
         ]
     );
     assert_eq!(server.calls.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test(start_paused = true)]
+async fn tool_result_extensions_do_not_turn_a_call_into_a_catalogue() {
+    let server = server();
+    server.result.lock().unwrap()["tools"] = json!([]);
+    let (connection, _tx, _) = connect(server.clone(), config()).await;
+    let outcome = binding(&connection)
+        .await
+        .executor()
+        .call(call())
+        .await
+        .unwrap();
+    assert_eq!(outcome.result, Some(json!({"value":1})));
+    assert_eq!(outcome.evidence, Evidence::Completed);
+    assert_eq!(server.calls.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test(start_paused = true)]
+async fn binding_a_closed_connection_is_refused_immediately() {
+    let (connection, _tx, _) = connect(server(), config()).await;
+    let catalogue = connection.discover().await.unwrap();
+    connection.close();
+    assert!(matches!(
+        catalogue.bind(vec![McpSelection::new("write")]),
+        Err(McpError::Transport)
+    ));
+}
+
+#[tokio::test(start_paused = true)]
+async fn default_effects_refuse_agents_without_a_non_destructive_claim() {
+    use clapham::{Effect, Principal};
+    let server = server();
+    let (connection, _tx, _) = connect(server.clone(), config()).await;
+    for annotations in [
+        None,
+        Some(json!({})),
+        Some(json!({"readOnlyHint":false})),
+        Some(json!({"readOnlyHint":false,"destructiveHint":false})),
+    ] {
+        let mutation = annotations
+            .as_ref()
+            .is_some_and(|h| h["destructiveHint"] == false);
+        let mut record = tool("write");
+        if let Some(hints) = annotations {
+            record["annotations"] = hints;
+        }
+        *server.tools.lock().unwrap() = vec![record];
+        let catalogue = connection.discover().await.unwrap();
+        let binding = catalogue.bind(vec![McpSelection::new("write")]).unwrap();
+        assert_eq!(
+            binding.operations()[0].effect,
+            if mutation {
+                Effect::Mutation
+            } else {
+                Effect::Destructive
+            }
+        );
+        let mut agent_call = call();
+        agent_call.principal = Principal::new("agent", PrincipalKind::Agent);
+        let outcome = binding.executor().call(agent_call).await;
+        if mutation {
+            outcome.unwrap();
+        } else {
+            let refusal = outcome.unwrap_err();
+            assert_eq!(refusal.code, "not_admitted");
+            assert_eq!(refusal.evidence, Evidence::NotDispatched);
+        }
+    }
+    assert_eq!(server.calls.load(Ordering::SeqCst), 1);
+    // An application can explicitly authorise its agent despite conservative defaults.
+    server.tools.lock().unwrap()[0]
+        .as_object_mut()
+        .unwrap()
+        .remove("annotations");
+    let catalogue = connection.discover().await.unwrap();
+    let binding = catalogue
+        .bind(vec![selected("write", vec![PrincipalKind::Agent])])
+        .unwrap();
+    let mut agent_call = call();
+    agent_call.principal = Principal::new("agent", PrincipalKind::Agent);
+    binding.executor().call(agent_call).await.unwrap();
+    assert_eq!(server.calls.load(Ordering::SeqCst), 2);
+}
+
+#[tokio::test(start_paused = true)]
+async fn absent_and_empty_remote_content_normalise_to_an_empty_content_result() {
+    let server = server();
+    let (connection, _tx, _) = connect(server.clone(), config()).await;
+    let executor = binding(&connection).await.executor();
+    for content in [None, Some(json!([]))] {
+        let mut result = json!({"structuredContent":null});
+        if let Some(content) = content {
+            result["content"] = content;
+        }
+        *server.result.lock().unwrap() = result;
+        let outcome = executor.call(call()).await.unwrap();
+        assert_eq!(outcome.content, Some(Vec::new()));
+        assert_eq!(outcome.result, Some(Value::Null));
+    }
 }

@@ -134,6 +134,8 @@ impl McpError {
 }
 
 pub(crate) struct State {
+    #[cfg(any(feature = "stdio", feature = "http"))]
+    pub requests: crate::wire::Requests,
     pub epoch: AtomicU64,
     pub fault: Mutex<Option<McpError>>,
     #[cfg(any(feature = "stdio", feature = "http"))]
@@ -146,6 +148,7 @@ impl State {
     #[cfg(any(feature = "stdio", feature = "http"))]
     pub fn new() -> Arc<Self> {
         Arc::new(Self {
+            requests: crate::wire::Requests::default(),
             epoch: AtomicU64::new(0),
             fault: Mutex::new(None),
             incoming: AtomicUsize::new(0),

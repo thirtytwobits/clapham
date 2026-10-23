@@ -25,12 +25,12 @@ struct Server {
     calls: Counter,
 }
 async fn handle(State(server): State<Arc<Server>>, Json(request): Json<Value>) -> Response {
-    let result = match request["method"].as_str().unwrap() {
+    let mut result = match request["method"].as_str().unwrap() {
         "server/discover" => {
             json!({"resultType":"complete","supportedVersions":["2026-07-28"],"capabilities":{"tools":{}},"ttlMs":0,"cacheScope":"private"})
         }
         "tools/list" => {
-            json!({"tools":[{"name":"write","description":"Write","inputSchema":{"type":"object"},"_meta":{"raw":"provenance"}}]})
+            json!({"tools":[{"name":"write","description":"Write","inputSchema":{"type":"object"},"_meta":{"raw":"provenance"},"extension":{"retained":true}},{"name":"invalid","description":"Invalid record","inputSchema":false}]})
         }
         "tools/call" => {
             server.calls.fetch_add(1, Ordering::SeqCst);
@@ -59,9 +59,12 @@ async fn handle(State(server): State<Arc<Server>>, Json(request): Json<Value>) -
         }
         _ => return StatusCode::ACCEPTED.into_response(),
     };
+    if matches!(server.mode.load(Ordering::SeqCst), 9 | 10) && request["method"] == "tools/call" {
+        result["tools"] = json!([]);
+    }
     let response = json!({"jsonrpc":"2.0","id":request["id"],"result":result});
     let mode = server.mode.load(Ordering::SeqCst);
-    if matches!(mode, 5 | 8) {
+    if matches!(mode, 5 | 8 | 10) {
         (
             [(
                 "content-type",
@@ -112,13 +115,19 @@ fn call() -> Call {
 }
 #[tokio::test]
 async fn json_and_sse_discovery_and_invocation_preserve_results() {
-    for mode in [0, 5, 7, 8] {
+    for mode in [0, 5, 7, 8, 9, 10] {
         let (connection, server, task) = setup(mode).await;
         let catalogue = connection.discover().await.unwrap();
         assert_eq!(
             catalogue.provenance("write").unwrap()["_meta"]["raw"],
             "provenance"
         );
+        assert_eq!(
+            catalogue.provenance("write").unwrap()["extension"]["retained"],
+            true
+        );
+        assert_eq!(catalogue.diagnostics().len(), 1);
+        assert_eq!(catalogue.diagnostics()[0].name.as_deref(), Some("invalid"));
         let binding = catalogue.bind(vec![McpSelection::new("write")]).unwrap();
         let result = binding.executor().call(call()).await.unwrap();
         assert_eq!(result.result.as_ref(), Some(&Value::Null));

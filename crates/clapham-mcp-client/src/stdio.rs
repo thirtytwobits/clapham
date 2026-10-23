@@ -34,10 +34,14 @@ where
         &mut self,
         item: ClientJsonRpcMessage,
     ) -> impl std::future::Future<Output = Result<(), McpError>> + Send + 'static {
+        let sending = self.state.requests.begin(&item).inspect_err(|fault| {
+            self.state.fail(fault.clone());
+        });
         let bytes = wire::encode(&item, self.limit.saturating_sub(1));
         let writer = self.writer.clone();
         let state = self.state.clone();
         async move {
+            let sending = sending?;
             let result = async {
                 let bytes = bytes?;
                 let mut writer = writer.lock().await;
@@ -51,7 +55,11 @@ where
                     .map_err(|_| McpError::Transport)?;
                 writer.flush().await.map_err(|_| McpError::Transport)
             };
-            tokio::select! { result = result => result, _ = state.stop.cancelled() => Err(McpError::Transport) }
+            let result = tokio::select! { result = result => result, _ = state.stop.cancelled() => Err(McpError::Transport) };
+            if result.is_ok() {
+                sending.sent();
+            }
+            result
         }
     }
     async fn receive(&mut self) -> Option<ServerJsonRpcMessage> {
@@ -69,7 +77,7 @@ where
             self.frame.extend_from_slice(&data[..count]);
             self.reader.consume(count);
             if end.is_some() {
-                let message = wire::decode(&self.frame).and_then(|message| {
+                let message = wire::decode(&self.frame, &self.state.requests).and_then(|message| {
                     self.state.observe_bytes(&message, self.frame.len())?;
                     self.state.observe(&message, self.notifications)?;
                     Ok(message)

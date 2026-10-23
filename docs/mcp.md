@@ -39,17 +39,23 @@ kinds; omission uses the mapped effect's defaults. The application's gate remain
 `McpCatalogue::bind` pins selected remote names. Each `McpSelection` can supply a local alias;
 the complete operation name joins the connection's namespace and that local name with a dot.
 Names keep their spelling: dots and underscores remain distinct. Repeated selected names,
-repeated aliases and invalid complete names are refused. Explicit aliases can shorten names that would exceed the complete-name limit. `McpToolBinding::contribution` produces a
+repeated aliases and invalid complete names are refused. Explicit aliases can shorten names
+that would exceed the complete-name limit. Binding refuses a closed or failed connection.
+`McpToolBinding::contribution` produces a
 `Contribution`; composition checks namespace ownership and collisions atomically alongside
 all local contributions.
 
 A descriptor takes its title, description and schemas from the remote record. Records with
-an invalid name or an absent or blank description are refused during discovery. Its effect is `query` where `readOnlyHint`
-is true, then `destructive` where `destructiveHint` is true, and `mutation` otherwise. A remote
-record never grants `administrative`. Idempotence follows the remote hint, with queries always
-projecting an idempotent annotation. `open_world` follows `openWorldHint`, defaulting to true
-as MCP specifies. Locality is `daemon`; compose with `ExecutionMode::Daemon` to dispatch.
-Remote contributions expose no preview, record stream or resource template.
+an invalid name or an absent or blank description are refused during discovery. A remote
+administrative marker maps conservatively to `destructive`, never to `administrative`.
+Otherwise the effect is `query` where `readOnlyHint` is true, then `destructive` where
+`destructiveHint` is true, and `mutation` otherwise. The MCP default for an absent
+`destructiveHint` is true, so unannotated tools default to `destructive` and exclude agents
+unless the host explicitly authorises them. An explicit non-destructive hint permits
+`mutation`. Idempotence follows the remote hint, with queries always projecting an idempotent
+annotation. `open_world` follows `openWorldHint`, defaulting to true as MCP specifies.
+Locality is `daemon`; compose with `ExecutionMode::Daemon` to dispatch. Remote contributions
+expose no preview, record stream or resource template.
 
 The binding revision hashes server identity, credential scope, selected original definitions,
 aliases and exposed descriptors using canonical JSON. Composition includes that opaque revision
@@ -92,10 +98,13 @@ its [call contract](calls.md).
 Calls use one `tools/call` round. Dropping the call future requests cancellation; cancellation
 does not prove that remote effects stopped. HTTP redirects, POST retries, SSE reconnects and
 session reinitialisation are disabled. The host reconciles uncertain effects before deciding
-whether to issue another call. A retryable timeout does not establish that replay is safe.
+whether to issue another call. The issue #13 contract marks timeouts retryable even when
+evidence is uncertain. This indicates a potentially temporary failure, not permission to
+replay: callers must inspect evidence and reconcile effects before retrying an uncertain call.
 
 Ordered text, image, audio, resource links and embedded resources map to `Outcome.content`.
 Inline image and audio bytes become data URIs; resource references are retained without fetching.
+The SDK normalises absent and empty remote content to `Outcome.content: Some([])`.
 `structuredContent` maps to `Outcome.result`, keeping null distinct from an absent result.
 `isError: true` sets `Outcome.is_error`, so its structured content does not undergo successful
 output validation. A refusal inside that content keeps its original code; the client does not
@@ -109,6 +118,10 @@ reconciliation.
 ### Bounds
 
 `Bounds` limits each stdio frame and the complete body of each HTTP response, including SSE.
+The complete-response cap also applies to a persistent GET stream: events, keep-alive comments
+and SSE framing share one `message_bytes` budget for that response. This can end the connection
+before its separate notification-count or 64 MiB payload lifetime budgets are exhausted. The
+host can reconnect and rediscover after a limit failure, without replaying uncertain calls.
 The message limit ranges from 8 KiB to 8 MiB; 4 KiB is reserved for request metadata and framing.
 Oversized frames fail the connection explicitly. Bounds also limit catalogue retention,
 concurrent operations, waiting operations and incoming requests/notifications over the
@@ -123,6 +136,7 @@ The moved client tests cover bounded discovery, duplicate names, aliases, bindin
 stale notifications and refreshes, unsupported interactions, cancellation, uncertain effects,
 JSON/SSE responses and disabled replay. Fixtures use explicit acknowledgements and holds;
 deadline tests advance paused runtime time after a scripted request has entered, rather than
-waiting for elapsed wall time. The conformance
-suite binds this workspace's server over both transports and calls `remote.lists.get` through
-`ComposedSet::call`, checking the local result and a remote `list_not_found` tool error.
+waiting for elapsed wall time. The conformance suite binds this workspace's server over both transports and calls `remote.lists.get` through
+`ComposedSet::call`, checking the local result, a remote `list_not_found` tool error and
+agent refusal for an administrative round trip. Response interpretation follows request IDs,
+so tool-result extension fields cannot be mistaken for catalogue records.

@@ -29,7 +29,8 @@ let set = compose_with_options(
 ```
 
 Each selection can assign a local alias and explicit principal kinds. Remote hints determine
-query, destructive or mutation effects; remote metadata cannot grant administrative authority
+query, destructive or mutation effects. Unannotated tools default to destructive, and an
+administrative claim maps conservatively to destructive. Remote metadata cannot grant administrative authority
 or principal access. The host gate still controls admission. The contribution retains its
 connection and binding revision. Fresh discovery and tool-list notifications fence stale calls.
 

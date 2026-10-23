@@ -100,7 +100,7 @@ impl McpCatalogue {
                     .await
                     .map_err(McpError::from_service)?;
                 let value = serde_json::to_value(response).map_err(|_| McpError::Protocol)?;
-                let value = value.get("claphamCatalogue").unwrap_or(&value);
+                let value = value.get("claphamCatalogue").ok_or(McpError::Protocol)?;
                 bytes = bytes
                     .checked_add(wire::encode(value, limits.catalogue_bytes)?.len())
                     .ok_or(McpError::Limit)?;
@@ -218,6 +218,7 @@ impl McpCatalogue {
     /// Pin selected records as operations in the connection's namespace.
     /// Aliases are local names; composition checks collisions with other contributions atomically.
     pub fn bind(&self, selections: Vec<McpSelection>) -> Result<McpToolBinding, McpError> {
+        self.connection.check()?;
         if self.epoch != self.connection.0.state.epoch.load(Ordering::SeqCst) {
             return Err(McpError::Stale);
         }
@@ -251,9 +252,18 @@ impl McpCatalogue {
                 return Err(McpError::Selection);
             }
             let hints = tool.annotations.as_ref();
-            let effect = if hints.and_then(|h| h.read_only_hint).unwrap_or(false) {
+            // A remote administrative claim can restrict access, never grant that class.
+            let administrative = tool
+                .meta
+                .as_ref()
+                .and_then(|meta| meta.get(clapham::EFFECT_META_KEY))
+                .and_then(Value::as_str)
+                == Some("administrative");
+            let effect = if administrative {
+                Effect::Destructive
+            } else if hints.and_then(|h| h.read_only_hint).unwrap_or(false) {
                 Effect::Query
-            } else if hints.and_then(|h| h.destructive_hint).unwrap_or(false) {
+            } else if hints.and_then(|h| h.destructive_hint).unwrap_or(true) {
                 Effect::Destructive
             } else {
                 Effect::Mutation

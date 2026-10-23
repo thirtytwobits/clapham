@@ -139,11 +139,8 @@ impl BoundedHttp {
                         state.fail(error.clone());
                         return Err(SseError::Body(Box::new(error)));
                     }
-                    if value.get("result").and_then(|r| r.get("tools")).is_some() {
-                        value["result"] =
-                            serde_json::json!({"claphamCatalogue": value["result"].take()});
-                        *data = value.to_string();
-                    }
+                    state.requests.prepare(&mut value);
+                    *data = value.to_string();
                 }
                 Ok(event)
             })
@@ -160,55 +157,69 @@ impl StreamableHttpClient for BoundedHttp {
         auth: Option<String>,
         headers: HashMap<HeaderName, HeaderValue>,
     ) -> Result<StreamableHttpPostResponse, HttpError> {
-        let body = wire::encode(&message, self.limit).map_err(error)?;
-        let response = self
-            .send(
-                self.request(
-                    reqwest::Method::POST,
-                    &uri,
-                    session_id.as_deref(),
-                    auth,
-                    headers,
+        let sending = self
+            .state
+            .requests
+            .begin(&message)
+            .map_err(|fault| self.fail(fault))?;
+        let result = async {
+            let body = wire::encode(&message, self.limit).map_err(error)?;
+            let response = self
+                .send(
+                    self.request(
+                        reqwest::Method::POST,
+                        &uri,
+                        session_id.as_deref(),
+                        auth,
+                        headers,
+                    )
+                    .header("content-type", "application/json")
+                    .body(body),
                 )
-                .header("content-type", "application/json")
-                .body(body),
-            )
-            .await?;
-        if matches!(response.status().as_u16(), 202 | 204) {
-            return Ok(StreamableHttpPostResponse::Accepted);
-        }
-        let session = response
-            .headers()
-            .get("mcp-session-id")
-            .map(|h| h.to_str().map(str::to_owned))
-            .transpose()
-            .map_err(|_| self.fail(McpError::Protocol))?;
-        if media_type(&response, "text/event-stream") {
-            return Ok(StreamableHttpPostResponse::Sse(
-                self.stream(response),
-                session,
-            ));
-        }
-        if !media_type(&response, "application/json") {
-            return Err(self.fail(McpError::Protocol));
-        }
-        let mut bytes = Vec::new();
-        let mut stream = response.bytes_stream();
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk.map_err(|_| error(McpError::Transport))?;
-            if chunk.len() > self.limit.saturating_sub(bytes.len()) {
-                self.state.fail(McpError::Limit);
-                return Err(error(McpError::Limit));
+                .await?;
+            if matches!(response.status().as_u16(), 202 | 204) {
+                return Ok(StreamableHttpPostResponse::Accepted);
             }
-            bytes.extend_from_slice(&chunk);
+            let session = response
+                .headers()
+                .get("mcp-session-id")
+                .map(|h| h.to_str().map(str::to_owned))
+                .transpose()
+                .map_err(|_| self.fail(McpError::Protocol))?;
+            if media_type(&response, "text/event-stream") {
+                return Ok(StreamableHttpPostResponse::Sse(
+                    self.stream(response),
+                    session,
+                ));
+            }
+            if !media_type(&response, "application/json") {
+                return Err(self.fail(McpError::Protocol));
+            }
+            let mut bytes = Vec::new();
+            let mut stream = response.bytes_stream();
+            while let Some(chunk) = stream.next().await {
+                let chunk = chunk.map_err(|_| error(McpError::Transport))?;
+                if chunk.len() > self.limit.saturating_sub(bytes.len()) {
+                    self.state.fail(McpError::Limit);
+                    return Err(error(McpError::Limit));
+                }
+                bytes.extend_from_slice(&chunk);
+            }
+            let message =
+                wire::decode(&bytes, &self.state.requests).map_err(|fault| self.fail(fault))?;
+            if let Err(fault) = self.state.observe_bytes(&message, bytes.len()) {
+                self.state.fail(fault.clone());
+                return Err(error(fault));
+            }
+            Ok(StreamableHttpPostResponse::Json(message, session))
         }
-        let message = wire::decode(&bytes).map_err(|fault| self.fail(fault))?;
-        if let Err(fault) = self.state.observe_bytes(&message, bytes.len()) {
-            self.state.fail(fault.clone());
-            return Err(error(fault));
+        .await;
+        if result.is_ok() {
+            sending.sent();
         }
-        Ok(StreamableHttpPostResponse::Json(message, session))
+        result
     }
+
     async fn delete_session(
         &self,
         uri: Arc<str>,
@@ -420,6 +431,35 @@ mod tests {
             Some("after deadline")
         );
         assert_eq!(backend.state.check(), Ok(()));
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn persistent_sse_keeps_the_whole_response_byte_bound() {
+        // Every individual event is small; keep-alive comments still consume body bytes.
+        let body = ": keep-alive\n\n".repeat(1024);
+        let app = Router::new().route(
+            "/volume",
+            get(move || {
+                let body = body.clone();
+                async move { ([("content-type", "text/event-stream")], body) }
+            }),
+        );
+        let (endpoint, task) = serve(app).await;
+        let mut backend = backend();
+        backend.limit = 8192;
+        let mut stream = backend
+            .get_stream(
+                format!("{endpoint}/volume").into(),
+                None,
+                None,
+                None,
+                HashMap::new(),
+            )
+            .await
+            .unwrap();
+        assert!(stream.next().await.unwrap().is_err());
+        assert_eq!(backend.state.check(), Err(McpError::Limit));
         task.abort();
     }
 
