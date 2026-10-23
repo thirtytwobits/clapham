@@ -8,7 +8,7 @@
 | `clapham-mcp-client` | MCP client | `clapham` |
 | `clapham-conformance` | Lists-and-items contribution and conformance harness | The four libraries above |
 | `clapham-lists` | Example binary assembling the front ends over the contribution | Command line, MCP server and conformance library |
-| `xtask` | Repository gates and schema generation | `clapham` |
+| `xtask` | Repository gates and schema generation | `clapham`, `clapham-cli` |
 
 The core exports the contract, contribution, composition, selection, gate and call types,
 with compiled schema validation and deterministic revisions. See [composition](composition.md)
@@ -17,11 +17,11 @@ for the boundaries, [calls](calls.md) for admission, dispatch and refusal handli
 Generated schemas are in `crates/clapham/schemas/`.
 The [lists-and-items contribution](conformance.md) supplies shared in-memory state,
 scripted holds and an example gate. The [CLI command tree](cli.md) supplies descriptor-derived
-help, schema-based input binding and in-process calls. CLI output and safeguards, the MCP
+help, schema-based input binding, in-process calls, process output and safeguards. The MCP
 front ends, their conformance harness and the example follow in their implementation issues.
 Each library has a generated public API snapshot in `api/`.
 
-`cargo xtask schemas` generates the operation, refusal and catalogue schemas with schemars.
+`cargo xtask schemas` generates the operation, refusal, catalogue and CLI envelope schemas.
 `cargo xtask schemas --check` refuses missing or stale files without rewriting them;
 it runs within `check` on both CI runners.
 

@@ -379,6 +379,16 @@ fn invalid_bindings_return_configuration_refusals_instead_of_panicking() {
         ),
         (
             "lists.edit",
+            json!({"type":"object","properties":{"yes":{"type":"boolean"}}}),
+            vec![],
+        ),
+        (
+            "lists.edit",
+            json!({"type":"object","properties":{"format":{"type":"string"}}}),
+            vec![],
+        ),
+        (
+            "lists.edit",
             json!({"type":"object","properties":{"data":{"type":"object"},"data-json":{"type":"string"}}}),
             vec![],
         ),
@@ -599,11 +609,11 @@ fn schema_refusals_are_carried_unchanged_for_flags_json_and_prepared_calls() {
         }
         // Public Invocation fields can be set without parse_from, so call must
         // apply the same schema validator before the handler is reached.
-        let invocation = clapham_cli::Invocation {
-            name: "lists.document.edit".into(),
-            principal: Principal::new("account", PrincipalKind::Human),
+        let invocation = clapham_cli::Invocation::new(
+            "lists.document.edit",
+            Principal::new("account", PrincipalKind::Human),
             input,
-        };
+        );
         assert_eq!(
             block_on(cli.call(invocation, RecordSink::default(), Cancellation::new())).unwrap_err(),
             expected
@@ -613,20 +623,26 @@ fn schema_refusals_are_carried_unchanged_for_flags_json_and_prepared_calls() {
 }
 
 #[test]
-fn describe_namespace_conflicts_with_the_reserved_alias() {
-    for name in ["describe.read", "describe.document.read"] {
+fn built_in_command_namespaces_cannot_be_claimed_by_contributions() {
+    for name in [
+        "describe.read",
+        "describe.document.read",
+        "completions.read",
+    ] {
+        let namespace = name.split_once('.').unwrap().0;
         let mut operation = descriptor(json!({"type":"object"}));
         operation.name = name.parse().unwrap();
-        let set = clapham::compose(
-            [Contribution::new("describe")
-                .operation(operation, |_: Call| async { unreachable!() })],
-            Bounds::default(),
-        )
-        .unwrap();
+        let set =
+            clapham::compose(
+                [Contribution::new(namespace)
+                    .operation(operation, |_: Call| async { unreachable!() })],
+                Bounds::default(),
+            )
+            .unwrap();
         let error =
             Cli::new("test", set, Principal::new("account", PrincipalKind::Human)).unwrap_err();
         assert_eq!(error.code, "cli_configuration");
-        assert!(error.message.contains("describe"));
+        assert!(error.message.contains(namespace));
     }
 }
 

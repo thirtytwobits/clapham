@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CLI output envelope",
+  "type": "object",
+  "properties": {
+    "data": true,
+    "kind": {
+      "title": "OperationName",
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1,
+      "not": {
+        "pattern": "[^A-Za-z0-9_.-]"
+      },
+      "pattern": "^[A-Za-z0-9_.-]+$"
+    },
+    "v": {
+      "const": 1
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "v",
+    "kind",
+    "data"
+  ]
+}

@@ -41,14 +41,14 @@ cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-de
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features http
 ```
 
-Generate the public operation, refusal and catalogue schemas from the core types with
-`cargo xtask schemas`. Review and commit changes to `crates/clapham/schemas/*.json`;
+Generate the public operation, refusal and catalogue schemas and the CLI output envelope
+with `cargo xtask schemas`. Review and commit changes to `crates/*/schemas/*.json`;
 `cargo xtask schemas --check` checks them without writing. The schemas use JSON Schema
 2020-12. Tests validate descriptors and refusals against the checked-in files.
 
 The MCP crates reserve `stdio` and `http` features for their transports. The neutral
-conformance contribution and CLI command tree are implemented. CLI rendering and safeguards,
-the MCP front ends and the example follow in their own implementation issues. The MCP
+conformance contribution and CLI are implemented, including process output and safeguards.
+The MCP front ends and the example follow in their own implementation issues. The MCP
 wire-form generator follows with the server implementation.
 
 See [the workspace guide](docs/README.md) for the crate boundaries and CI lanes.

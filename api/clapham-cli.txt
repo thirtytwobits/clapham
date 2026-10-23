@@ -53,6 +53,114 @@ pub fn clapham_cli::CliError::__clone_box(&self, _: dyn_clone::sealed::Private) 
 impl<T> typenum::type_operators::Same for clapham_cli::CliError
 pub type clapham_cli::CliError::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_cli::CliError where T: ?core::marker::Sized
+pub enum clapham_cli::Format
+pub clapham_cli::Format::Auto
+pub clapham_cli::Format::Human
+pub clapham_cli::Format::Json
+pub clapham_cli::Format::Ndjson
+impl core::clone::Clone for clapham_cli::Format
+pub fn clapham_cli::Format::clone(&self) -> clapham_cli::Format
+impl core::cmp::Eq for clapham_cli::Format
+impl core::cmp::PartialEq for clapham_cli::Format
+pub fn clapham_cli::Format::eq(&self, other: &clapham_cli::Format) -> bool
+impl core::default::Default for clapham_cli::Format
+pub fn clapham_cli::Format::default() -> clapham_cli::Format
+impl core::fmt::Debug for clapham_cli::Format
+pub fn clapham_cli::Format::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for clapham_cli::Format
+impl core::marker::StructuralPartialEq for clapham_cli::Format
+impl core::marker::Freeze for clapham_cli::Format
+impl core::marker::Send for clapham_cli::Format
+impl core::marker::Sync for clapham_cli::Format
+impl core::marker::Unpin for clapham_cli::Format
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_cli::Format
+impl core::panic::unwind_safe::UnwindSafe for clapham_cli::Format
+impl<Q, K> equivalent::Equivalent<K> for clapham_cli::Format where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham_cli::Format::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_cli::Format where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_cli::Format where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_cli::Format where U: core::convert::From<T>
+pub fn clapham_cli::Format::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_cli::Format where U: core::convert::Into<T>
+pub type clapham_cli::Format::Error = core::convert::Infallible
+pub fn clapham_cli::Format::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_cli::Format where U: core::convert::TryFrom<T>
+pub type clapham_cli::Format::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_cli::Format::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_cli::Format where T: core::clone::Clone
+pub type clapham_cli::Format::Owned = T
+pub fn clapham_cli::Format::clone_into(&self, target: &mut T)
+pub fn clapham_cli::Format::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_cli::Format where T: 'static + ?core::marker::Sized
+pub fn clapham_cli::Format::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_cli::Format where T: ?core::marker::Sized
+pub fn clapham_cli::Format::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_cli::Format where T: ?core::marker::Sized
+pub fn clapham_cli::Format::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_cli::Format where T: core::clone::Clone
+pub unsafe fn clapham_cli::Format::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_cli::Format
+pub fn clapham_cli::Format::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_cli::Format where T: core::clone::Clone
+pub fn clapham_cli::Format::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> outref::AsOut<T> for clapham_cli::Format where T: core::marker::Copy
+pub fn clapham_cli::Format::as_out(&mut self) -> outref::Out<'_, T>
+impl<T> typenum::type_operators::Same for clapham_cli::Format
+pub type clapham_cli::Format::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_cli::Format where T: ?core::marker::Sized
+pub enum clapham_cli::Shell
+pub clapham_cli::Shell::Bash
+pub clapham_cli::Shell::Fish
+pub clapham_cli::Shell::PowerShell
+pub clapham_cli::Shell::Zsh
+impl core::clone::Clone for clapham_cli::Shell
+pub fn clapham_cli::Shell::clone(&self) -> clapham_cli::Shell
+impl core::cmp::Eq for clapham_cli::Shell
+impl core::cmp::PartialEq for clapham_cli::Shell
+pub fn clapham_cli::Shell::eq(&self, other: &clapham_cli::Shell) -> bool
+impl core::fmt::Debug for clapham_cli::Shell
+pub fn clapham_cli::Shell::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for clapham_cli::Shell
+impl core::marker::StructuralPartialEq for clapham_cli::Shell
+impl core::marker::Freeze for clapham_cli::Shell
+impl core::marker::Send for clapham_cli::Shell
+impl core::marker::Sync for clapham_cli::Shell
+impl core::marker::Unpin for clapham_cli::Shell
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_cli::Shell
+impl core::panic::unwind_safe::UnwindSafe for clapham_cli::Shell
+impl<Q, K> equivalent::Equivalent<K> for clapham_cli::Shell where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham_cli::Shell::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_cli::Shell where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_cli::Shell where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_cli::Shell where U: core::convert::From<T>
+pub fn clapham_cli::Shell::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_cli::Shell where U: core::convert::Into<T>
+pub type clapham_cli::Shell::Error = core::convert::Infallible
+pub fn clapham_cli::Shell::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_cli::Shell where U: core::convert::TryFrom<T>
+pub type clapham_cli::Shell::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_cli::Shell::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_cli::Shell where T: core::clone::Clone
+pub type clapham_cli::Shell::Owned = T
+pub fn clapham_cli::Shell::clone_into(&self, target: &mut T)
+pub fn clapham_cli::Shell::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_cli::Shell where T: 'static + ?core::marker::Sized
+pub fn clapham_cli::Shell::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_cli::Shell where T: ?core::marker::Sized
+pub fn clapham_cli::Shell::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_cli::Shell where T: ?core::marker::Sized
+pub fn clapham_cli::Shell::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_cli::Shell where T: core::clone::Clone
+pub unsafe fn clapham_cli::Shell::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_cli::Shell
+pub fn clapham_cli::Shell::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_cli::Shell where T: core::clone::Clone
+pub fn clapham_cli::Shell::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> outref::AsOut<T> for clapham_cli::Shell where T: core::marker::Copy
+pub fn clapham_cli::Shell::as_out(&mut self) -> outref::Out<'_, T>
+impl<T> typenum::type_operators::Same for clapham_cli::Shell
+pub type clapham_cli::Shell::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_cli::Shell where T: ?core::marker::Sized
 pub struct clapham_cli::Cli
 impl clapham_cli::Cli
 pub async fn clapham_cli::Cli::call(&self, invocation: clapham_cli::Invocation, records: clapham::call::RecordSink, cancel: clapham::call::Cancellation) -> clapham::selection::CallResult
@@ -60,6 +168,14 @@ pub fn clapham_cli::Cli::command(&self) -> clap_builder::builder::command::Comma
 pub fn clapham_cli::Cli::new(name: impl core::convert::Into<alloc::string::String>, set: clapham::composition::ComposedSet, principal: clapham::principal::Principal) -> core::result::Result<Self, clapham::refusal::Refusal>
 pub fn clapham_cli::Cli::parse_from<I, T>(&self, args: I, stdin: impl std::io::Read) -> core::result::Result<clapham_cli::Invocation, clapham_cli::CliError> where I: core::iter::traits::collect::IntoIterator<Item = T>, T: core::convert::Into<std::ffi::os_str::OsString> + core::clone::Clone
 pub async fn clapham_cli::Cli::run_from<I, T>(&self, args: I, stdin: impl std::io::Read, records: clapham::call::RecordSink, cancel: clapham::call::Cancellation) -> core::result::Result<clapham::call::Outcome, clapham_cli::CliError> where I: core::iter::traits::collect::IntoIterator<Item = T>, T: core::convert::Into<std::ffi::os_str::OsString> + core::clone::Clone
+impl clapham_cli::Cli
+pub fn clapham_cli::Cli::completions(&self, shell: clapham_cli::Shell) -> alloc::string::String
+pub fn clapham_cli::Cli::with_deadline<F, Fut>(self, wait: F) -> Self where F: core::ops::function::Fn(core::time::Duration) -> Fut + core::marker::Send + core::marker::Sync + 'static, Fut: core::future::future::Future<Output = ()> + core::marker::Send + 'static
+impl clapham_cli::Cli
+pub async fn clapham_cli::Cli::execute_from<I, T, W>(&self, args: I, stdin: impl std::io::Read, stdout: W, stderr: impl std::io::Write, terminal: bool, cancel: clapham::call::Cancellation) -> u8 where I: core::iter::traits::collect::IntoIterator<Item = T>, T: core::convert::Into<std::ffi::os_str::OsString> + core::clone::Clone, W: std::io::Write + core::marker::Send + 'static
+pub async fn clapham_cli::Cli::run(&self) -> u8
+impl clapham_cli::Cli
+pub fn clapham_cli::Cli::with_renderer<F>(self, name: &str, renderer: F) -> core::result::Result<Self, clapham::refusal::Refusal> where F: core::ops::function::Fn(&clapham::operation::Operation, &serde_json::value::Value, bool) -> alloc::string::String + core::marker::Send + core::marker::Sync + 'static
 impl core::clone::Clone for clapham_cli::Cli
 pub fn clapham_cli::Cli::clone(&self) -> clapham_cli::Cli
 impl core::fmt::Debug for clapham_cli::Cli
@@ -102,7 +218,13 @@ impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusi
 pub struct clapham_cli::Invocation
 pub clapham_cli::Invocation::input: serde_json::value::Value
 pub clapham_cli::Invocation::name: alloc::string::String
+pub clapham_cli::Invocation::output: clapham_cli::OutputOptions
+pub clapham_cli::Invocation::preview: bool
 pub clapham_cli::Invocation::principal: clapham::principal::Principal
+pub clapham_cli::Invocation::timeout: core::option::Option<core::time::Duration>
+pub clapham_cli::Invocation::yes: bool
+impl clapham_cli::Invocation
+pub fn clapham_cli::Invocation::new(name: impl core::convert::Into<alloc::string::String>, principal: clapham::principal::Principal, input: serde_json::value::Value) -> Self
 impl core::clone::Clone for clapham_cli::Invocation
 pub fn clapham_cli::Invocation::clone(&self) -> clapham_cli::Invocation
 impl core::cmp::PartialEq for clapham_cli::Invocation
@@ -145,4 +267,59 @@ pub fn clapham_cli::Invocation::__clone_box(&self, _: dyn_clone::sealed::Private
 impl<T> typenum::type_operators::Same for clapham_cli::Invocation
 pub type clapham_cli::Invocation::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_cli::Invocation where T: ?core::marker::Sized
+pub struct clapham_cli::OutputOptions
+pub clapham_cli::OutputOptions::format: clapham_cli::Format
+pub clapham_cli::OutputOptions::raw: bool
+impl core::clone::Clone for clapham_cli::OutputOptions
+pub fn clapham_cli::OutputOptions::clone(&self) -> clapham_cli::OutputOptions
+impl core::cmp::Eq for clapham_cli::OutputOptions
+impl core::cmp::PartialEq for clapham_cli::OutputOptions
+pub fn clapham_cli::OutputOptions::eq(&self, other: &clapham_cli::OutputOptions) -> bool
+impl core::default::Default for clapham_cli::OutputOptions
+pub fn clapham_cli::OutputOptions::default() -> clapham_cli::OutputOptions
+impl core::fmt::Debug for clapham_cli::OutputOptions
+pub fn clapham_cli::OutputOptions::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for clapham_cli::OutputOptions
+impl core::marker::StructuralPartialEq for clapham_cli::OutputOptions
+impl core::marker::Freeze for clapham_cli::OutputOptions
+impl core::marker::Send for clapham_cli::OutputOptions
+impl core::marker::Sync for clapham_cli::OutputOptions
+impl core::marker::Unpin for clapham_cli::OutputOptions
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_cli::OutputOptions
+impl core::panic::unwind_safe::UnwindSafe for clapham_cli::OutputOptions
+impl<Q, K> equivalent::Equivalent<K> for clapham_cli::OutputOptions where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham_cli::OutputOptions::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_cli::OutputOptions where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_cli::OutputOptions where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_cli::OutputOptions where U: core::convert::From<T>
+pub fn clapham_cli::OutputOptions::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_cli::OutputOptions where U: core::convert::Into<T>
+pub type clapham_cli::OutputOptions::Error = core::convert::Infallible
+pub fn clapham_cli::OutputOptions::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_cli::OutputOptions where U: core::convert::TryFrom<T>
+pub type clapham_cli::OutputOptions::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_cli::OutputOptions::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_cli::OutputOptions where T: core::clone::Clone
+pub type clapham_cli::OutputOptions::Owned = T
+pub fn clapham_cli::OutputOptions::clone_into(&self, target: &mut T)
+pub fn clapham_cli::OutputOptions::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_cli::OutputOptions where T: 'static + ?core::marker::Sized
+pub fn clapham_cli::OutputOptions::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_cli::OutputOptions where T: ?core::marker::Sized
+pub fn clapham_cli::OutputOptions::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_cli::OutputOptions where T: ?core::marker::Sized
+pub fn clapham_cli::OutputOptions::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_cli::OutputOptions where T: core::clone::Clone
+pub unsafe fn clapham_cli::OutputOptions::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_cli::OutputOptions
+pub fn clapham_cli::OutputOptions::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_cli::OutputOptions where T: core::clone::Clone
+pub fn clapham_cli::OutputOptions::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> outref::AsOut<T> for clapham_cli::OutputOptions where T: core::marker::Copy
+pub fn clapham_cli::OutputOptions::as_out(&mut self) -> outref::Out<'_, T>
+impl<T> typenum::type_operators::Same for clapham_cli::OutputOptions
+pub type clapham_cli::OutputOptions::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_cli::OutputOptions where T: ?core::marker::Sized
+pub fn clapham_cli::envelope_schema() -> schemars::schema::Schema
 pub fn clapham_cli::process_principal() -> core::result::Result<clapham::principal::Principal, clapham::refusal::Refusal>
+pub fn clapham_cli::write_refusal(refusal: &clapham::refusal::Refusal, stderr: impl std::io::Write) -> u8
