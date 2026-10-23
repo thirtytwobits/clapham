@@ -189,7 +189,8 @@ impl Cli {
             .expect("the tree uses composed operations");
         let yes = matches.get_flag(settings::YES);
         let preview = matches.get_flag(settings::PREVIEW);
-        settings::safeguards(operation.descriptor(), yes, preview)?;
+        settings::confirmation(operation.descriptor(), yes)?;
+        settings::preview(operation.descriptor(), preview)?;
         let timeout = matches
             .get_one::<String>(settings::TIMEOUT)
             .map(|value| humantime::parse_duration(value).map_err(|error| usage(error.to_string())))
@@ -222,26 +223,32 @@ impl Cli {
     /// Daemon-local operations always refuse as `no_daemon` on this in-process
     /// adapter, including when the supplied set was composed for a daemon.
     /// Refusal codes and evidence from the call runner are retained unchanged.
+    /// Host cancellation is forwarded to a call-local signal; a timeout does not
+    /// cancel the host's signal or other calls that share it.
     pub async fn call(
         &self,
         invocation: Invocation,
         records: RecordSink,
         cancel: Cancellation,
     ) -> CallResult {
+        let call_cancel = Cancellation::new();
+        if cancel.is_cancelled() {
+            call_cancel.cancel();
+        }
         let call = self.set.call(
             &self.selection,
             invocation.principal,
             &invocation.name,
             invocation.input,
             records,
-            cancel.clone(),
+            call_cancel.clone(),
             invocation.preview,
         );
-        if cancel.is_cancelled() {
+        if call_cancel.is_cancelled() {
             return call.await;
         }
         if let Some(operation) = self.set.get(&invocation.name) {
-            settings::safeguards(operation.descriptor(), invocation.yes, invocation.preview)?;
+            settings::confirmation(operation.descriptor(), invocation.yes)?;
         }
         if self
             .set
@@ -254,17 +261,19 @@ impl Cli {
                 "the operation needs the running daemon",
             ));
         }
-        let Some(duration) = invocation.timeout else {
-            return call.await;
-        };
-        if duration.is_zero() {
-            cancel.cancel();
-            return call.await;
-        }
         use futures_util::future::{Either, select};
-        match select(self.deadline.wait(duration), Box::pin(call)).await {
+        let stopped = async {
+            let Some(duration) = invocation.timeout else {
+                cancel.cancelled().await;
+                return;
+            };
+            if !duration.is_zero() {
+                let _ = select(Box::pin(cancel.cancelled()), self.deadline.wait(duration)).await;
+            }
+        };
+        match select(Box::pin(stopped), Box::pin(call)).await {
             Either::Left(((), call)) => {
-                cancel.cancel();
+                call_cancel.cancel();
                 call.await
             }
             Either::Right((result, _)) => result,

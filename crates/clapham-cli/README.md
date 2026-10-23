@@ -78,17 +78,26 @@ generation. These value-oriented methods leave printing to the host.
 ## Safeguards and deadlines
 
 Administrative and destructive operations require `--yes`, including previews.
-Without it, parsing refuses as `usage` before reading stdin or running anything.
+Without it, parsing refuses as `usage` before reading stdin, validating input or
+checking admission. For example, an agent's unconfirmed `lists compact` gets
+`usage`; supplying `--yes` lets the gate return `not_admitted`.
 `--dry-run` sets the call's preview flag only where the descriptor supports it;
-otherwise it also refuses as `usage`. Confirmation does not change admission:
-an agent's `lists compact --yes` can still be refused as `not_admitted`.
-`call` checks the same safeguards for invocations constructed by the host.
+otherwise parsing returns the core's `preview_unsupported` code, in category
+`usage` (exit 2), before reading stdin or checking admission. Prepared `call`
+invocations also require confirmation, but leave preview validation to the core,
+after input validation and admission. Already-cancelled prepared calls retain the
+core's cancellation-first behaviour. Confirmation does not grant admission.
 
 `--timeout <duration>` accepts durations such as `500ms`, `1.25s` or `2m` and
-cancels the supplied call signal. Its budget starts when `call` begins, after
-parsing and safeguards; it does not bound stdin reads or blocking output writes.
+cancels a signal local to that invocation. The host's supplied signal is forwarded
+to the call but is never cancelled by timeout or delivery failure, so it can be
+shared by a session. Its budget starts when `call` begins, after parsing and
+confirmation; it does not bound stdin reads or pre-empt blocking work. Record
+delivery runs within the budget, so a slow record write consumes timeout time even
+though expiry cannot interrupt that write. Final result delivery follows call completion.
 Zero cancels before dispatch. In-flight expiry uses the core's `cancelled`
-refusal, including retryability and uncertain evidence. Cancellation has priority
+refusal, including retryability and uncertain evidence, just like an external
+interrupt; there is no separate timeout code. Cancellation has priority
 when both deadline and completion are ready. The default deadline uses a helper
 thread and needs no async runtime. `with_deadline` lets a host integrate its own
 deadline future; tests use explicitly signalled futures instead of timers.
@@ -131,7 +140,8 @@ error outcome; typed refusals use their category's exit code.
 Streaming operations always keep JSON records and the final result on individual
 lines, even with `--format json` on a terminal. Human output uses output-schema
 properties and titles, making tables for arrays of objects and `key: value` fields
-for objects. Control characters are escaped. `with_renderer(name, callback)`
+for objects. Complete-outcome metadata uses generic field labels rather than the
+domain result's schema. Control characters are escaped. `with_renderer(name, callback)`
 replaces human rendering for an operation; the callback receives its descriptor,
 the data and whether it is a record. JSON modes retain the original values.
 

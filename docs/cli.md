@@ -52,16 +52,29 @@ arguments/readers and explicit cancellation, without clocks or retries.
 `run` and `execute_from` add process output and return the exit code to the host.
 Pipes use version-one `{v, kind, data}` JSON frames; terminals default to human
 tables or fields. Explicit JSON is pretty on a terminal, while streaming JSON
-always stays one frame per line. `--raw` omits the envelope. `with_renderer`
+always stays one frame per line. `--raw` omits the JSON envelope and leaves human
+output unchanged. `with_renderer`
 registers an operation's human presentation. Refusals always use one unchanged
 JSON line on stderr and the category's code. The published frame schema is
 `crates/clapham-cli/schemas/envelope.schema.json`, generated and checked by xtask.
 
-Administrative and destructive effects require `--yes`; unsupported `--dry-run`
-requests refuse as `usage`. Both parsing and prepared calls enforce these checks.
-`--timeout` applies to the async call, excluding stdin and blocking output writes;
-expiry cancels with the core's evidence rules. The host may replace the deadline
-future with `with_deadline` to integrate its runtime or explicit test signals.
+Administrative and destructive effects require `--yes`. Parsing checks confirmation
+and preview support before reading stdin, validating input or checking admission.
+An unconfirmed agent's `lists compact` therefore gets `usage`; with `--yes`, it gets
+`not_admitted`. Unsupported `--dry-run` returns `preview_unsupported` in category
+`usage` (exit 2). Prepared calls keep the early confirmation check, while the core
+checks preview support after input validation and admission. Confirmation does not
+change the gate's policy.
+
+`--timeout` applies to the async call after parsing and confirmation. It does not
+bound stdin or pre-empt blocking work. Record writes run inside the timeout budget,
+so their time counts towards it even though expiry cannot interrupt a blocked
+write. Final result writes happen after the call completes. Expiry and external
+interrupts both return `cancelled` with the core's evidence rules; there is no
+separate timeout refusal code. A call-local signal isolates timeouts and delivery
+failures from the host's signal, while host cancellation still reaches the call.
+The host may replace the deadline future with `with_deadline` to integrate its
+runtime or explicit test signals.
 
 The process fixture seeds lists and items, runs the real CLI and records its final
 state for assertions. Process tests check every category's exit code, one-line

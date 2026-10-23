@@ -117,7 +117,7 @@ fn hand_built_invocations_cannot_bypass_confirmation_or_preview_guards() {
     preview.preview = true;
     let refusal =
         block_on(cli.call(preview, RecordSink::default(), Cancellation::new())).unwrap_err();
-    assert_eq!(refusal.code, "usage");
+    assert_eq!(refusal.code, "preview_unsupported");
     assert_eq!(calls.load(Ordering::SeqCst), 0);
     let (cli, _, _) = fixture(Effect::Mutation, true, false);
     let mut preview = invocation();
@@ -166,19 +166,23 @@ fn controls_bind_without_reading_a_clock_or_starting_a_timer() {
 }
 
 #[test]
-fn zero_and_explicitly_ready_deadlines_cancel_before_dispatch() {
+fn deadlines_cancel_only_the_call_and_leave_a_shared_host_signal_usable() {
     let (cli, calls, _) = fixture(Effect::Query, false, false);
     let cli = cli.with_deadline(|_| std::future::ready(()));
+    let host = Cancellation::new();
     for timeout in [Duration::ZERO, Duration::from_secs(60)] {
         let mut invocation = invocation();
         invocation.timeout = Some(timeout);
         let refusal =
-            block_on(cli.call(invocation, RecordSink::default(), Cancellation::new())).unwrap_err();
+            block_on(cli.call(invocation, RecordSink::default(), host.clone())).unwrap_err();
         assert_eq!(refusal.code, "cancelled");
         assert_eq!(refusal.evidence, Evidence::NotDispatched);
         assert!(refusal.retryable);
+        assert!(!host.is_cancelled());
     }
     assert_eq!(calls.load(Ordering::SeqCst), 0);
+    block_on(cli.call(invocation(), RecordSink::default(), host)).unwrap();
+    assert_eq!(calls.load(Ordering::SeqCst), 1);
 }
 
 struct HeldDeadline(Arc<AtomicBool>);
@@ -211,13 +215,14 @@ fn completing_a_call_drops_its_deadline_future() {
 fn a_failed_record_write_cancels_the_producer_and_keeps_uncertain_evidence() {
     let (cli, calls, after_record) = fixture(Effect::Mutation, false, true);
     let stderr = Capture::default();
+    let host = Cancellation::new();
     let code = block_on(cli.execute_from(
         ["lists-app", "lists", "action"],
         io::empty(),
         Broken,
         stderr.clone(),
         false,
-        Cancellation::new(),
+        host.clone(),
     ));
     assert_eq!(code, 69);
     let refusal = stderr.refusal();
@@ -225,6 +230,9 @@ fn a_failed_record_write_cancels_the_producer_and_keeps_uncertain_evidence() {
     assert_eq!(refusal.evidence, Evidence::Uncertain);
     assert_eq!(calls.load(Ordering::SeqCst), 1);
     assert_eq!(after_record.load(Ordering::SeqCst), 0);
+    assert!(!host.is_cancelled());
+    block_on(cli.call(invocation(), RecordSink::default(), host)).unwrap();
+    assert_eq!(calls.load(Ordering::SeqCst), 2);
 }
 
 #[test]
@@ -264,22 +272,153 @@ fn confirmations_and_dry_runs_are_checked_before_stdin_is_read() {
         }
     }
     let (cli, calls, _) = fixture(Effect::Destructive, false, false);
-    for args in [
-        vec!["lists-app", "lists", "action", "--json", "-"],
-        vec![
-            "lists-app",
-            "lists",
-            "action",
-            "--yes",
-            "--dry-run",
-            "--json",
-            "-",
-        ],
+    for (args, code) in [
+        (vec!["lists-app", "lists", "action", "--json", "-"], "usage"),
+        (
+            vec![
+                "lists-app",
+                "lists",
+                "action",
+                "--yes",
+                "--dry-run",
+                "--json",
+                "-",
+            ],
+            "preview_unsupported",
+        ),
     ] {
         let CliError::Refusal(refusal) = cli.parse_from(args, Unread).unwrap_err() else {
             panic!("expected refusal")
         };
-        assert_eq!(refusal.code, "usage");
+        assert_eq!(refusal.code, code);
     }
     assert_eq!(calls.load(Ordering::SeqCst), 0);
+}
+
+#[test]
+fn prepared_preview_refusals_match_the_core_and_keep_admission_precedence() {
+    let operation: Operation = serde_json::from_value(json!({
+        "name":"lists.action","description":"Exercise preview refusal precedence.",
+        "input":{"type":"object"},"effect":"administrative","locality":"workspace",
+        "idempotent":false,"open_world":false
+    }))
+    .unwrap();
+    let set = compose(
+        [Contribution::new("lists").operation(operation, |_: Call| async { unreachable!() })],
+        Bounds::default(),
+    )
+    .unwrap();
+    let cli = Cli::new(
+        "lists-app",
+        set.clone(),
+        Principal::new("operator", PrincipalKind::Human),
+    )
+    .unwrap();
+    for (kind, code) in [
+        (PrincipalKind::Human, "preview_unsupported"),
+        (PrincipalKind::Agent, "not_admitted"),
+    ] {
+        let principal = Principal::new("operator", kind);
+        let expected = block_on(set.call(
+            &set.all(),
+            principal.clone(),
+            "lists.action",
+            json!({}),
+            RecordSink::default(),
+            Cancellation::new(),
+            true,
+        ))
+        .unwrap_err();
+        let mut invocation = Invocation::new("lists.action", principal, json!({}));
+        invocation.yes = true;
+        invocation.preview = true;
+        let actual =
+            block_on(cli.call(invocation, RecordSink::default(), Cancellation::new())).unwrap_err();
+        assert_eq!(actual, expected);
+        assert_eq!(actual.code, code);
+    }
+    // Parsing refuses unsupported preview before reading stdin or checking admission.
+    let error = cli
+        .parse_from(
+            ["lists-app", "lists", "action", "--yes", "--dry-run"],
+            io::empty(),
+        )
+        .unwrap_err();
+    let expected = block_on(set.call(
+        &set.all(),
+        Principal::new("operator", PrincipalKind::Human),
+        "lists.action",
+        json!({}),
+        RecordSink::default(),
+        Cancellation::new(),
+        true,
+    ))
+    .unwrap_err();
+    assert_eq!(error, CliError::Refusal(expected));
+}
+
+#[test]
+fn host_cancellation_is_forwarded_to_entered_calls_and_process_invocations() {
+    for process in [false, true] {
+        let operation: Operation = serde_json::from_value(json!({
+            "name":"lists.action","description":"Wait for explicit cancellation.",
+            "input":{"type":"object"},"effect":"query","locality":"workspace",
+            "idempotent":true,"open_world":false
+        }))
+        .unwrap();
+        let entered = Arc::new(AtomicUsize::new(0));
+        let observed = entered.clone();
+        let set = compose(
+            [
+                Contribution::new("lists").operation(operation, move |_: Call| {
+                    observed.fetch_add(1, Ordering::SeqCst);
+                    std::future::pending::<Result<Outcome, Refusal>>()
+                }),
+            ],
+            Bounds::default(),
+        )
+        .unwrap();
+        let cli = Cli::new(
+            "lists-app",
+            set,
+            Principal::new("operator", PrincipalKind::Human),
+        )
+        .unwrap();
+        let host = Cancellation::new();
+        let signal = host.clone();
+        let mut call: Pin<Box<dyn Future<Output = Refusal>>> = if process {
+            Box::pin(async move {
+                let stderr = Capture::default();
+                let code = cli
+                    .execute_from(
+                        ["lists-app", "lists", "action"],
+                        io::empty(),
+                        Capture::default(),
+                        stderr.clone(),
+                        false,
+                        signal,
+                    )
+                    .await;
+                assert_eq!(code, 75);
+                stderr.refusal()
+            })
+        } else {
+            Box::pin(async move {
+                cli.call(invocation(), RecordSink::default(), signal)
+                    .await
+                    .unwrap_err()
+            })
+        };
+        let waker = futures_util::task::noop_waker();
+        assert!(
+            call.as_mut()
+                .poll(&mut Context::from_waker(&waker))
+                .is_pending()
+        );
+        assert_eq!(entered.load(Ordering::SeqCst), 1);
+        host.cancel();
+        let refusal = block_on(call);
+        assert_eq!(refusal.code, "cancelled");
+        assert_eq!(refusal.evidence, Evidence::Uncertain);
+    }
 }

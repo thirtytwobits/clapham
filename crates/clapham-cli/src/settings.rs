@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use clap::{Arg, ArgAction, Command};
-use clapham::{Effect, Operation, Refusal};
+use clapham::{Category, Effect, Operation, Refusal};
 
 use crate::{Cli, usage};
 
@@ -120,7 +120,7 @@ pub(crate) fn command(command: Command) -> Command {
         )
 }
 
-pub(crate) fn safeguards(operation: &Operation, yes: bool, preview: bool) -> Result<(), Refusal> {
+pub(crate) fn confirmation(operation: &Operation, yes: bool) -> Result<(), Refusal> {
     if matches!(
         operation.effect,
         Effect::Administrative | Effect::Destructive
@@ -130,8 +130,16 @@ pub(crate) fn safeguards(operation: &Operation, yes: bool, preview: bool) -> Res
             "administrative and destructive operations require --yes",
         ));
     }
+    Ok(())
+}
+
+pub(crate) fn preview(operation: &Operation, preview: bool) -> Result<(), Refusal> {
     if preview && !operation.preview {
-        return Err(usage("the operation does not support --dry-run"));
+        return Err(Refusal::not_dispatched(
+            "preview_unsupported",
+            Category::Usage,
+            "the operation does not support a dry run",
+        ));
     }
     Ok(())
 }

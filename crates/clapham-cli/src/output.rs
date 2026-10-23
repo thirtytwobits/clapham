@@ -11,11 +11,15 @@ use crate::{Cli, Format, OutputOptions, configuration};
 /// The version-one JSON frame used for both ordered records and the final result.
 /// `kind` is the complete operation name; `data` retains the operation's JSON value.
 pub fn envelope_schema() -> schemars::Schema {
+    let mut kind = schemars::schema_for!(OperationName).as_value().clone();
+    kind.as_object_mut()
+        .expect("the name schema is an object")
+        .remove("$schema");
     schemars::json_schema!({
         "$schema":"https://json-schema.org/draft/2020-12/schema",
         "title":"CLI output envelope",
         "type":"object", "properties":{
-            "v":{"const":1}, "kind":schemars::schema_for!(OperationName), "data":true
+            "v":{"const":1}, "kind":kind, "data":true
         }, "required":["v","kind","data"], "additionalProperties":false
     })
 }
@@ -57,16 +61,23 @@ impl Cli {
     }
 }
 
-pub(crate) fn result_data(outcome: Outcome) -> Value {
+#[derive(Debug, PartialEq)]
+pub(crate) enum Frame {
+    Record(Value),
+    Result(Value),
+    Outcome(Value),
+}
+
+pub(crate) fn result_data(mut outcome: Outcome) -> Frame {
     // Ordinary JSON results keep their declared shape. Preserve the complete
     // outcome when it carries additional content, an error or non-default evidence,
     // or distinguishes an absent structured result from an explicit JSON null.
     if outcome.content.is_none() && !outcome.is_error && outcome.evidence == Evidence::Completed {
-        if let Some(result) = outcome.result.as_ref() {
-            return result.clone();
+        if let Some(result) = outcome.result.take() {
+            return Frame::Result(result);
         }
     }
-    serde_json::to_value(outcome).expect("outcomes contain JSON values")
+    Frame::Outcome(serde_json::to_value(outcome).expect("outcomes contain JSON values"))
 }
 
 pub(crate) struct Presentation {
@@ -77,7 +88,12 @@ pub(crate) struct Presentation {
 }
 
 impl Presentation {
-    pub(crate) fn render(&self, data: Value, record: bool) -> Vec<u8> {
+    pub(crate) fn render(&self, frame: Frame) -> Vec<u8> {
+        let (data, record, ordinary) = match frame {
+            Frame::Record(value) => (value, true, false),
+            Frame::Result(value) => (value, false, true),
+            Frame::Outcome(value) => (value, false, false),
+        };
         let format = match self.options.format {
             Format::Auto if self.terminal => Format::Human,
             Format::Auto => Format::Ndjson,
@@ -88,7 +104,7 @@ impl Presentation {
                 Some(renderer) => renderer(&self.operation, &data, record),
                 None => human(
                     &data,
-                    if record {
+                    if !ordinary {
                         None
                     } else {
                         self.operation
@@ -281,7 +297,10 @@ mod tests {
 
     #[test]
     fn absent_result_and_explicit_null_keep_distinct_output_data() {
-        assert_eq!(result_data(Outcome::new(Value::Null)), Value::Null);
+        assert_eq!(
+            result_data(Outcome::new(Value::Null)),
+            Frame::Result(Value::Null)
+        );
         let absent = Outcome {
             result: None,
             content: None,
@@ -290,7 +309,38 @@ mod tests {
         };
         assert_eq!(
             result_data(absent),
-            json!({"is_error":false,"evidence":"completed"})
+            Frame::Outcome(json!({"is_error":false,"evidence":"completed"}))
         );
+    }
+
+    #[test]
+    fn human_outcome_fields_do_not_use_labels_from_the_domain_result_schema() {
+        let operation:Operation = serde_json::from_value(json!({
+            "name":"lists.read","description":"Read a list result.","input":{"type":"object"},
+            "output":{"type":"object","properties":{"result":{"type":"string","title":"Domain result"}}},
+            "effect":"query","locality":"workspace","idempotent":true,"open_world":false
+        })).unwrap();
+        let presentation = Presentation {
+            operation,
+            options: OutputOptions {
+                format: Format::Human,
+                raw: false,
+            },
+            terminal: true,
+            renderers: Renderers::default(),
+        };
+        assert_eq!(
+            presentation.render(Frame::Result(json!({"result":"value"}))),
+            b"Domain result: value\n"
+        );
+        let outcome = Outcome {
+            result: Some(json!({"result":"value"})),
+            content: Some(vec![]),
+            is_error: false,
+            evidence: Evidence::Completed,
+        };
+        let text = String::from_utf8(presentation.render(result_data(outcome))).unwrap();
+        assert!(text.contains("result: {\"result\":\"value\"}"));
+        assert!(!text.contains("Domain result:"));
     }
 }

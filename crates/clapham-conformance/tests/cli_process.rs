@@ -220,6 +220,7 @@ fn human_stream_records_and_custom_renderers_work_as_process_output() {
 fn every_refusal_category_uses_one_json_stderr_line_and_its_exit_code() {
     for (args, code, exit) in [
         (vec!["lists", "delete", "--id", "tasks"], "usage", 2),
+        (vec!["--as", "agent:bot", "lists", "compact"], "usage", 2),
         (vec!["lists", "create", "--json", "{}"], "invalid_input", 65),
         (vec!["lists", "get", "absent"], "list_not_found", 66),
         (
@@ -264,6 +265,28 @@ fn every_refusal_category_uses_one_json_stderr_line_and_its_exit_code() {
         assert_eq!(refusal.code, code);
         assert_eq!(i32::from(refusal.category.exit_code()), exit);
         assert_eq!(state[0]["name"], "Tasks");
+    }
+}
+
+#[test]
+fn published_envelope_schema_keeps_the_root_dialect_and_exact_name_constraints() {
+    let schema: Value = serde_json::from_str(include_str!(
+        "../../clapham-cli/schemas/envelope.schema.json"
+    ))
+    .unwrap();
+    assert_eq!(
+        schema["$schema"],
+        "https://json-schema.org/draft/2020-12/schema"
+    );
+    assert!(schema["properties"]["kind"].get("$schema").is_none());
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert!(validator.is_valid(&json!({"v":1,"kind":"lists.get","data":null})));
+    for frame in [
+        json!({"v":2,"kind":"lists.get","data":null}),
+        json!({"v":1,"kind":"lists.get\n","data":null}),
+        json!({"v":1,"kind":"","data":null}),
+    ] {
+        assert!(!validator.is_valid(&frame));
     }
 }
 
