@@ -33,8 +33,12 @@ impl Node {
             node.fields = crate::input::fields(operation)?;
         }
         // Keep the complete built-in path as well as its top-level spelling.
-        if root.children.contains_key("describe") {
-            return Err(configuration("describe collides with the built-in command"));
+        for name in ["describe", "completions"] {
+            if root.children.contains_key(name) {
+                return Err(configuration(format!(
+                    "{name} collides with a built-in command"
+                )));
+            }
         }
         let describe = root.children["clapham"].children["describe"].clone();
         root.children.insert("describe".into(), describe);
@@ -119,7 +123,9 @@ pub(crate) fn valid_name(name: &str) -> bool {
 }
 
 pub(crate) fn check_flags(fields: &[Field]) -> Result<(), Refusal> {
-    let mut flags = BTreeSet::from(["help", "json", "as"]);
+    let mut flags = BTreeSet::from([
+        "help", "json", "as", "yes", "dry-run", "timeout", "format", "raw",
+    ]);
     for field in fields.iter().filter(|field| field.position.is_none()) {
         if !valid_name(&field.flag) || !flags.insert(&field.flag) {
             return Err(configuration(format!(

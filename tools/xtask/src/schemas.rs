@@ -5,13 +5,16 @@ use std::path::Path;
 use crate::Result;
 
 pub(crate) fn run(root: &Path, check: bool) -> Result<()> {
-    for (name, schema) in [
-        ("operation", clapham::schema::operation_schema()),
-        ("refusal", clapham::schema::refusal_schema()),
-        ("catalogue", clapham::schema::catalogue_schema()),
+    for (crate_name, name, schema) in [
+        ("clapham", "operation", clapham::schema::operation_schema()),
+        ("clapham", "refusal", clapham::schema::refusal_schema()),
+        ("clapham", "catalogue", clapham::schema::catalogue_schema()),
+        ("clapham-cli", "envelope", clapham_cli::envelope_schema()),
     ] {
         let path = root
-            .join("crates/clapham/schemas")
+            .join("crates")
+            .join(crate_name)
+            .join("schemas")
             .join(format!("{name}.schema.json"));
         let generated = serde_json::to_string_pretty(&schema)? + "\n";
         sync(&path, &generated, check)?;

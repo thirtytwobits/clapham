@@ -220,7 +220,14 @@ fn as_agent_is_denied_by_both_descriptor_defaults_and_the_lists_gate() {
     handle.add_item("tasks", "a", "Read").unwrap();
     let before = handle.snapshot();
     for args in [
-        vec!["lists-app", "--as", "agent:bot", "lists", "compact"],
+        vec![
+            "lists-app",
+            "--as",
+            "agent:bot",
+            "lists",
+            "compact",
+            "--yes",
+        ],
         vec![
             "lists-app",
             "items",

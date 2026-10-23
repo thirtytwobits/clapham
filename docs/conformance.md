@@ -25,5 +25,8 @@ a revision. Export retains its initial snapshot while a sink acknowledgement is 
 `cargo xtask check` on both CI platforms and the Rust 1.88 minimum-version lane.
 The CLI tests drive the generated command tree in-process: positional reads,
 object flags, whole-object JSON from arguments and stdin, descriptor help,
-principal overrides, admission and validation before dispatch. The remaining
+principal overrides, admission and validation before dispatch. Process tests use
+the `clapham-cli-fixture` binary to verify output, exit codes, effect safeguards,
+completions and a deadline signalled after a write is explicitly held. Terminal
+status is supplied by the fixture for deterministic human-mode checks. The remaining
 front-end conformance harness follows when those adapters are implemented.

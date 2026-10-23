@@ -8,19 +8,26 @@ rust-version = "1.88"
 description = "The lists-and-items contribution and front-end conformance harness."
 readme = "README.md"
 
+[[bin]]
+name = "clapham-cli-fixture"
+path = "tests/support/cli_fixture.rs"
+test = false
+doc = false
+
 [dependencies]
 clapham.workspace = true
 clapham-cli.workspace = true
 clapham-mcp-server.workspace = true
 clapham-mcp-client.workspace = true
 futures-channel = "0.3"
+futures-executor = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 schemars = "1.2.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 [dev-dependencies]
-futures-executor = "0.3"
+jsonschema = { version = "0.60.0", default-features = false }
 
 [lints]
 workspace = true
