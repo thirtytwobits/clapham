@@ -1,0 +1,87 @@
+{
+  "$id": "https://raw.githubusercontent.com/thirtytwobits/clapham/main/crates/clapham/schemas/refusal.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Refusal",
+  "description": "A refusal whose contributing operation's code is carried unchanged.",
+  "type": "object",
+  "properties": {
+    "category": {
+      "description": "The category declared for this code by the operation.",
+      "$ref": "#/$defs/Category"
+    },
+    "code": {
+      "description": "The contributor's code, without renaming, prefixing or normalisation.",
+      "type": "string"
+    },
+    "details": {
+      "description": "Structured evidence, including what a caller needs to resolve a conflict."
+    },
+    "message": {
+      "description": "A description of why the call was refused.",
+      "type": "string"
+    },
+    "retryable": {
+      "description": "Whether the caller may retry the call.",
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "code",
+    "category",
+    "message",
+    "retryable"
+  ],
+  "$defs": {
+    "Category": {
+      "description": "The fixed categories front ends act on when an operation refuses a call.",
+      "oneOf": [
+        {
+          "description": "The invocation was wrong.",
+          "type": "string",
+          "const": "usage"
+        },
+        {
+          "description": "The input failed its schema or the operation's checks.",
+          "type": "string",
+          "const": "invalid_input"
+        },
+        {
+          "description": "What the input names is absent.",
+          "type": "string",
+          "const": "not_found"
+        },
+        {
+          "description": "A fence or state conflict prevents the change.",
+          "type": "string",
+          "const": "conflict"
+        },
+        {
+          "description": "A gate, policy or approval said no.",
+          "type": "string",
+          "const": "refused"
+        },
+        {
+          "description": "A required workspace, daemon or remote is unavailable.",
+          "type": "string",
+          "const": "unavailable"
+        },
+        {
+          "description": "The call was cancelled, timed out or stopped by shutdown.",
+          "type": "string",
+          "const": "interrupted"
+        },
+        {
+          "description": "The host's configuration is wrong.",
+          "type": "string",
+          "const": "configuration"
+        },
+        {
+          "description": "A fault, including an undeclared refusal code.",
+          "type": "string",
+          "const": "internal"
+        }
+      ]
+    }
+  }
+}

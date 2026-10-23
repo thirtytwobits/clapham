@@ -7,10 +7,12 @@ compiler from `rust-toolchain.toml`.
 cargo xtask check
 cargo xtask boundaries
 cargo xtask api
+cargo xtask schemas --check
 ```
 
-`check` runs dependency and crate-file checks, formatting, Clippy with warnings denied,
-tests and documentation with warnings denied, for default features and all features.
+`check` runs dependency, crate-file and generated-schema checks, formatting, Clippy with
+warnings denied, tests and documentation with warnings denied, for default features and
+all features.
 `boundaries` checks each declared dependency, including aliases, development and build
 dependencies, optional dependencies and dependencies for other targets. No command needs
 Node or another build system.
@@ -31,15 +33,20 @@ Check the minimum supported Rust versions with the committed lockfile:
 
 ```console
 cargo +1.85.0 check --locked -p clapham
+cargo +1.85.0 test --locked -p clapham
 cargo +1.88.0 test --locked -p clapham-mcp-server -p clapham-mcp-client --all-features
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features stdio
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features http
 ```
 
-The MCP crates reserve `stdio` and `http` features for their transports. The library and
-example bodies are stubs until their implementation issues land. Schema and wire-form
-generators arrive with the contracts they describe; no schema or wire form is published
-by this scaffold.
+Generate the public operation and refusal schemas from the core types with
+`cargo xtask schemas`. Review and commit changes to `crates/clapham/schemas/*.json`;
+`cargo xtask schemas --check` checks them without writing. The schemas use JSON Schema
+2020-12. Tests validate descriptors and refusals against the checked-in files.
+
+The MCP crates reserve `stdio` and `http` features for their transports. The front ends,
+conformance contribution and example bodies are stubs until their implementation issues
+land. The MCP wire-form generator follows with the server implementation.
 
 See [the workspace guide](docs/README.md) for the crate boundaries and CI lanes.

@@ -36,7 +36,7 @@ const POLICIES: &[(&str, &str, &[&str])] = &[
         "examples/lists",
         &["clapham-cli", "clapham-mcp-server", "clapham-conformance"],
     ),
-    ("xtask", "tools/xtask", &[]),
+    ("xtask", "tools/xtask", &["clapham"]),
 ];
 
 #[derive(Deserialize)]
