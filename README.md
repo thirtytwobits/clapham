@@ -93,8 +93,9 @@ Calls enforce selection, admission, preview support, locality and the declared r
 The neutral lists-and-items contribution exercises the core call contract with scripted
 concurrency. The CLI builds its command tree, help and input binding from those descriptors,
 and runs calls in-process with confirmations, previews, deadlines, output formatting
-and generated shell completions. The MCP adapters, the remaining
-conformance harness and the lists example follow in their implementation issues.
+and generated shell completions. The MCP server exposes selected tools and query resources
+on stdio, with principal-bound discovery, effect annotations, previews and unchanged refusals.
+Streamable HTTP, the MCP client and the lists example follow in their implementation issues.
 [thirtytwobits/london#2](https://github.com/thirtytwobits/london/issues/2) holds the design
 and the plan for the first release. See [CONTRIBUTING.md](CONTRIBUTING.md) for the gate commands
 and [the workspace guide](docs/README.md) for the crate boundaries.

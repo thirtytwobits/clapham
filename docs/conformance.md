@@ -30,3 +30,8 @@ the `clapham-cli-fixture` binary to verify output, exit codes, effect safeguards
 completions and a deadline signalled after a write is explicitly held. Terminal
 status is supplied by the fixture for deterministic human-mode checks. The remaining
 front-end conformance harness follows when those adapters are implemented.
+
+The MCP tests drive a real child process over stdin/stdout and deterministic duplex streams.
+They cover effect annotations, principal filtering, unchanged refusals, preview isolation,
+resource binding, finite-stream draining, held-call cancellation, selection, pagination and
+encoded message limits. No elapsed-time checks are used.
