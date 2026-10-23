@@ -1,15 +1,24 @@
 use std::fmt;
 
 /// Finite limits shared by composition and connections.
+///
+/// Validation checks supported ranges and buffering, not whether a particular
+/// catalogue fits. Small profiles remain useful for remote connections. Composition
+/// additionally charges its two built-ins and may refuse an otherwise valid profile.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Bounds {
     /// Maximum frame or response body size, from 8 KiB to 8 MiB.
+    /// Built-ins also bound their compact structured result to this size; transports
+    /// must account for the full encoded response, including its envelope.
     pub message_bytes: usize,
     /// Maximum serialised catalogue size, from 2 bytes (`[]`) to 64 MiB.
+    /// The minimum fits an empty remote catalogue; a composed set must fit its built-ins.
     pub catalogue_bytes: usize,
     /// Maximum size of each input or output schema, no greater than a message.
+    /// Composition checks the built-in schemas against this budget too.
     pub schema_bytes: usize,
     /// Maximum operations in a catalogue, from 1 to 4096.
+    /// Remote catalogues may contain one operation; a composed set needs at least two.
     pub tools: usize,
     /// Maximum catalogue pages, from 1 to 1024.
     pub pages: usize,
@@ -38,6 +47,7 @@ impl Default for Bounds {
 
 impl Bounds {
     /// Check individual limits and the combined 64 MiB buffering budget.
+    /// This does not guarantee that composition's built-ins or contributed data fit.
     pub fn validate(&self) -> Result<(), InvalidBounds> {
         if !(8192..=8 * 1024 * 1024).contains(&self.message_bytes)
             || !(2..=64 * 1024 * 1024).contains(&self.catalogue_bytes)

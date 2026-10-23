@@ -166,7 +166,7 @@ impl ComposedSet {
         };
         // The outer error is the dispatcher's cancellation. The inner refusal
         // belongs to the handler, even if it uses a dispatcher-like code.
-        let outcome = match operation.dispatch_validated(call).await? {
+        let outcome = match operation.dispatch_validated(call, Some(selection)).await? {
             Ok(outcome) => outcome,
             Err(mut refusal) => {
                 if let Some(category) = descriptor.refusals.get(&refusal.code) {

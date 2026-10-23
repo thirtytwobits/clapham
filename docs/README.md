@@ -12,12 +12,13 @@
 
 The core exports the contract, contribution, composition, selection, gate and call types,
 with compiled schema validation and deterministic revisions. See [composition](composition.md)
-for the boundaries and [calls](calls.md) for admission, dispatch and refusal handling.
+for the boundaries, [calls](calls.md) for admission, dispatch and refusal handling, and
+[the catalogue](catalogue.md) for the built-in discovery and version operations.
 Generated schemas are in `crates/clapham/schemas/`.
 The other four libraries and the example remain stubs. Each library has a generated
 public API snapshot in `api/`.
 
-`cargo xtask schemas` generates the operation and refusal schemas with schemars.
+`cargo xtask schemas` generates the operation, refusal and catalogue schemas with schemars.
 `cargo xtask schemas --check` refuses missing or stale files without rewriting them;
 it runs within `check` on both CI runners.
 

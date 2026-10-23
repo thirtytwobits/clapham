@@ -20,7 +20,9 @@ Each namespace is a non-empty segment of at most 128 ASCII letters, digits, `_` 
 local name. `OperationName` already refuses characters outside the complete-name
 alphabet before a descriptor can be built. Namespaces are not aliased. The London
 Project reserves `clapham`, `clerkenwell`, `walthamstow` and `battersea`;
-composition enforces `clapham`, whose built-in contribution is added in its own issue.
+composition enforces `clapham`, whose built-in contribution supplies `clapham.describe`
+and `clapham.version` in every set. Applications cannot replace either operation or
+claim this namespace, even with an empty contribution.
 
 Composition refuses repeated namespaces as `namespace_claimed`, invalid names or
 ownership as `invalid_name`, empty or whitespace descriptions as `missing_description`,
@@ -35,7 +37,14 @@ bytes, separately for input and output. The catalogue limit counts the compact J
 array of descriptors, including separators. It is charged before retaining each
 operation's validators. `Bounds` also carries the connection budgets the MCP front
 ends will share, including the combined 64 MiB buffering limit. The catalogue byte
-limit starts at 2, enough for the empty array `[]`.
+limit starts at 2, enough for the empty array `[]` on the wire. Composition must fit
+the two built-in descriptors as well as the application's descriptors. Their input
+and output schemas also consume the per-schema bound; `tools` must fit at least two
+operations even when the application contributes none.
+`Bounds::validate` checks shared connection ranges and the aggregate buffering budget.
+It does not promise that a particular catalogue, including the built-ins, fits.
+Profiles sized for a small remote catalogue can be valid for connections and too small
+for composition, which reports the specific catalogue, schema or operation limit.
 
 Outputs may be any JSON shape. MCP 2026-07-28 explicitly permits arrays and scalar
 structured results; see its [tool result specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/server/tools.mdx#structured-content).
@@ -52,9 +61,13 @@ composition rather than assume every property appears in the root `properties` m
 preimage is the UTF-8 prefix `clapham.composed-set.v1` followed by a zero byte, then
 the compact JSON array of descriptors in complete-name order. Every JSON object's
 keys are recursively sorted; array order is retained. Handlers and bounds do not
-participate. Changing a descriptor changes its revision; changing construction order
+participate. The two built-in descriptors participate like every other operation.
+Adding them changes existing full-set revisions without changing the v1 framing.
+Application name and version are result metadata and do not affect the descriptors.
+Changing a descriptor changes its revision; changing construction order
 does not. Tests compare revisions across separate processes and map backends.
-Both map backends also assert the same fixed v1 digest for an unordered fixture.
+Both map backends also assert the same fixed v1 digest for a selection containing
+the unordered descriptor fixture, independently of the built-in descriptors.
 Framing or canonicalisation changes need a new version prefix. Intentional changes to
 the descriptor wire form or its defaults require review of the fixture and its digest.
 JSON numbers retain their serialised representation: `1` and `1.0` produce different

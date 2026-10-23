@@ -39,12 +39,15 @@ input validation unless the call was already cancelled on entry. Admission appli
 the same policy to previews and real calls; the gate does not receive the preview
 flag. Pending approval refuses without dispatch and may be retried. The host owns
 approval correlation; `Pending` provides no attempt identifier or approval payload.
+Catalogue discovery also queries the gate for visibility without attempting to run
+each candidate. Implementations must not enqueue or consume approvals during these
+policy queries. An admission check alone is not evidence of a call attempt or dispatch.
 
 Supply a gate in `ComposeOptions` to `compose_with_options`. Its execution mode
 defaults to `ExecutionMode::InProcess`, which refuses daemon-local operations.
 A running daemon uses `ExecutionMode::Daemon` to serve both localities. Set clones
-share the gate and fixed execution mode. A gate can retain synchronised policy
-state when admission must change between calls.
+share the gate and fixed execution mode. A gate can read synchronised policy state
+that the host updates when admission must change between calls.
 
 `Bounds::in_flight` and `waiting` are connection budgets for the MCP front ends.
 The core call runner does not queue calls or enforce connection concurrency.

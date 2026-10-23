@@ -8,6 +8,7 @@ pub(crate) fn run(root: &Path, check: bool) -> Result<()> {
     for (name, schema) in [
         ("operation", clapham::schema::operation_schema()),
         ("refusal", clapham::schema::refusal_schema()),
+        ("catalogue", clapham::schema::catalogue_schema()),
     ] {
         let path = root
             .join("crates/clapham/schemas")

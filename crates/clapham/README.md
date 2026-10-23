@@ -56,7 +56,21 @@ are independent of the handler's declared set.
 `ComposedOperation::invoke` remains the low-level dispatch primitive. It validates
 input and successful output and handles cancellation; it does not enforce selection,
 gate, preview, locality or declared-refusal policies. Use `ComposedSet::call` to
-apply those policies. The built-in operations follow with their own contribution.
+apply those policies. Low-level `clapham.describe` uses the full catalogue, filtered
+by the gate.
+
+Every set includes `clapham.describe` and `clapham.version`. The former lists the
+caller's selected, gate-admitted descriptors in name order, including their schemas.
+Its optional `name` input returns one descriptor. Unknown, unselected, denied and
+pending names all refuse as `unknown_operation`. The latter returns the library's
+version and any application name and version supplied in `ComposeOptions::application`.
+Both are workspace queries and consume the same composition budgets as contributed
+operations. A selection must include a built-in operation to call it.
+Built-in results also fit `Bounds::message_bytes` as compact UTF-8 JSON; oversized
+results refuse as the declared, non-retryable `result_too_large` code in `usage`.
+Discovery is unpaged, so narrow the selection or use a named lookup when a listing
+does not fit. Gates are queried for visibility too and must not trigger or consume
+approvals as a side effect of these repeatable policy checks.
 
 `Call` carries the principal, input, asynchronous `RecordSink`, `Cancellation` and
 preview flag. A sink's acknowledgement provides backpressure. Cancellation before
@@ -70,6 +84,7 @@ base64 resources in order. Successful output is schema-validated; a tool-reporte
 error carries its error shape unchanged.
 
 The published schemas are [operation.schema.json](schemas/operation.schema.json)
-and [refusal.schema.json](schemas/refusal.schema.json). Generate them with
+and [refusal.schema.json](schemas/refusal.schema.json), alongside the describe result's
+[catalogue.schema.json](schemas/catalogue.schema.json). Generate them with
 `cargo xtask schemas`; `cargo xtask schemas --check` refuses stale output and runs
 inside `cargo xtask check`.

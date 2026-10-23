@@ -7,9 +7,11 @@ use futures_util::future::{Either, select};
 use serde::Serialize;
 use serde_json::Value;
 
+use crate::builtins::Dispatch;
+
 use crate::{
     Bounds, Call, Category, ComposeOptions, Evidence, ExecutionMode, Gate, Handler, Operation,
-    Outcome, Refusal,
+    Outcome, Refusal, Selection,
 };
 
 /// One namespace's descriptors, each paired with an asynchronous handler.
@@ -128,10 +130,10 @@ impl std::error::Error for CompositionError {}
 
 /// A descriptor, its compiled validators and its handler, fixed at composition.
 pub struct ComposedOperation {
-    descriptor: Operation,
+    descriptor: Arc<Operation>,
     input: jsonschema::Validator,
     output: Option<jsonschema::Validator>,
-    handler: Box<dyn Handler>,
+    handler: Dispatch,
     pub(crate) binding_revision: Option<Arc<str>>,
 }
 
@@ -187,12 +189,14 @@ impl ComposedOperation {
     /// explicit evidence is preserved when it returns, including remote reply loss.
     /// If cancellation and completion are both ready when polled, cancellation wins
     /// and the result is conservatively reported as uncertain.
+    /// For `clapham.describe`, this primitive considers the full catalogue and filters
+    /// it through the gate; use [`ComposedSet::call`] to apply a caller's selection.
     pub async fn invoke(&self, call: Call) -> Result<Outcome, Refusal> {
         if call.cancel.is_cancelled() {
             return Err(cancelled(Evidence::NotDispatched));
         }
         self.validate_input(&call.input)?;
-        let outcome = self.dispatch_validated(call).await??;
+        let outcome = self.dispatch_validated(call, None).await??;
         self.validate_output(&outcome)?;
         Ok(outcome)
     }
@@ -202,13 +206,19 @@ impl ComposedOperation {
     pub(crate) async fn dispatch_validated(
         &self,
         mut call: Call,
+        selection: Option<&Selection>,
     ) -> Result<Result<Outcome, Refusal>, Refusal> {
         if call.cancel.is_cancelled() {
             return Err(cancelled(Evidence::NotDispatched));
         }
         call.name = self.descriptor.name.clone();
         let cancel = call.cancel.clone();
-        match select(Box::pin(cancel.cancelled()), self.handler.call(call)).await {
+        match select(
+            Box::pin(cancel.cancelled()),
+            self.handler.call(call, selection),
+        )
+        .await
+        {
             Either::Left(_) => Err(cancelled(Evidence::Uncertain)),
             Either::Right((outcome, _)) => Ok(outcome),
         }
@@ -252,6 +262,9 @@ impl ComposedSet {
             .map(|operation| operation.descriptor())
     }
     /// A compiled operation by its complete name.
+    /// This accessor applies no selection or admission policy. Use [`Self::call`]
+    /// for caller-facing dispatch; low-level `clapham.describe` invocation considers
+    /// the full gate-filtered catalogue.
     pub fn get(&self, name: &str) -> Option<&ComposedOperation> {
         self.operations.get(name).map(Arc::as_ref)
     }
@@ -267,7 +280,8 @@ impl ComposedSet {
 
 /// Compose namespaces into an immutable set, compiling each schema once.
 ///
-/// `clapham` is reserved for the built-in contribution. Names must belong to their
+/// Every set includes `clapham.describe` and `clapham.version`; their namespace is
+/// reserved for the built-in contribution. Names must belong to their
 /// contribution's namespace, and complete names must be unique. Schema references
 /// must resolve within their document; composition never fetches a file or URL.
 pub fn compose(
@@ -316,81 +330,36 @@ pub fn compose_with_options(
         }
         let binding_revision = contribution.binding_revision.map(Arc::<str>::from);
         for (descriptor, handler) in contribution.operations {
-            let name = descriptor.name.as_str();
-            if descriptor.name.namespace() != Some(namespace.as_str())
-                || descriptor.name.local_name().is_empty()
-            {
-                return Err(CompositionError::new(
-                    CompositionCode::InvalidName,
-                    format!("operation {name:?} must have a local name in namespace {namespace:?}"),
-                ));
-            }
-            if descriptor.description.trim().is_empty() {
-                return Err(CompositionError::new(
-                    CompositionCode::MissingDescription,
-                    format!("operation {name:?} has no description"),
-                ));
-            }
-            if operations.contains_key(name) {
-                return Err(CompositionError::new(
-                    CompositionCode::DuplicateOperation,
-                    format!("operation {name:?} is repeated"),
-                ));
-            }
-            if operations.len() >= bounds.tools {
-                return Err(CompositionError::new(
-                    CompositionCode::TooManyOperations,
-                    "operation count exceeds bounds.tools",
-                ));
-            }
-            if !fits(&descriptor.input, bounds.schema_bytes)
-                || descriptor
-                    .output
-                    .as_ref()
-                    .is_some_and(|schema| !fits(schema, bounds.schema_bytes))
-            {
-                return Err(CompositionError::new(
-                    CompositionCode::SchemaTooLarge,
-                    format!("operation {name:?} exceeds bounds.schema_bytes"),
-                ));
-            }
-            if descriptor.input.get("type").and_then(Value::as_str) != Some("object") {
-                return Err(CompositionError::new(
-                    CompositionCode::InvalidSchema,
-                    format!("operation {name:?} must declare type: object at its input root"),
-                ));
-            }
-            let remaining = catalogue_remaining
-                .checked_sub(usize::from(!operations.is_empty()))
-                .and_then(|remaining| {
-                    size_within(&descriptor, remaining).map(|size| remaining - size)
-                })
-                .ok_or_else(|| {
-                    CompositionError::new(
-                        CompositionCode::CatalogueTooLarge,
-                        "descriptor catalogue exceeds bounds.catalogue_bytes",
-                    )
-                })?;
-            // Charge metadata before retaining any more compiled validators.
-            catalogue_remaining = remaining;
-            let input = compile(&Value::Object(descriptor.input.clone()), name)?;
-            let output = descriptor
-                .output
-                .as_ref()
-                .map(|schema| compile(schema.as_value(), name))
-                .transpose()?;
-            operations.insert(
-                name.to_owned(),
-                Arc::new(ComposedOperation {
-                    descriptor,
-                    input,
-                    output,
-                    handler,
-                    binding_revision: binding_revision.clone(),
-                }),
-            );
+            insert_operation(
+                &mut operations,
+                &namespace,
+                descriptor,
+                Dispatch::Handler(handler),
+                binding_revision.clone(),
+                &bounds,
+                &mut catalogue_remaining,
+            )?;
         }
     }
+    let describe = crate::builtins::Describe::new(options.gate.clone(), bounds.message_bytes);
+    for (descriptor, handler) in crate::builtins::operations(describe.clone(), options.application)
+    {
+        insert_operation(
+            &mut operations,
+            "clapham",
+            descriptor,
+            handler,
+            None,
+            &bounds,
+            &mut catalogue_remaining,
+        )?;
+    }
+    describe.initialise(
+        operations
+            .values()
+            .map(|operation| operation.descriptor.clone())
+            .collect(),
+    );
     let descriptors: Vec<_> = operations
         .values()
         .map(|operation| operation.descriptor())
@@ -404,6 +373,87 @@ pub fn compose_with_options(
         revision,
         bounds,
     })
+}
+
+fn insert_operation(
+    operations: &mut BTreeMap<String, Arc<ComposedOperation>>,
+    namespace: &str,
+    descriptor: Operation,
+    handler: Dispatch,
+    binding_revision: Option<Arc<str>>,
+    bounds: &Bounds,
+    catalogue_remaining: &mut usize,
+) -> Result<(), CompositionError> {
+    let name = descriptor.name.as_str();
+    if descriptor.name.namespace() != Some(namespace) || descriptor.name.local_name().is_empty() {
+        return Err(CompositionError::new(
+            CompositionCode::InvalidName,
+            format!("operation {name:?} must have a local name in namespace {namespace:?}"),
+        ));
+    }
+    if descriptor.description.trim().is_empty() {
+        return Err(CompositionError::new(
+            CompositionCode::MissingDescription,
+            format!("operation {name:?} has no description"),
+        ));
+    }
+    if operations.contains_key(name) {
+        return Err(CompositionError::new(
+            CompositionCode::DuplicateOperation,
+            format!("operation {name:?} is repeated"),
+        ));
+    }
+    if operations.len() >= bounds.tools {
+        return Err(CompositionError::new(
+            CompositionCode::TooManyOperations,
+            "operation count exceeds bounds.tools",
+        ));
+    }
+    if !fits(&descriptor.input, bounds.schema_bytes)
+        || descriptor
+            .output
+            .as_ref()
+            .is_some_and(|schema| !fits(schema, bounds.schema_bytes))
+    {
+        return Err(CompositionError::new(
+            CompositionCode::SchemaTooLarge,
+            format!("operation {name:?} exceeds bounds.schema_bytes"),
+        ));
+    }
+    if descriptor.input.get("type").and_then(Value::as_str) != Some("object") {
+        return Err(CompositionError::new(
+            CompositionCode::InvalidSchema,
+            format!("operation {name:?} must declare type: object at its input root"),
+        ));
+    }
+    let remaining = catalogue_remaining
+        .checked_sub(usize::from(!operations.is_empty()))
+        .and_then(|remaining| size_within(&descriptor, remaining).map(|size| remaining - size))
+        .ok_or_else(|| {
+            CompositionError::new(
+                CompositionCode::CatalogueTooLarge,
+                "descriptor catalogue exceeds bounds.catalogue_bytes",
+            )
+        })?;
+    // Charge metadata before retaining any more compiled validators.
+    *catalogue_remaining = remaining;
+    let input = compile(&Value::Object(descriptor.input.clone()), name)?;
+    let output = descriptor
+        .output
+        .as_ref()
+        .map(|schema| compile(schema.as_value(), name))
+        .transpose()?;
+    operations.insert(
+        name.to_owned(),
+        Arc::new(ComposedOperation {
+            descriptor: Arc::new(descriptor),
+            input,
+            output,
+            handler,
+            binding_revision,
+        }),
+    );
+    Ok(())
 }
 
 fn compile(schema: &Value, name: &str) -> Result<jsonschema::Validator, CompositionError> {
@@ -422,7 +472,7 @@ fn fits(value: &impl Serialize, limit: usize) -> bool {
     size_within(value, limit).is_some()
 }
 
-fn size_within(value: &impl Serialize, limit: usize) -> Option<usize> {
+pub(crate) fn size_within(value: &impl Serialize, limit: usize) -> Option<usize> {
     struct Counter {
         remaining: usize,
     }

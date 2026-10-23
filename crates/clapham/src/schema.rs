@@ -19,3 +19,12 @@ pub fn refusal_schema() -> Schema {
     schema.insert("$id".into(), "https://raw.githubusercontent.com/thirtytwobits/clapham/main/crates/clapham/schemas/refusal.schema.json".into());
     schema
 }
+
+/// The catalogue schema: a descriptor array, or one descriptor for a named lookup.
+pub fn catalogue_schema() -> Schema {
+    let mut schema = SchemaSettings::draft2020_12()
+        .into_generator()
+        .into_root_schema_for::<crate::Catalogue>();
+    schema.insert("$id".into(), "https://raw.githubusercontent.com/thirtytwobits/clapham/main/crates/clapham/schemas/catalogue.schema.json".into());
+    schema
+}

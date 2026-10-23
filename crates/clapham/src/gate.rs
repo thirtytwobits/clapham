@@ -1,7 +1,7 @@
 use std::fmt;
 use std::sync::Arc;
 
-use crate::{Operation, Principal};
+use crate::{ApplicationInfo, Operation, Principal};
 
 /// The gate's per-call admission decision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -14,9 +14,17 @@ pub enum Admission {
     Pending,
 }
 
-/// Host policy, consulted after input validation and before every dispatch.
+/// Host policy queried for call admission and catalogue visibility.
+///
+/// Calls consult the gate after input validation. `clapham.describe` also consults
+/// it for each selected candidate, without dispatching that operation. Checks may
+/// repeat; implementations must not create approval requests, consume approvals or
+/// change authorisation state as a side effect. The host handles approval workflows
+/// after a call returns `admission_pending`; a hidden catalogue candidate is not a
+/// call attempt.
 pub trait Gate: Send + Sync {
-    /// Decide whether this principal may run this operation.
+    /// Query whether this principal may run or discover this operation.
+    /// This check must be safe to repeat without any subsequent dispatch.
     fn admit(&self, principal: &Principal, operation: &Operation) -> Admission;
 }
 
@@ -53,13 +61,15 @@ pub enum ExecutionMode {
     Daemon,
 }
 
-/// Host policy and execution mode, fixed when a set is composed.
+/// Host policy, execution mode and application identity, fixed at composition.
 #[derive(Clone)]
 pub struct ComposeOptions {
     /// Per-call admission policy. Defaults to [`DefaultGate`].
     pub gate: Arc<dyn Gate>,
     /// Whether daemon-local operations can run here.
     pub execution: ExecutionMode,
+    /// The application's name and version, reported by `clapham.version` when supplied.
+    pub application: Option<ApplicationInfo>,
 }
 
 impl Default for ComposeOptions {
@@ -67,6 +77,7 @@ impl Default for ComposeOptions {
         Self {
             gate: Arc::new(DefaultGate),
             execution: ExecutionMode::InProcess,
+            application: None,
         }
     }
 }
@@ -75,6 +86,7 @@ impl fmt::Debug for ComposeOptions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ComposeOptions")
             .field("execution", &self.execution)
+            .field("application", &self.application)
             .finish_non_exhaustive()
     }
 }

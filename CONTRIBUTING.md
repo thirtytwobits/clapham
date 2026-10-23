@@ -41,7 +41,7 @@ cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-de
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features http
 ```
 
-Generate the public operation and refusal schemas from the core types with
+Generate the public operation, refusal and catalogue schemas from the core types with
 `cargo xtask schemas`. Review and commit changes to `crates/clapham/schemas/*.json`;
 `cargo xtask schemas --check` checks them without writing. The schemas use JSON Schema
 2020-12. Tests validate descriptors and refusals against the checked-in files.
