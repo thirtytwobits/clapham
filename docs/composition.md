@@ -1,4 +1,4 @@
-# Composition and dispatch primitives
+# Composition
 
 Contributors claim one namespace with `Contribution::new(namespace)` and add
 descriptors and handlers with `.operation(descriptor, handler)`. A handler can
@@ -10,6 +10,10 @@ Use `.operation_boxed(descriptor, handler)` to retain an existing handler box di
 `ComposedSet`. Cloning the set shares the compiled operations. Its public accessors
 expose immutable descriptors and validators, with no registration or mutation after
 composition.
+
+`compose_with_options(contributions, bounds, options)` also fixes the host's gate
+and execution mode for the set. `compose` uses `DefaultGate` and in-process
+execution. See [calls](calls.md) for selecting and running operations.
 
 Each namespace is a non-empty segment of at most 128 ASCII letters, digits, `_` and
 `-`. Each complete operation name must belong to that namespace and have a non-empty
@@ -57,9 +61,9 @@ JSON numbers retain their serialised representation: `1` and `1.0` produce diffe
 revisions; this is key ordering, not numeric or semantic normalisation.
 
 `ComposedOperation::invoke` prepares input and the operation's own name, dispatches
-the handler, and checks successful output. It is the primitive the selection and
-admission runner will use. Hosts apply admission, preview and declared-refusal
-policies before exposing calls to users; those policies belong to issue #6.
+the handler, and checks successful output. It is a low-level primitive that does
+not enforce selection, admission, preview, locality or declared-refusal policies.
+`ComposedSet::call` applies those policies before exposing calls to users.
 
 `Refusal::new` and `Outcome::new` initially carry `completed` evidence. Checks before
 dispatch use `Refusal::not_dispatched`. Cancelling a handler in flight yields `uncertain`;

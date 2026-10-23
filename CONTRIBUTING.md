@@ -34,7 +34,7 @@ Check the minimum supported Rust versions with the committed lockfile:
 ```console
 cargo +1.85.0 check --locked -p clapham
 cargo +1.85.0 test --locked -p clapham
-cargo +1.85.0 test --locked -p clapham --features serde_json/preserve_order --test composition revision_
+cargo +1.85.0 test --locked -p clapham --features serde_json/preserve_order revision_
 cargo +1.88.0 test --locked -p clapham-mcp-server -p clapham-mcp-client --all-features
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features stdio
