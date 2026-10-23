@@ -1,0 +1,18 @@
+[package]
+name = "clapham-conformance"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version = "1.88"
+description = "The lists-and-items contribution and front-end conformance harness."
+readme = "README.md"
+
+[dependencies]
+clapham.workspace = true
+clapham-cli.workspace = true
+clapham-mcp-server.workspace = true
+clapham-mcp-client.workspace = true
+
+[lints]
+workspace = true

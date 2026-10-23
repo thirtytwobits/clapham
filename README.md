@@ -86,8 +86,10 @@ unchanged and enforces the gate.
 
 ## Status
 
-Clapham is in design. [thirtytwobits/london#2](https://github.com/thirtytwobits/london/issues/2)
-holds the design and the plan for its first release.
+The Cargo workspace and repository gates are in place; the libraries and lists example are
+stubs. [thirtytwobits/london#2](https://github.com/thirtytwobits/london/issues/2) holds the design
+and the plan for the first release. See [CONTRIBUTING.md](CONTRIBUTING.md) for the gate commands
+and [the workspace guide](docs/README.md) for the crate boundaries.
 
 ## Licence
 

@@ -1,0 +1,16 @@
+[package]
+name = "clapham-lists"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version = "1.88"
+publish = false
+
+[dependencies]
+clapham-cli.workspace = true
+clapham-mcp-server.workspace = true
+clapham-conformance.workspace = true
+
+[lints]
+workspace = true
