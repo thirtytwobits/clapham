@@ -16,6 +16,10 @@
     "details": {
       "description": "Structured evidence, including what a caller needs to resolve a conflict."
     },
+    "evidence": {
+      "description": "What is known about whether the operation had its effect.",
+      "$ref": "#/$defs/Evidence"
+    },
     "message": {
       "description": "A description of why the call was refused.",
       "type": "string"
@@ -30,7 +34,8 @@
     "code",
     "category",
     "message",
-    "retryable"
+    "retryable",
+    "evidence"
   ],
   "$defs": {
     "Category": {
@@ -80,6 +85,26 @@
           "description": "A fault, including an undeclared refusal code.",
           "type": "string",
           "const": "internal"
+        }
+      ]
+    },
+    "Evidence": {
+      "description": "What is known about an invocation's effects, independently of result delivery.",
+      "oneOf": [
+        {
+          "description": "The handler or transport confirms the operation was not dispatched.",
+          "type": "string",
+          "const": "not_dispatched"
+        },
+        {
+          "description": "A complete result or refusal returned; this does not establish durable publication.",
+          "type": "string",
+          "const": "completed"
+        },
+        {
+          "description": "The operation may have run; cancellation or a lost reply leaves its effects unresolved.",
+          "type": "string",
+          "const": "uncertain"
         }
       ]
     }

@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::Evidence;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -62,10 +63,13 @@ pub struct Refusal {
     pub details: Option<Value>,
     /// Whether the caller may retry the call.
     pub retryable: bool,
+    /// What is known about whether the operation had its effect.
+    pub evidence: Evidence,
 }
 
 impl Refusal {
-    /// A refusal with no details, initially marked as not retryable.
+    /// A completed handler refusal with no details, initially marked as not retryable.
+    /// Dispatchers set pre-handler refusals to [`Evidence::NotDispatched`].
     pub fn new(code: impl Into<String>, category: Category, message: impl Into<String>) -> Self {
         Self {
             code: code.into(),
@@ -73,7 +77,14 @@ impl Refusal {
             message: message.into(),
             details: None,
             retryable: false,
+            evidence: Evidence::Completed,
         }
+    }
+
+    /// Carry explicit dispatch evidence, including uncertainty from a remote reply loss.
+    pub fn with_evidence(mut self, evidence: Evidence) -> Self {
+        self.evidence = evidence;
+        self
     }
 }
 
