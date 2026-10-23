@@ -54,18 +54,28 @@ the current revision in `details.revision`. Missing lists use `list_not_found`;
 duplicate lists or items and missing items have declared refusals. Scripted writes
 use `create_list`, `rename_list` and `add_item`; `get` and `snapshot` return detached
 copies for assertions.
+The rename handler's defensive numeric conversion uses `revision_out_of_range`
+in `invalid_input`, distinct from the core dispatcher's `invalid_input` code.
+The input schema rejects out-of-range revisions before dispatch; integral JSON
+numbers such as `1.0` are accepted, and `u64::MAX` remains an exact integer fence.
 
 `hold(name)` arms a one-shot `HeldCall`, or returns `None` for an unknown operation
 or an already armed hold. Poll the call concurrently with `held.entered().await`;
 then change state through the handle and call `held.release()`. Dropping the hold
-also releases it. Invalid input and denied admission do not consume holds. Watch
+also releases it, and an unentered dropped or released hold can be rearmed immediately.
+Invalid input and denied admission do not consume holds. Watch
 subscribes before its hold so changes made while held are queued; export snapshots
 before its hold. Other handlers pause before reading or changing state. No state
 lock spans a hold or a record sink acknowledgement.
 
 Watch records carry `kind` and a complete resulting `list`; deleted records carry
 the final snapshot. Each subscriber receives only its list's future changes in
-revision order, with no initial replay. Sink acknowledgements supply backpressure.
+revision order, with no initial replay. Watches follow a logical list ID through
+deletion and recreation: `Deleted` is a record, and subsequent `Created` and other
+records for the same ID arrive on the existing subscription. The stream remains open
+until cancelled; revisions distinguish changes to successive lists with that ID and
+prevent stale writes, while the subscription continues following the ID.
+Sink acknowledgements supply backpressure.
 Subscribers release their queues when cancelled. Finite scripts control fixture
 state and queue sizes; connection budgets belong to the front ends. Cancellation
 in flight reports `cancelled` with uncertain evidence through the core runner.

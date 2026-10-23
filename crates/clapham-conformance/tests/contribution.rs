@@ -374,6 +374,170 @@ fn deletion_and_recreation_do_not_allow_an_old_revision_fence_to_match() {
 }
 
 #[test]
+fn watches_follow_an_identity_through_deletion_and_recreation_until_cancelled() {
+    let (handle, set) = fixture();
+    let original = handle.create_list("a", "Original").unwrap();
+    let mut held = handle.hold("lists.watch").unwrap();
+    let records = Arc::new(Mutex::new(Vec::new()));
+    let output = records.clone();
+    let sink = RecordSink::new(move |record| {
+        output.lock().unwrap().push(record);
+        async { Ok(()) }
+    });
+    let cancel = Cancellation::new();
+    let signal = cancel.clone();
+    let selection = set.all();
+    let mut watching = pin!(set.call(
+        &selection,
+        Principal::new("list-reader", PrincipalKind::Human),
+        "lists.watch",
+        json!({"id":"a"}),
+        sink,
+        cancel,
+        false,
+    ));
+    assert!(
+        watching
+            .as_mut()
+            .poll(&mut Context::from_waker(&noop_waker()))
+            .is_pending()
+    );
+    assert!(block_on(held.entered()));
+    assert!(held.release());
+    let deleted = list(call(&set, "lists.delete", json!({"id":"a"})));
+    assert!(
+        watching
+            .as_mut()
+            .poll(&mut Context::from_waker(&noop_waker()))
+            .is_pending()
+    );
+    assert_eq!(records.lock().unwrap().len(), 1);
+    assert!(handle.get("a").is_none());
+    // Deletion does not close this identity subscription, even before recreation.
+    let recreated = list(call(
+        &set,
+        "lists.create",
+        json!({"list":{"id":"a","name":"Recreated"}}),
+    ));
+    let renamed = list(call(
+        &set,
+        "lists.rename",
+        json!({"id":"a","name":"New name","revision":recreated.revision}),
+    ));
+    assert!(
+        watching
+            .as_mut()
+            .poll(&mut Context::from_waker(&noop_waker()))
+            .is_pending()
+    );
+    let changes: Vec<ListChange> = records
+        .lock()
+        .unwrap()
+        .iter()
+        .cloned()
+        .map(|record| serde_json::from_value(record).unwrap())
+        .collect();
+    assert_eq!(
+        changes.iter().map(|change| change.kind).collect::<Vec<_>>(),
+        [
+            ChangeKind::Deleted,
+            ChangeKind::Created,
+            ChangeKind::Renamed
+        ]
+    );
+    assert_eq!(
+        changes
+            .iter()
+            .map(|change| change.list.clone())
+            .collect::<Vec<_>>(),
+        [deleted.clone(), recreated, renamed]
+    );
+    assert!(deleted.revision > original.revision);
+    assert!(
+        changes
+            .windows(2)
+            .all(|pair| pair[0].list.revision < pair[1].list.revision)
+    );
+    signal.cancel();
+    let refusal = block_on(watching).unwrap_err();
+    assert_eq!(
+        (refusal.code.as_str(), refusal.evidence),
+        ("cancelled", Evidence::Uncertain)
+    );
+    handle.rename_list("a", "After cancellation").unwrap();
+    assert_eq!(records.lock().unwrap().len(), 3);
+}
+
+#[test]
+fn rename_range_refusals_are_distinct_from_dispatcher_validation() {
+    let (handle, set) = fixture();
+    let original = handle.create_list("a", "Original").unwrap();
+    let descriptor = set.get("lists.rename").unwrap().descriptor();
+    assert!(!descriptor.refusals.contains_key("invalid_input"));
+    assert_eq!(
+        descriptor.refusals.get("revision_out_of_range"),
+        Some(&Category::InvalidInput)
+    );
+    for revision in [json!(-1), json!(1.5), json!(18_446_744_073_709_551_616.0)] {
+        let refusal = invoke(
+            &set,
+            "lists.rename",
+            json!({"id":"a","name":"Invalid","revision":revision}),
+            PrincipalKind::Human,
+            false,
+        )
+        .unwrap_err();
+        assert_eq!(
+            (refusal.code.as_str(), refusal.evidence),
+            ("invalid_input", Evidence::NotDispatched)
+        );
+        assert_eq!(handle.get("a"), Some(original.clone()));
+    }
+    let refusal = invoke(
+        &set,
+        "lists.rename",
+        json!({"id":"a","name":"Stale","revision":u64::MAX}),
+        PrincipalKind::Human,
+        false,
+    )
+    .unwrap_err();
+    assert_eq!(
+        (refusal.code.as_str(), refusal.category),
+        ("list_changed", Category::Conflict)
+    );
+    assert_eq!(handle.get("a"), Some(original));
+}
+
+#[test]
+fn dropping_an_unentered_hold_allows_it_to_be_rearmed() {
+    let (handle, set) = fixture();
+    handle.create_list("a", "First").unwrap();
+    drop(handle.hold("lists.get").unwrap());
+    let mut held = handle
+        .hold("lists.get")
+        .expect("a dropped hold must not block rearming");
+    let selection = set.all();
+    let mut getting = pin!(set.call(
+        &selection,
+        Principal::new("list-reader", PrincipalKind::Human),
+        "lists.get",
+        json!({"id":"a"}),
+        RecordSink::default(),
+        Cancellation::new(),
+        false
+    ));
+    assert!(
+        getting
+            .as_mut()
+            .poll(&mut Context::from_waker(&noop_waker()))
+            .is_pending()
+    );
+    assert!(block_on(held.entered()));
+    assert!(held.release());
+    assert_eq!(block_on(getting).unwrap().result.unwrap()["id"], "a");
+}
+
+#[test]
 fn fault_exercises_the_undeclared_refusal_contract_without_changing_state() {
     let (handle, set) = fixture();
     handle.create_list("a", "First").unwrap();

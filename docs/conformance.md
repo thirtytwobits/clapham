@@ -14,7 +14,9 @@ undeclared refusal.
 The tests call every operation through `ComposedSet::call`. Holds, sink
 acknowledgements and change notifications use explicit futures. A watch test
 subscribes before holding, changes the list while held, then proves live delivery
-and cancellation on the ordinary executor. A fenced rename is held while a scripted
+and cancellation on the ordinary executor. Watches follow the logical list ID through
+deletion and recreation until cancelled; a regression checks the ordered `Deleted`,
+`Created` and subsequent change records. A fenced rename is held while a scripted
 write advances the revision, then refuses without overwriting the newer state.
 A preview returns the real create result shape without storing a list or consuming
 a revision. Export retains its initial snapshot while a sink acknowledgement is held.

@@ -61,7 +61,12 @@ impl Kind {
     fn descriptor(self) -> Operation {
         let string = json!({ "type": "string", "minLength": 1 });
         let empty = json!({ "type": "object", "additionalProperties": false });
-        let identified = json!({ "type": "object", "properties": { "id": string }, "required": ["id"], "additionalProperties": false });
+        let identified = json!({
+            "type": "object",
+            "properties": { "id": string },
+            "required": ["id"],
+            "additionalProperties": false
+        });
         let (effect, description, input, output) = match self {
             Self::List => (
                 Effect::Query,
@@ -79,8 +84,17 @@ impl Kind {
                 Effect::Mutation,
                 "Create a list, or preview its result without creating it.",
                 json!({
-                    "type": "object", "properties": { "list": { "type": "object", "properties": { "id": string, "name": string },
-                    "required": ["id", "name"], "additionalProperties": false } }, "required": ["list"], "additionalProperties": false
+                    "type": "object",
+                    "properties": {
+                        "list": {
+                            "type": "object",
+                            "properties": { "id": string, "name": string },
+                            "required": ["id", "name"],
+                            "additionalProperties": false
+                        }
+                    },
+                    "required": ["list"],
+                    "additionalProperties": false
                 }),
                 Some(schemars::schema_for!(List)),
             ),
@@ -88,8 +102,14 @@ impl Kind {
                 Effect::Mutation,
                 "Rename a list only if its current revision matches the supplied fence.",
                 json!({
-                    "type": "object", "properties": { "id": string, "name": string, "revision": { "type": "integer", "minimum": 0, "maximum": u64::MAX } },
-                    "required": ["id", "name", "revision"], "additionalProperties": false
+                    "type": "object",
+                    "properties": {
+                        "id": string,
+                        "name": string,
+                        "revision": { "type": "integer", "minimum": 0, "maximum": u64::MAX }
+                    },
+                    "required": ["id", "name", "revision"],
+                    "additionalProperties": false
                 }),
                 Some(schemars::schema_for!(List)),
             ),
@@ -107,7 +127,7 @@ impl Kind {
             ),
             Self::Watch => (
                 Effect::Query,
-                "Watch future changes to one list until cancelled; subscription precedes the scripted hold.",
+                "Watch future changes to a list identity until cancelled, including deletion and recreation.",
                 identified.clone(),
                 None,
             ),
@@ -127,8 +147,18 @@ impl Kind {
                 Effect::Mutation,
                 "Add an unticked item to a list.",
                 json!({
-                    "type": "object", "properties": { "list_id": string, "item": { "type": "object", "properties": { "id": string, "text": { "type": "string" } },
-                    "required": ["id", "text"], "additionalProperties": false } }, "required": ["list_id", "item"], "additionalProperties": false
+                    "type": "object",
+                    "properties": {
+                        "list_id": string,
+                        "item": {
+                            "type": "object",
+                            "properties": { "id": string, "text": { "type": "string" } },
+                            "required": ["id", "text"],
+                            "additionalProperties": false
+                        }
+                    },
+                    "required": ["list_id", "item"],
+                    "additionalProperties": false
                 }),
                 Some(schemars::schema_for!(List)),
             ),
@@ -136,7 +166,10 @@ impl Kind {
                 Effect::Mutation,
                 "Mark an item as ticked; ticking it again leaves the revision unchanged.",
                 json!({
-                    "type": "object", "properties": { "list_id": string, "id": string }, "required": ["list_id", "id"], "additionalProperties": false
+                    "type": "object",
+                    "properties": { "list_id": string, "id": string },
+                    "required": ["list_id", "id"],
+                    "additionalProperties": false
                 }),
                 Some(schemars::schema_for!(List)),
             ),
@@ -166,7 +199,7 @@ impl Kind {
             }
             Self::Rename => {
                 refusals.insert("list_changed".into(), Category::Conflict);
-                refusals.insert("invalid_input".into(), Category::InvalidInput);
+                refusals.insert("revision_out_of_range".into(), Category::InvalidInput);
             }
             Self::Add => {
                 refusals.insert("item_exists".into(), Category::Conflict);
@@ -350,7 +383,7 @@ fn revision(value: &Value) -> Result<u64, Refusal> {
         })
         .ok_or_else(|| {
             Refusal::new(
-                "invalid_input",
+                "revision_out_of_range",
                 Category::InvalidInput,
                 "The revision must fit an unsigned 64-bit integer.",
             )
@@ -362,6 +395,30 @@ fn wire(value: impl Serialize) -> Value {
 }
 
 fn count_schema(name: &str) -> schemars::Schema {
-    json!({ "type": "object", "properties": { name: { "type": "integer", "minimum": 0 } }, "required": [name], "additionalProperties": false })
-        .try_into().expect("count output is a schema object")
+    json!({
+        "type": "object",
+        "properties": { name: { "type": "integer", "minimum": 0 } },
+        "required": [name],
+        "additionalProperties": false
+    })
+    .try_into()
+    .expect("count output is a schema object")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn revision_conversion_checks_float_range_without_saturating() {
+        assert_eq!(revision(&json!(u64::MAX)).unwrap(), u64::MAX);
+        assert_eq!(revision(&json!(1.0)).unwrap(), 1);
+        for value in [json!(-1), json!(1.5), json!(18_446_744_073_709_551_616.0)] {
+            let refusal = revision(&value).unwrap_err();
+            assert_eq!(
+                (refusal.code.as_str(), refusal.category),
+                ("revision_out_of_range", Category::InvalidInput)
+            );
+        }
+    }
 }

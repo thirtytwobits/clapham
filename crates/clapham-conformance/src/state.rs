@@ -154,12 +154,14 @@ impl ListsHandle {
 
     /// Pause the next fixture call that reaches this operation's hold point.
     ///
-    /// Returns `None` for an unknown operation or an already armed hold. Invalid or
+    /// Returns `None` for an unknown operation or an already armed live hold. Invalid or
     /// denied calls do not consume a hold. Watch subscribes before pausing; export
     /// snapshots before pausing; other operations pause before reading or changing state.
+    /// A dropped or released unentered hold can be rearmed immediately.
     pub fn hold(&self, name: &str) -> Option<HeldCall> {
         let kind = Kind::named(name)?;
         let mut state = self.0.lock().expect("fixture state poisoned");
+        state.holds.retain(|_, hold| !hold.entered.is_canceled());
         let Entry::Vacant(entry) = state.holds.entry(kind.name()) else {
             return None;
         };
