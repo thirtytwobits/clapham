@@ -6,9 +6,11 @@ use std::sync::Arc;
 use futures_util::future::{Either, select};
 use serde::Serialize;
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 
-use crate::{Bounds, Call, Category, Evidence, Handler, Operation, Outcome, Refusal};
+use crate::{
+    Bounds, Call, Category, ComposeOptions, Evidence, ExecutionMode, Gate, Handler, Operation,
+    Outcome, Refusal,
+};
 
 /// One namespace's descriptors, each paired with an asynchronous handler.
 pub struct Contribution {
@@ -16,6 +18,8 @@ pub struct Contribution {
     pub namespace: String,
     /// Descriptors and their handlers, in contribution order.
     pub operations: Vec<(Operation, Box<dyn Handler>)>,
+    /// Opaque revision of a remote binding, included in selections that use it.
+    pub binding_revision: Option<String>,
 }
 
 impl Contribution {
@@ -24,7 +28,14 @@ impl Contribution {
         Self {
             namespace: namespace.into(),
             operations: Vec::new(),
+            binding_revision: None,
         }
+    }
+
+    /// Record the remote binding revision without changing operation descriptors.
+    pub fn with_binding_revision(mut self, revision: impl Into<String>) -> Self {
+        self.binding_revision = Some(revision.into());
+        self
     }
 
     /// Add an operation, accepting a handler object or an asynchronous closure.
@@ -121,6 +132,7 @@ pub struct ComposedOperation {
     input: jsonschema::Validator,
     output: Option<jsonschema::Validator>,
     handler: Box<dyn Handler>,
+    pub(crate) binding_revision: Option<Arc<str>>,
 }
 
 impl fmt::Debug for ComposedOperation {
@@ -175,20 +187,30 @@ impl ComposedOperation {
     /// explicit evidence is preserved when it returns, including remote reply loss.
     /// If cancellation and completion are both ready when polled, cancellation wins
     /// and the result is conservatively reported as uncertain.
-    pub async fn invoke(&self, mut call: Call) -> Result<Outcome, Refusal> {
+    pub async fn invoke(&self, call: Call) -> Result<Outcome, Refusal> {
         if call.cancel.is_cancelled() {
             return Err(cancelled(Evidence::NotDispatched));
         }
         self.validate_input(&call.input)?;
+        let outcome = self.dispatch_validated(call).await??;
+        self.validate_output(&outcome)?;
+        Ok(outcome)
+    }
+
+    // Keep handler refusals separate from dispatcher-generated cancellation so
+    // the public call runner can enforce the declared refusal contract.
+    pub(crate) async fn dispatch_validated(
+        &self,
+        mut call: Call,
+    ) -> Result<Result<Outcome, Refusal>, Refusal> {
+        if call.cancel.is_cancelled() {
+            return Err(cancelled(Evidence::NotDispatched));
+        }
         call.name = self.descriptor.name.clone();
         let cancel = call.cancel.clone();
         match select(Box::pin(cancel.cancelled()), self.handler.call(call)).await {
             Either::Left(_) => Err(cancelled(Evidence::Uncertain)),
-            Either::Right((outcome, _)) => {
-                let outcome = outcome?;
-                self.validate_output(&outcome)?;
-                Ok(outcome)
-            }
+            Either::Right((outcome, _)) => Ok(outcome),
         }
     }
 }
@@ -201,11 +223,25 @@ fn cancelled(evidence: Evidence) -> Refusal {
 }
 
 /// An immutable, cheaply clonable set of operations and their compiled schemas.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ComposedSet {
-    operations: BTreeMap<String, Arc<ComposedOperation>>,
+    pub(crate) operations: BTreeMap<String, Arc<ComposedOperation>>,
+    pub(crate) identity: Arc<()>,
+    pub(crate) gate: Arc<dyn Gate>,
+    pub(crate) execution: ExecutionMode,
     revision: String,
     bounds: Bounds,
+}
+
+impl fmt::Debug for ComposedSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ComposedSet")
+            .field("operations", &self.operations)
+            .field("revision", &self.revision)
+            .field("bounds", &self.bounds)
+            .field("execution", &self.execution)
+            .finish_non_exhaustive()
+    }
 }
 
 impl ComposedSet {
@@ -238,6 +274,16 @@ pub fn compose(
     contributions: impl IntoIterator<Item = Contribution>,
     bounds: Bounds,
 ) -> Result<ComposedSet, CompositionError> {
+    compose_with_options(contributions, bounds, ComposeOptions::default())
+}
+
+/// Compose with a host-supplied admission gate and execution mode.
+/// These options are immutable and shared by clones of the resulting set.
+pub fn compose_with_options(
+    contributions: impl IntoIterator<Item = Contribution>,
+    bounds: Bounds,
+    options: ComposeOptions,
+) -> Result<ComposedSet, CompositionError> {
     bounds.validate().map_err(|error| {
         CompositionError::new(CompositionCode::InvalidBounds, error.to_string())
     })?;
@@ -268,6 +314,7 @@ pub fn compose(
                 format!("namespace {namespace:?} is already claimed"),
             ));
         }
+        let binding_revision = contribution.binding_revision.map(Arc::<str>::from);
         for (descriptor, handler) in contribution.operations {
             let name = descriptor.name.as_str();
             if descriptor.name.namespace() != Some(namespace.as_str())
@@ -339,6 +386,7 @@ pub fn compose(
                     input,
                     output,
                     handler,
+                    binding_revision: binding_revision.clone(),
                 }),
             );
         }
@@ -347,15 +395,12 @@ pub fn compose(
         .values()
         .map(|operation| operation.descriptor())
         .collect();
-    let value = serde_json::to_value(descriptors).expect("descriptors contain only JSON values");
-    let canonical = canonicalise(value);
-    let mut hasher = Sha256::new();
-    hasher.update(b"clapham.composed-set.v1\0");
-    serde_json::to_writer(&mut HashWriter(&mut hasher), &canonical)
-        .expect("JSON values are serialisable");
-    let revision = format!("sha256:{:x}", hasher.finalize());
+    let revision = crate::revision::digest(b"clapham.composed-set.v1\0", descriptors);
     Ok(ComposedSet {
         operations,
+        identity: Arc::new(()),
+        gate: options.gate,
+        execution: options.execution,
         revision,
         bounds,
     })
@@ -371,22 +416,6 @@ fn compile(schema: &Value, name: &str) -> Result<jsonschema::Validator, Composit
                 format!("operation {name:?}: {error}"),
             )
         })
-}
-
-fn canonicalise(value: Value) -> Value {
-    match value {
-        Value::Object(object) => {
-            // Do not rely on serde_json's map backend: downstream features may
-            // enable preserve_order. Insert sorted keys recursively either way.
-            let sorted: BTreeMap<_, _> = object
-                .into_iter()
-                .map(|(key, value)| (key, canonicalise(value)))
-                .collect();
-            Value::Object(sorted.into_iter().collect())
-        }
-        Value::Array(array) => Value::Array(array.into_iter().map(canonicalise).collect()),
-        value => value,
-    }
 }
 
 fn fits(value: &impl Serialize, limit: usize) -> bool {
@@ -412,15 +441,4 @@ fn size_within(value: &impl Serialize, limit: usize) -> Option<usize> {
     let mut counter = Counter { remaining: limit };
     serde_json::to_writer(&mut counter, value).ok()?;
     Some(limit - counter.remaining)
-}
-
-struct HashWriter<'a>(&'a mut Sha256);
-impl Write for HashWriter<'_> {
-    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
-        self.0.update(bytes);
-        Ok(bytes.len())
-    }
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
 }

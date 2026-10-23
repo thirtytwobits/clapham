@@ -34,11 +34,27 @@ name order, `get` returns a compiled operation, and `revision` digests canonical
 descriptors in name order. Nested JSON keys are sorted too, so revision does not
 depend on insertion order or the process.
 
-`ComposedOperation::invoke` is the low-level dispatch primitive: it validates input,
-sets `Call::name` to the operation's own name, runs the handler and validates
-successful output. The host applies selection, admission, preview support and
-declared-refusal policies around dispatch. Those policies follow with the call
-runner. The built-in operations follow with their own contribution.
+`set.select(names)` selects complete operation names; `set.all()` selects every
+operation. A selection belongs to its originating set and its clones. Its revision
+digests the selected descriptors and any remote revisions supplied through
+`Contribution::with_binding_revision`, so approvals can be tied to that selection.
+
+`ComposedSet::call` checks selection membership, validates input, asks the gate,
+checks preview support and locality, runs the handler, then validates successful
+output. `DefaultGate` admits the descriptor's principal kinds. Use
+`compose_with_options` to supply a custom `Gate` and `ExecutionMode::Daemon` where
+daemon-local operations can run. A gate may allow, deny or leave approval pending;
+pending calls never dispatch. The default execution mode is `InProcess`.
+
+Declared handler refusals retain their code, details, retryability and evidence;
+their category comes from the descriptor. An undeclared code becomes
+`undeclared_refusal`, with the original refusal in its details. Runner refusals
+are independent of the handler's declared set.
+
+`ComposedOperation::invoke` remains the low-level dispatch primitive. It validates
+input and successful output and handles cancellation; it does not enforce selection,
+gate, preview, locality or declared-refusal policies. Use `ComposedSet::call` to
+apply those policies. The built-in operations follow with their own contribution.
 
 `Call` carries the principal, input, asynchronous `RecordSink`, `Cancellation` and
 preview flag. A sink's acknowledgement provides backpressure. Cancellation before

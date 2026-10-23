@@ -86,9 +86,10 @@ unchanged and enforces the gate.
 
 ## Status
 
-The Cargo workspace, repository gates, core contract and composition are in place, with published
-operation and refusal schemas. Selection and admission follow with the call runner. The front ends,
-conformance contribution and lists example are stubs.
+The Cargo workspace, repository gates, core contract, composition and call runner are in place,
+with published operation and refusal schemas. Calls enforce selection, admission, preview support,
+locality and the declared refusal contract. The front ends, conformance contribution and lists
+example are stubs.
 [thirtytwobits/london#2](https://github.com/thirtytwobits/london/issues/2) holds the design
 and the plan for the first release. See [CONTRIBUTING.md](CONTRIBUTING.md) for the gate commands
 and [the workspace guide](docs/README.md) for the crate boundaries.
