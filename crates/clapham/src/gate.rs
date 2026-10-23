@@ -1,7 +1,7 @@
 use std::fmt;
 use std::sync::Arc;
 
-use crate::{Operation, Principal};
+use crate::{ApplicationInfo, Operation, Principal};
 
 /// The gate's per-call admission decision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,13 +53,15 @@ pub enum ExecutionMode {
     Daemon,
 }
 
-/// Host policy and execution mode, fixed when a set is composed.
+/// Host policy, execution mode and application identity, fixed at composition.
 #[derive(Clone)]
 pub struct ComposeOptions {
     /// Per-call admission policy. Defaults to [`DefaultGate`].
     pub gate: Arc<dyn Gate>,
     /// Whether daemon-local operations can run here.
     pub execution: ExecutionMode,
+    /// The application's name and version, reported by `clapham.version` when supplied.
+    pub application: Option<ApplicationInfo>,
 }
 
 impl Default for ComposeOptions {
@@ -67,6 +69,7 @@ impl Default for ComposeOptions {
         Self {
             gate: Arc::new(DefaultGate),
             execution: ExecutionMode::InProcess,
+            application: None,
         }
     }
 }
@@ -75,6 +78,7 @@ impl fmt::Debug for ComposeOptions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ComposeOptions")
             .field("execution", &self.execution)
+            .field("application", &self.application)
             .finish_non_exhaustive()
     }
 }

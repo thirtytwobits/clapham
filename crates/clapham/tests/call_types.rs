@@ -27,11 +27,11 @@ fn default_bounds_match_the_connection_budgets_and_validate() {
         (512, 32, 4, 16, 4096)
     );
     bounds.validate().unwrap();
-    assert_eq!(compose([], bounds).unwrap().operations().len(), 0);
+    assert_eq!(compose([], bounds).unwrap().operations().len(), 2);
 }
 
 #[test]
-fn minimum_catalogue_bound_fits_the_empty_json_array() {
+fn minimum_catalogue_bound_is_valid_but_cannot_fit_the_built_in_operations() {
     let invalid = Bounds {
         catalogue_bytes: 1,
         ..Bounds::default()
@@ -46,7 +46,10 @@ fn minimum_catalogue_bound_fits_the_empty_json_array() {
         ..Bounds::default()
     };
     minimum.validate().unwrap();
-    assert_eq!(compose([], minimum).unwrap().operations().len(), 0);
+    assert_eq!(
+        compose([], minimum).unwrap_err().code.as_str(),
+        "catalogue_too_large"
+    );
 }
 
 #[test]

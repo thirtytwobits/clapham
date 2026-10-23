@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 mod bounds;
+mod builtins;
 mod call;
 mod composition;
 mod gate;
@@ -13,6 +14,7 @@ pub mod schema;
 mod selection;
 
 pub use bounds::{Bounds, InvalidBounds};
+pub use builtins::{ApplicationInfo, Catalogue, VersionInfo};
 pub use call::{
     Call, Cancellation, ContentBlock, Evidence, Handler, HandlerFuture, Outcome, RecordSink,
     ResourceContents,

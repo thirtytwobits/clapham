@@ -683,13 +683,13 @@ fn revision_selection_accounts_only_for_selected_descriptors_and_bindings() {
 }
 
 #[test]
-fn revision_unbound_all_selection_retains_the_composed_set_v1_digest() {
+fn revision_unbound_selection_retains_the_composed_set_v1_framing() {
     let operation: Operation =
         serde_json::from_str(include_str!("fixtures/revision-v1.json")).unwrap();
     let set = one(operation, echo);
     assert_eq!(set.all().revision(), set.revision());
     assert_eq!(
-        set.all().revision(),
+        set.select(["lists.items.get"]).unwrap().revision(),
         "sha256:0cf27f0b33f394b0fa9d5048705443e9150834eaa75c602a1d651449b10f86e8"
     );
 }
@@ -706,10 +706,10 @@ fn revision_bound_selection_matches_an_independent_golden_digest() {
     )
     .unwrap();
     assert_eq!(
-        set.all().revision(),
+        set.select(["lists.items.get"]).unwrap().revision(),
         "sha256:3e3fd77ec5eac5f05c1ad79ac2c4bfca764bcececd9571a2957805de92f3183d"
     );
-    assert_eq!(
+    assert_ne!(
         set.all().revision(),
         set.select(["lists.items.get"]).unwrap().revision()
     );

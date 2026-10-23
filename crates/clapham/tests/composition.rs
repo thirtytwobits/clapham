@@ -59,7 +59,12 @@ fn composes_two_namespaces_in_name_order_and_retains_their_own_names() {
         set.operations()
             .map(|operation| operation.name.as_str())
             .collect::<Vec<_>>(),
-        ["items.get", "lists.items.get"]
+        [
+            "clapham.describe",
+            "clapham.version",
+            "items.get",
+            "lists.items.get"
+        ]
     );
     assert!(set.get("missing.get").is_none());
     assert_eq!(
@@ -131,7 +136,7 @@ fn refuses_empty_and_whitespace_descriptions_without_rewriting_valid_text() {
     operation.description = "  Read an item.  ".into();
     let set = one(operation, Bounds::default()).unwrap();
     assert_eq!(
-        set.operations().next().unwrap().description,
+        set.get("lists.items.get").unwrap().descriptor().description,
         "  Read an item.  "
     );
 }
@@ -186,7 +191,8 @@ fn refuses_invalid_input_and_output_schemas_and_unresolved_external_references()
 fn checks_each_schema_size_at_the_exact_serialised_byte_boundary() {
     for input in [true, false] {
         let mut operation = descriptor("lists.items.get");
-        let schema = json!({ "type": "object", "description": "é".repeat(100) });
+        // Exceed both built-in schemas so this descriptor determines the limit.
+        let schema = json!({ "type": "object", "description": "é".repeat(20_000) });
         if input {
             operation.input = schema.as_object().unwrap().clone();
         } else {
@@ -244,7 +250,10 @@ fn refuses_duplicate_operations_and_catalogue_count_or_byte_overflow() {
         CompositionCode::TooManyOperations
     );
     let operation = descriptor("lists.items.get");
-    let bytes = serde_json::to_vec(&[&operation]).unwrap().len();
+    let baseline = one(operation.clone(), Bounds::default()).unwrap();
+    let bytes = serde_json::to_vec(&baseline.operations().collect::<Vec<_>>())
+        .unwrap()
+        .len();
     assert!(
         one(
             operation.clone(),
@@ -593,7 +602,11 @@ fn revision_v1_matches_the_independent_golden_digest() {
     let operation: Operation =
         serde_json::from_str(include_str!("fixtures/revision-v1.json")).unwrap();
     assert_eq!(
-        one(operation, Bounds::default()).unwrap().revision(),
+        one(operation, Bounds::default())
+            .unwrap()
+            .select(["lists.items.get"])
+            .unwrap()
+            .revision(),
         "sha256:0cf27f0b33f394b0fa9d5048705443e9150834eaa75c602a1d651449b10f86e8"
     );
 }
