@@ -1,0 +1,18 @@
+Clapham
+Copyright (c) 2026 Scott A Dixon
+Licensed under the MIT License. See LICENSE.
+
+The MCP client is extracted from Battersea v0.17.0. Its original notice follows.
+Source commits and paths are recorded in provenance.json.
+
+Battersea
+Copyright (c) 2026 Scott A Dixon
+
+Licensed under the MIT License. See LICENSE.
+
+Extraction source: Primrose Hill
+https://github.com/scottdarch/primrosehill
+Baseline: e4f5683128cd614c15156fec7d4022ea62c8b2f6
+M0 contract and evidence: 06a4a7348143018c4ebb802d97670f85b862cd30
+
+Each extraction records its source commit and paths in provenance.json.

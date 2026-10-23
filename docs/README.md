@@ -21,7 +21,9 @@ help, schema-based input binding, in-process calls, process output and safeguard
 The [MCP server](../crates/clapham-mcp-server/README.md) exposes selected tools and resources
 over stdio and stateless Streamable HTTP, with principal-bound discovery, previews,
 unchanged refusals and per-request authentication. Its conformance tests check the generated
-MCP wire record. The MCP client and the example follow in their implementation issues.
+MCP wire record. The [MCP client](mcp.md#client) binds remote tools as daemon contributions,
+with shared bounds, pinned definitions, stale checks and explicit dispatch evidence. The lists
+example follows in its implementation issue.
 Each library has a generated public API snapshot in `api/`.
 
 `cargo xtask schemas` generates the operation, refusal, catalogue and CLI envelope schemas.
