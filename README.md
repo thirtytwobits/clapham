@@ -94,8 +94,9 @@ The neutral lists-and-items contribution exercises the core call contract with s
 concurrency. The CLI builds its command tree, help and input binding from those descriptors,
 and runs calls in-process with confirmations, previews, deadlines, output formatting
 and generated shell completions. The MCP server exposes selected tools and query resources
-on stdio, with principal-bound discovery, effect annotations, previews and unchanged refusals.
-Streamable HTTP, the MCP client and the lists example follow in their implementation issues.
+on stdio and stateless Streamable HTTP, with per-request HTTP authentication, principal-bound
+discovery, effect annotations, previews and unchanged refusals. The checked-in MCP wire record
+guards that surface. The MCP client and the lists example follow in their implementation issues.
 [thirtytwobits/london#2](https://github.com/thirtytwobits/london/issues/2) holds the design
 and the plan for the first release. See [CONTRIBUTING.md](CONTRIBUTING.md) for the gate commands
 and [the workspace guide](docs/README.md) for the crate boundaries.

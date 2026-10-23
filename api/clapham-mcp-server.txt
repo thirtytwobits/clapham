@@ -1,4 +1,106 @@
 pub mod clapham_mcp_server
+pub struct clapham_mcp_server::Credential
+impl clapham_mcp_server::Credential
+pub fn clapham_mcp_server::Credential::authorization(&self) -> core::option::Option<&str>
+pub fn clapham_mcp_server::Credential::new(authorization: impl core::convert::Into<alloc::string::String>) -> Self
+impl core::clone::Clone for clapham_mcp_server::Credential
+pub fn clapham_mcp_server::Credential::clone(&self) -> clapham_mcp_server::Credential
+impl core::default::Default for clapham_mcp_server::Credential
+pub fn clapham_mcp_server::Credential::default() -> clapham_mcp_server::Credential
+impl core::fmt::Debug for clapham_mcp_server::Credential
+pub fn clapham_mcp_server::Credential::fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for clapham_mcp_server::Credential
+impl core::marker::Send for clapham_mcp_server::Credential
+impl core::marker::Sync for clapham_mcp_server::Credential
+impl core::marker::Unpin for clapham_mcp_server::Credential
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_server::Credential
+impl core::panic::unwind_safe::UnwindSafe for clapham_mcp_server::Credential
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_mcp_server::Credential where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_mcp_server::Credential where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_mcp_server::Credential where U: core::convert::From<T>
+pub fn clapham_mcp_server::Credential::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_mcp_server::Credential where U: core::convert::Into<T>
+pub type clapham_mcp_server::Credential::Error = core::convert::Infallible
+pub fn clapham_mcp_server::Credential::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_mcp_server::Credential where U: core::convert::TryFrom<T>
+pub type clapham_mcp_server::Credential::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_mcp_server::Credential::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_mcp_server::Credential where T: core::clone::Clone
+pub type clapham_mcp_server::Credential::Owned = T
+pub fn clapham_mcp_server::Credential::clone_into(&self, target: &mut T)
+pub fn clapham_mcp_server::Credential::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_mcp_server::Credential where T: 'static + ?core::marker::Sized
+pub fn clapham_mcp_server::Credential::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_mcp_server::Credential where T: ?core::marker::Sized
+pub fn clapham_mcp_server::Credential::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_mcp_server::Credential where T: ?core::marker::Sized
+pub fn clapham_mcp_server::Credential::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_mcp_server::Credential where T: core::clone::Clone
+pub unsafe fn clapham_mcp_server::Credential::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_mcp_server::Credential
+pub fn clapham_mcp_server::Credential::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_mcp_server::Credential where T: core::clone::Clone
+pub fn clapham_mcp_server::Credential::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tracing::instrument::Instrument for clapham_mcp_server::Credential
+impl<T> tracing::instrument::WithSubscriber for clapham_mcp_server::Credential
+impl<T> typenum::type_operators::Same for clapham_mcp_server::Credential
+pub type clapham_mcp_server::Credential::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_server::Credential where T: ?core::marker::Sized
+pub struct clapham_mcp_server::HttpServer
+impl clapham_mcp_server::HttpServer
+pub async fn clapham_mcp_server::HttpServer::handle<B>(&self, request: http::request::Request<B>) -> http::response::Response<http_body_util::full::Full<bytes::bytes::Bytes>> where B: http_body::Body<Data = bytes::bytes::Bytes> + core::marker::Send + 'static, <B as http_body::Body>::Error: core::fmt::Display
+pub fn clapham_mcp_server::HttpServer::new(set: clapham::composition::ComposedSet, authenticator: impl clapham_mcp_server::Authenticator) -> core::result::Result<Self, clapham::refusal::Refusal>
+pub fn clapham_mcp_server::HttpServer::select<I, S>(self, names: I) -> core::result::Result<Self, clapham::refusal::Refusal> where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::AsRef<str>
+pub fn clapham_mcp_server::HttpServer::with_allowed_hosts<I, S>(self, hosts: I) -> Self where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::Into<alloc::string::String>
+pub fn clapham_mcp_server::HttpServer::with_allowed_origins<I, S>(self, origins: I) -> Self where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::Into<alloc::string::String>
+pub fn clapham_mcp_server::HttpServer::with_authentication_challenge(self, challenge: http::header::value::HeaderValue) -> Self
+impl core::clone::Clone for clapham_mcp_server::HttpServer
+pub fn clapham_mcp_server::HttpServer::clone(&self) -> clapham_mcp_server::HttpServer
+impl core::fmt::Debug for clapham_mcp_server::HttpServer
+pub fn clapham_mcp_server::HttpServer::fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl<B> tower_service::Service<http::request::Request<B>> for clapham_mcp_server::HttpServer where B: http_body::Body<Data = bytes::bytes::Bytes> + core::marker::Send + 'static, <B as http_body::Body>::Error: core::fmt::Display
+pub type clapham_mcp_server::HttpServer::Error = core::convert::Infallible
+pub type clapham_mcp_server::HttpServer::Future = core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::result::Result<<clapham_mcp_server::HttpServer as tower_service::Service<http::request::Request<B>>>::Response, <clapham_mcp_server::HttpServer as tower_service::Service<http::request::Request<B>>>::Error>> + core::marker::Send)>>
+pub type clapham_mcp_server::HttpServer::Response = http::response::Response<http_body_util::full::Full<bytes::bytes::Bytes>>
+pub fn clapham_mcp_server::HttpServer::call(&mut self, request: http::request::Request<B>) -> Self::Future
+pub fn clapham_mcp_server::HttpServer::poll_ready(&mut self, _: &mut core::task::wake::Context<'_>) -> core::task::poll::Poll<core::result::Result<(), Self::Error>>
+impl !core::marker::Freeze for clapham_mcp_server::HttpServer
+impl core::marker::Send for clapham_mcp_server::HttpServer
+impl core::marker::Sync for clapham_mcp_server::HttpServer
+impl core::marker::Unpin for clapham_mcp_server::HttpServer
+impl !core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_server::HttpServer
+impl !core::panic::unwind_safe::UnwindSafe for clapham_mcp_server::HttpServer
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_mcp_server::HttpServer where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_mcp_server::HttpServer where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_mcp_server::HttpServer where U: core::convert::From<T>
+pub fn clapham_mcp_server::HttpServer::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_mcp_server::HttpServer where U: core::convert::Into<T>
+pub type clapham_mcp_server::HttpServer::Error = core::convert::Infallible
+pub fn clapham_mcp_server::HttpServer::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_mcp_server::HttpServer where U: core::convert::TryFrom<T>
+pub type clapham_mcp_server::HttpServer::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_mcp_server::HttpServer::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_mcp_server::HttpServer where T: core::clone::Clone
+pub type clapham_mcp_server::HttpServer::Owned = T
+pub fn clapham_mcp_server::HttpServer::clone_into(&self, target: &mut T)
+pub fn clapham_mcp_server::HttpServer::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_mcp_server::HttpServer where T: 'static + ?core::marker::Sized
+pub fn clapham_mcp_server::HttpServer::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_mcp_server::HttpServer where T: ?core::marker::Sized
+pub fn clapham_mcp_server::HttpServer::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_mcp_server::HttpServer where T: ?core::marker::Sized
+pub fn clapham_mcp_server::HttpServer::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_mcp_server::HttpServer where T: core::clone::Clone
+pub unsafe fn clapham_mcp_server::HttpServer::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_mcp_server::HttpServer
+pub fn clapham_mcp_server::HttpServer::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_mcp_server::HttpServer where T: core::clone::Clone
+pub fn clapham_mcp_server::HttpServer::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tracing::instrument::Instrument for clapham_mcp_server::HttpServer
+impl<T> tracing::instrument::WithSubscriber for clapham_mcp_server::HttpServer
+impl<T> typenum::type_operators::Same for clapham_mcp_server::HttpServer
+pub type clapham_mcp_server::HttpServer::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_server::HttpServer where T: ?core::marker::Sized
 pub struct clapham_mcp_server::Server
 impl clapham_mcp_server::Server
 pub fn clapham_mcp_server::Server::new(set: clapham::composition::ComposedSet, principal: clapham::principal::Principal) -> core::result::Result<Self, clapham::refusal::Refusal>
@@ -14,6 +116,7 @@ impl rmcp::handler::server::ServerHandler for clapham_mcp_server::Server
 pub async fn clapham_mcp_server::Server::call_tool(&self, request: rmcp::model::CallToolRequestParams, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::mrtr::CallToolResponse, rmcp::model::ErrorData>
 pub async fn clapham_mcp_server::Server::discover(&self, _: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::DiscoverResult, rmcp::model::ErrorData>
 pub fn clapham_mcp_server::Server::get_info(&self) -> rmcp::model::ServerConfig
+pub fn clapham_mcp_server::Server::get_tool(&self, name: &str) -> core::option::Option<rmcp::model::tool::Tool>
 pub async fn clapham_mcp_server::Server::list_resource_templates(&self, request: core::option::Option<rmcp::model::PaginatedRequestParams>, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::ListResourceTemplatesResult, rmcp::model::ErrorData>
 pub async fn clapham_mcp_server::Server::list_resources(&self, request: core::option::Option<rmcp::model::PaginatedRequestParams>, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::ListResourcesResult, rmcp::model::ErrorData>
 pub async fn clapham_mcp_server::Server::list_tools(&self, request: core::option::Option<rmcp::model::PaginatedRequestParams>, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::ListToolsResult, rmcp::model::ErrorData>
@@ -69,3 +172,8 @@ impl<T> typenum::type_operators::Same for clapham_mcp_server::Server
 pub type clapham_mcp_server::Server::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_server::Server where T: ?core::marker::Sized
 pub const clapham_mcp_server::PREVIEW_META_KEY: &str
+pub const clapham_mcp_server::REQUEST_META_KEYS: &[&str]
+pub trait clapham_mcp_server::Authenticator: core::marker::Send + core::marker::Sync + 'static
+pub fn clapham_mcp_server::Authenticator::authenticate(&self, credential: &clapham_mcp_server::Credential) -> core::option::Option<clapham::principal::Principal>
+impl<F> clapham_mcp_server::Authenticator for F where F: core::ops::function::Fn(&clapham_mcp_server::Credential) -> core::option::Option<clapham::principal::Principal> + core::marker::Send + core::marker::Sync + 'static
+pub fn F::authenticate(&self, credential: &clapham_mcp_server::Credential) -> core::option::Option<clapham::principal::Principal>

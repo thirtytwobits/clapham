@@ -79,5 +79,70 @@ Exhausting transport limits closes the connection.
 
 The `stdio` feature provides `serve_stdio` and `serve_io` (the same transport over supplied
 async streams). Consumers using another transport can use the `rmcp::ServerHandler`
-implementation and must enforce their transport bounds. The `http` feature is reserved;
-Streamable HTTP, authentication and the generated wire record follow separately.
+implementation and must enforce their transport bounds. The `http` feature provides [`HttpServer`], a Tower service using rmcp's stateless Streamable
+HTTP server transport. It accepts POST requests without an initialise handshake, supplies
+JSON replies, and never creates a session. The application owns the listener, TLS and shutdown.
+
+```rust
+use clapham::{Bounds, Principal, PrincipalKind, compose};
+use clapham_mcp_server::{Credential, HttpServer};
+
+let set = compose([], Bounds::default())?;
+let server = HttpServer::new(set, |credential: &Credential| {
+    match credential.authorization() {
+        Some("Bearer configured-token") => Some(Principal::new("operator", PrincipalKind::Human)),
+        _ => None,
+    }
+})?;
+// Mount `server` as a Tower service at the application's MCP endpoint.
+# Ok::<(), Box<dyn std::error::Error>>(())
+```
+
+The application supplies [`Authenticator`], which receives the complete Authorization value
+as an opaque [`Credential`]. A missing field is a default credential; only the authenticator
+may explicitly map it to a principal. Credential debug output reports presence without printing
+the value. Duplicate or malformed Authorization fields receive HTTP 400. An unmapped credential
+receives HTTP 401 with a `not_authenticated` refusal carrying `not_dispatched` evidence,
+before body consumption or any operation. No authentication scheme is assumed: the host
+may set `with_authentication_challenge` with a validated HTTP header value, including a
+Basic realm or Bearer `resource_metadata` parameter. Without it, no WWW-Authenticate field
+is emitted. Authentication repeats on
+every request, including when requests overlap or reuse the same JSON-RPC ID. MCP metadata
+cannot override the authenticated principal.
+
+`HttpServer::select` narrows the shared surface as for stdio. Hosts default to rmcp's loopback
+allow-list; `with_allowed_hosts` replaces it (an empty list disables host filtering). Origin
+validation rejects every present Origin by default. `with_allowed_origins` permits named
+browser origins; non-browser clients without Origin remain permitted by this check.
+Host and Origin checks run before credential parsing and authentication, using rmcp's own
+authority/origin policy; rejected requests never invoke the authenticator.
+The transport requires MCP 2026-07-28 metadata and its corresponding `MCP-Protocol-Version`,
+`Mcp-Method` and, for named requests, `Mcp-Name` headers. rmcp checks routing headers against
+the body, including input properties annotated with `x-mcp-header`. GET and DELETE return 405.
+
+HTTP requests share `Bounds::in_flight` execution slots and `in_flight + waiting` outstanding
+slots across clones. Unlike stdio's operation slots, an HTTP execution slot covers the whole
+request: body reading, discovery, dispatch and reply buffering. Discovery can therefore queue
+behind long-running calls, and a slow authenticated upload occupies an execution slot.
+A full queue receives HTTP 503 with `server_busy` and not-dispatched
+evidence. Dropping a pending HTTP response future cancels the core call and releases its
+slots. rmcp enforces request body bytes while reading, without relying on Content-Length;
+oversized input receives HTTP 413. Catalogue, schema and reply budgets also apply. Oversized
+successful tool replies and resource outcomes return `result_too_large`. An existing refusal
+or tool error outcome that cannot fit produces a bounded HTTP 500 infrastructure error,
+without substituting another operation refusal. Effects are uncertain when a reply is lost.
+
+The conformance crate keeps `records/mcp-protocol.json`: the listed tools with schemas,
+annotations and metadata, resource templates, protocol versions and the server-published
+`REQUEST_META_KEYS` contract. Its comparison checks canonical pretty-printed bytes, including
+formatting and key order. `cargo xtask check` clears `CLAPHAM_WRITE_RECORDS` in every child
+Cargo command, so check mode never silently regenerates the record.
+`cargo test -p clapham-conformance --test mcp_protocol` refuses a changed wire form.
+After reviewing an intentional change, regenerate it with:
+
+```text
+CLAPHAM_WRITE_RECORDS=1 cargo test -p clapham-conformance --test mcp_protocol
+```
+
+The boundary gate permits rmcp server features only in this crate, checking defaults, direct
+features and feature forwarding on normal, development, build and target-specific dependencies.

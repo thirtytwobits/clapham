@@ -1,5 +1,10 @@
 #![doc = include_str!("../README.md")]
 
+#[cfg(feature = "http")]
+mod http;
+#[cfg(feature = "http")]
+pub use http::{Authenticator, Credential, HttpServer};
+
 mod mapping;
 mod resource;
 #[cfg(feature = "stdio")]
@@ -22,6 +27,15 @@ use sha2::{Digest, Sha256};
 /// Request metadata key selecting a dry run.
 pub const PREVIEW_META_KEY: &str = "io.github.thirtytwobits.clapham/preview";
 
+/// Published protocol, client identity and preview metadata keys used by the server.
+/// The conformance wire record takes its request-key contract from this list.
+pub const REQUEST_META_KEYS: &[&str] = &[
+    PREVIEW_META_KEY,
+    "io.modelcontextprotocol/clientCapabilities",
+    "io.modelcontextprotocol/clientInfo",
+    "io.modelcontextprotocol/protocolVersion",
+];
+
 // Space for the JSON-RPC envelope, lifecycle metadata, cursor and newline. The
 // stdio transport rechecks the exact encoded frame before writing any bytes.
 const ENVELOPE_RESERVE: usize = 1024;
@@ -35,7 +49,9 @@ pub struct Server {
     selection: Selection,
     discovery: Selection,
     principal: Principal,
-    slots: Arc<tokio::sync::Semaphore>,
+    slots: Option<Arc<tokio::sync::Semaphore>>,
+    #[cfg(feature = "http")]
+    http_failure: Option<Arc<std::sync::atomic::AtomicBool>>,
 }
 
 impl Server {
@@ -49,7 +65,9 @@ impl Server {
             selection,
             set,
             principal,
-            slots,
+            slots: Some(slots),
+            #[cfg(feature = "http")]
+            http_failure: None,
         };
         server.validate_resources()?;
         Ok(server)
@@ -74,18 +92,7 @@ impl Server {
     }
 
     fn validate_resources(&self) -> Result<(), Refusal> {
-        let mut templates = std::collections::BTreeSet::new();
-        for op in self.selection.operations() {
-            if op.resource.is_some() {
-                let template = resource::Template::parse(op)?;
-                if !templates.insert(template.shape().to_vec()) {
-                    return Err(configuration(
-                        "two operations use the same resource template shape",
-                    ));
-                }
-            }
-        }
-        Ok(())
+        validate_resources(&self.selection)
     }
 
     // Named describes avoid forcing the complete catalogue into one core result.
@@ -146,6 +153,49 @@ impl Server {
             () = context.ct.cancelled() => { cancel.cancel(); call.await },
             result = &mut call => result,
         }
+    }
+
+    async fn execution_permit(
+        &self,
+        context: &RequestContext<RoleServer>,
+    ) -> Result<Option<tokio::sync::SemaphorePermit<'_>>, ErrorData> {
+        // HTTP already holds its whole-request permit. Stdio acquires one for
+        // calls/resource reads; cancelled waiters reach core without dispatch.
+        let Some(slots) = &self.slots else {
+            return Ok(None);
+        };
+        tokio::select! {
+            biased;
+            () = context.ct.cancelled() => Ok(None),
+            permit = slots.acquire() => permit.map(Some).map_err(|_| ErrorData::internal_error("server closed", None)),
+        }
+    }
+
+    #[cfg(feature = "http")]
+    fn reject_http_reply(&self) -> ErrorData {
+        if let Some(failure) = &self.http_failure {
+            failure.store(true, std::sync::atomic::Ordering::Release);
+        }
+        ErrorData::internal_error(
+            "the encoded reply exceeds bounds.message_bytes; operation effects are uncertain",
+            None,
+        )
+    }
+
+    fn resource_reply_allowed<T: Serialize>(
+        &self,
+        value: &T,
+        budget: usize,
+        refusal: bool,
+    ) -> Result<bool, ErrorData> {
+        let fits = mapping::size(value, budget).is_some();
+        #[cfg(feature = "http")]
+        if self.http_failure.is_some() && refusal && !fits {
+            return Err(self.reject_http_reply());
+        }
+        // Stdio passes existing refusals unchanged to its bounded transport;
+        // only ordinary outcomes may be replaced with result_too_large.
+        Ok(refusal || fits)
     }
 
     fn response_budget(&self, context: &RequestContext<RoleServer>) -> usize {
@@ -285,6 +335,15 @@ impl ServerHandler for Server {
         Ok(result)
     }
 
+    fn get_tool(&self, name: &str) -> Option<Tool> {
+        // rmcp uses this descriptor only to validate HTTP routing headers; actual
+        // visibility and dispatch still go through describe and the call runner.
+        self.selection
+            .operations()
+            .find(|op| op.name.as_str() == name)
+            .and_then(|op| mapping::tool(op, self.set.bounds().schema_bytes).ok())
+    }
+
     async fn call_tool(
         &self,
         request: CallToolRequestParams,
@@ -300,13 +359,7 @@ impl ServerHandler for Server {
                 ));
             }
         };
-        // A cancelled waiter may skip its permit: invoke forwards cancellation,
-        // and core returns before admission or dispatch.
-        let permit = tokio::select! {
-            biased;
-            () = context.ct.cancelled() => None,
-            permit = self.slots.acquire() => Some(permit.map_err(|_| ErrorData::internal_error("server closed", None))?),
-        };
+        let permit = self.execution_permit(&context).await?;
         let outcome = self
             .invoke(
                 &request.name,
@@ -319,6 +372,22 @@ impl ServerHandler for Server {
         let result = match outcome {
             Ok(outcome) => mapping::outcome(outcome),
             Err(refusal) => mapping::refusal(refusal),
+        };
+        #[cfg(feature = "http")]
+        let result = if self.http_failure.is_some()
+            && mapping::size(&result, self.response_budget(&context)).is_none()
+        {
+            if result.is_error == Some(true) {
+                return Err(self.reject_http_reply());
+            }
+            let replacement = mapping::refusal(mapping::too_large());
+            // Long request IDs can leave too little space even for a refusal.
+            if mapping::size(&replacement, self.response_budget(&context)).is_none() {
+                return Err(self.reject_http_reply());
+            }
+            replacement
+        } else {
+            result
         };
         Ok(result.into())
     }
@@ -406,12 +475,7 @@ impl ServerHandler for Server {
         }
         let (name, input) =
             matched.ok_or_else(|| ErrorData::resource_not_found("resource not found", None))?;
-        // Core refuses a cancelled waiter before dispatch, without a permit.
-        let _permit = tokio::select! {
-            biased;
-            () = context.ct.cancelled() => None,
-            permit = self.slots.acquire() => Some(permit.map_err(|_| ErrorData::internal_error("server closed", None))?),
-        };
+        let _permit = self.execution_permit(&context).await?;
         let outcome = self
             .invoke(&name, Value::Object(input), false, &context)
             .await;
@@ -433,9 +497,9 @@ impl ServerHandler for Server {
             ),
         };
         let budget = self.response_budget(&context);
-        if refusal || mapping::size(&value, budget).is_some() {
+        if self.resource_reply_allowed(&value, budget, refusal)? {
             let result = resource_result(value, &request.uri);
-            if refusal || mapping::size(&result, budget).is_some() {
+            if self.resource_reply_allowed(&result, budget, refusal)? {
                 return Ok(result.into());
             }
         }
@@ -464,4 +528,19 @@ fn resource_result(value: Value, uri: &str) -> ReadResourceResult {
     ])
     .with_ttl_ms(0)
     .with_cache_scope(CacheScope::Private)
+}
+
+fn validate_resources(selection: &Selection) -> Result<(), Refusal> {
+    let mut templates = std::collections::BTreeSet::new();
+    for op in selection.operations() {
+        if op.resource.is_some() {
+            let template = resource::Template::parse(op)?;
+            if !templates.insert(template.shape().to_vec()) {
+                return Err(configuration(
+                    "two operations use the same resource template shape",
+                ));
+            }
+        }
+    }
+    Ok(())
 }

@@ -43,7 +43,11 @@ fn dispatch() -> Result<()> {
 
 fn cargo(root: &Path, args: &[&str]) -> Command {
     let mut command = Command::new("cargo");
-    command.current_dir(root).args(args);
+    // Gates must never inherit the wire test's explicit record-writing mode.
+    command
+        .current_dir(root)
+        .args(args)
+        .env_remove("CLAPHAM_WRITE_RECORDS");
     command
 }
 
