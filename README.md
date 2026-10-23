@@ -91,7 +91,9 @@ with published operation, refusal and catalogue schemas. Every set includes `cla
 for the caller's admitted catalogue and `clapham.version` for library and application identity.
 Calls enforce selection, admission, preview support, locality and the declared refusal contract.
 The neutral lists-and-items contribution exercises the core call contract with scripted
-concurrency. The front ends, their conformance harness and the lists example remain stubs.
+concurrency. The CLI builds its command tree, help and input binding from those descriptors,
+and runs calls in-process. CLI output and safeguards, the MCP adapters, the remaining
+conformance harness and the lists example follow in their implementation issues.
 [thirtytwobits/london#2](https://github.com/thirtytwobits/london/issues/2) holds the design
 and the plan for the first release. See [CONTRIBUTING.md](CONTRIBUTING.md) for the gate commands
 and [the workspace guide](docs/README.md) for the crate boundaries.

@@ -23,4 +23,7 @@ a revision. Export retains its initial snapshot while a sink acknowledgement is 
 
 `cargo test --locked -p clapham-conformance` runs these checks. They are also part of
 `cargo xtask check` on both CI platforms and the Rust 1.88 minimum-version lane.
-The front-end conformance harness follows when those adapters are implemented.
+The CLI tests drive the generated command tree in-process: positional reads,
+object flags, whole-object JSON from arguments and stdin, descriptor help,
+principal overrides, admission and validation before dispatch. The remaining
+front-end conformance harness follows when those adapters are implemented.
