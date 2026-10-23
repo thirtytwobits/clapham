@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -52,13 +52,29 @@ struct Package {
     name: String,
     manifest_path: PathBuf,
     dependencies: Vec<Dependency>,
+    #[serde(default)]
+    features: BTreeMap<String, Vec<String>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Default, Deserialize)]
 struct Dependency {
     // Cargo reports the package name here, even when the dependency is renamed.
     name: String,
+    #[serde(default)]
+    features: Vec<String>,
+    #[serde(default)]
+    uses_default_features: bool,
+    rename: Option<String>,
 }
+
+// These enable rmcp server code, either directly or through a workspace feature.
+const RMCP_SERVER_FEATURES: &[&str] = &[
+    "default",
+    "server",
+    "server-side-http",
+    "transport-streamable-http-server",
+    "transport-streamable-http-server-session",
+];
 
 pub(crate) fn check(root: &Path) -> Result<()> {
     let metadata = capture(&mut cargo(
@@ -123,6 +139,27 @@ fn validate(metadata: &Metadata) -> std::result::Result<(), Vec<String>> {
             ));
         }
         for dependency in &package.dependencies {
+            if dependency.name == "rmcp" && package.name != "clapham-mcp-server" {
+                let alias = dependency.rename.as_deref().unwrap_or(&dependency.name);
+                let forwarded = package.features.values().flatten().any(|feature| {
+                    feature.split_once('/').is_some_and(|(name, feature)| {
+                        name.trim_end_matches('?') == alias
+                            && RMCP_SERVER_FEATURES.contains(&feature)
+                    })
+                });
+                if dependency.uses_default_features
+                    || dependency
+                        .features
+                        .iter()
+                        .any(|feature| RMCP_SERVER_FEATURES.contains(&feature.as_str()))
+                    || forwarded
+                {
+                    errors.push(format!(
+                        "{}: rmcp server features belong to clapham-mcp-server alone",
+                        package.name
+                    ));
+                }
+            }
             if ["battersea-", "clerkenwell-", "walthamstow-"]
                 .iter()
                 .any(|prefix| dependency.name.starts_with(prefix))
@@ -256,8 +293,10 @@ mod tests {
                         .iter()
                         .map(|name| Dependency {
                             name: (*name).to_owned(),
+                            ..Dependency::default()
                         })
                         .collect(),
+                    features: BTreeMap::new(),
                 })
                 .collect(),
         }
@@ -268,6 +307,7 @@ mod tests {
         let mut metadata = policy_metadata();
         metadata.packages[0].dependencies.push(Dependency {
             name: "serde".into(),
+            ..Dependency::default()
         });
         assert!(validate(&metadata).is_ok());
     }
@@ -288,6 +328,7 @@ mod tests {
                     .dependencies
                     .push(Dependency {
                         name: (*dependency).to_owned(),
+                        ..Dependency::default()
                     });
                 assert!(
                     validate(&metadata).is_err(),
@@ -306,5 +347,73 @@ mod tests {
         metadata.packages[0].manifest_path =
             metadata.workspace_root.join("tools/clapham/Cargo.toml");
         assert!(validate(&metadata).unwrap_err()[0].contains("expected its manifest"));
+    }
+    #[test]
+    fn rmcp_server_features_belong_only_to_the_server_member() {
+        for feature in RMCP_SERVER_FEATURES {
+            for (name, _, _) in POLICIES {
+                let mut metadata = policy_metadata();
+                metadata
+                    .packages
+                    .iter_mut()
+                    .find(|package| package.name == *name)
+                    .unwrap()
+                    .dependencies
+                    .push(Dependency {
+                        name: "rmcp".into(),
+                        features: vec![(*feature).into()],
+                        ..Dependency::default()
+                    });
+                assert_eq!(
+                    validate(&metadata).is_ok(),
+                    *name == "clapham-mcp-server",
+                    "{name}: {feature}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn rmcp_server_features_cannot_hide_in_aliases_targets_or_feature_forwarding() {
+        for section in [
+            "dependencies",
+            "dev-dependencies",
+            "build-dependencies",
+            "target.'cfg(windows)'.dependencies",
+        ] {
+            for (dependency, feature) in [
+                ("default-features = false, features = [\"server\"]", ""),
+                ("", ""),
+                (
+                    "default-features = false",
+                    "expose = [\"wire/server-side-http\"]",
+                ),
+            ] {
+                let fixture = Fixture::new();
+                fs::write(fixture.0.join("Cargo.toml"), "[workspace]\nmembers = [\"crates/clapham-mcp-client\"]\nexclude = [\"external\"]\nresolver = \"3\"\n").unwrap();
+                fixture.crate_at("external", "[package]\nname = \"rmcp\"\nversion = \"3.6.0\"\n[features]\ndefault = [\"server\"]\nserver = []\nserver-side-http = []\n");
+                fixture.crate_at("crates/clapham-mcp-client", &format!("[package]\nname = \"clapham-mcp-client\"\nversion = \"0.1.0\"\n[{section}]\nwire = {{ package = \"rmcp\", path = \"../../external\", {dependency} }}\n[features]\n{feature}\n"));
+                let errors = validate(&fixture.metadata()).unwrap_err().join("\n");
+                assert!(
+                    errors.contains("rmcp server features belong to clapham-mcp-server alone"),
+                    "{errors}"
+                );
+            }
+        }
+        let mut metadata = policy_metadata();
+        let client = metadata
+            .packages
+            .iter_mut()
+            .find(|package| package.name == "clapham-mcp-client")
+            .unwrap();
+        client.dependencies.push(Dependency {
+            name: "rmcp".into(),
+            rename: Some("wire".into()),
+            ..Dependency::default()
+        });
+        client
+            .features
+            .insert("optional".into(), vec!["wire?/server".into()]);
+        assert!(validate(&metadata).is_err());
     }
 }

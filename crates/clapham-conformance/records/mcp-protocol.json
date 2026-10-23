@@ -1,0 +1,1113 @@
+{
+  "protocolVersions": [
+    "2026-07-28"
+  ],
+  "requestMetaKeys": [
+    "io.github.thirtytwobits.clapham/preview",
+    "io.modelcontextprotocol/clientCapabilities",
+    "io.modelcontextprotocol/clientInfo",
+    "io.modelcontextprotocol/protocolVersion"
+  ],
+  "resourceTemplates": [
+    {
+      "description": "Read one list, including its revision and items.",
+      "mimeType": "application/json",
+      "name": "lists.get",
+      "uriTemplate": "lists://{id}"
+    },
+    {
+      "description": "List all lists in identity order.",
+      "mimeType": "application/json",
+      "name": "lists.list",
+      "uriTemplate": "lists://"
+    }
+  ],
+  "tools": [
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Describe the selected operations admitted to this caller, or one by name.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "clapham.describe",
+      "outputSchema": {
+        "$defs": {
+          "Category": {
+            "description": "The fixed categories front ends act on when an operation refuses a call.",
+            "oneOf": [
+              {
+                "const": "usage",
+                "description": "The invocation was wrong.",
+                "type": "string"
+              },
+              {
+                "const": "invalid_input",
+                "description": "The input failed its schema or the operation's checks.",
+                "type": "string"
+              },
+              {
+                "const": "not_found",
+                "description": "What the input names is absent.",
+                "type": "string"
+              },
+              {
+                "const": "conflict",
+                "description": "A fence or state conflict prevents the change.",
+                "type": "string"
+              },
+              {
+                "const": "refused",
+                "description": "A gate, policy or approval said no.",
+                "type": "string"
+              },
+              {
+                "const": "unavailable",
+                "description": "A required workspace, daemon or remote is unavailable.",
+                "type": "string"
+              },
+              {
+                "const": "interrupted",
+                "description": "The call was cancelled, timed out or stopped by shutdown.",
+                "type": "string"
+              },
+              {
+                "const": "configuration",
+                "description": "The host's configuration is wrong.",
+                "type": "string"
+              },
+              {
+                "const": "internal",
+                "description": "A fault, including an undeclared refusal code.",
+                "type": "string"
+              }
+            ]
+          },
+          "Effect": {
+            "description": "What an operation does to its environment, declared independently of transport.",
+            "oneOf": [
+              {
+                "const": "query",
+                "description": "Reads without changing state.",
+                "type": "string"
+              },
+              {
+                "const": "mutation",
+                "description": "Changes state within the operation's domain.",
+                "type": "string"
+              },
+              {
+                "const": "administrative",
+                "description": "Changes the host's own administrative state.",
+                "type": "string"
+              },
+              {
+                "const": "destructive",
+                "description": "May destroy or overwrite state.",
+                "type": "string"
+              }
+            ]
+          },
+          "Locality": {
+            "description": "Where an operation runs.",
+            "oneOf": [
+              {
+                "const": "workspace",
+                "description": "Runs against the workspace under its lock.",
+                "type": "string"
+              },
+              {
+                "const": "daemon",
+                "description": "Needs the running daemon.",
+                "type": "string"
+              }
+            ]
+          },
+          "Operation": {
+            "additionalProperties": false,
+            "description": "An operation's language-neutral descriptor.\n\nOmitting `principals` admits the effect's default kinds. An explicit empty list\nadmits no kinds. The remaining MCP hints, `idempotent` and `open_world`, are\nrequired rather than silently defaulted. Composition compiles the schemas and\nchecks the descriptor's cross-field semantics before calls can run.",
+            "properties": {
+              "description": {
+                "description": "What the operation does; this field is required.",
+                "type": "string"
+              },
+              "effect": {
+                "$ref": "#/$defs/Effect",
+                "description": "What the operation does to its environment."
+              },
+              "idempotent": {
+                "description": "The declared MCP idempotency hint; queries always map to true.",
+                "type": "boolean"
+              },
+              "input": {
+                "additionalProperties": true,
+                "description": "The input JSON Schema, explicitly declaring `type: object` at its root.",
+                "properties": {
+                  "type": {
+                    "const": "object"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "type": "object"
+              },
+              "locality": {
+                "$ref": "#/$defs/Locality",
+                "description": "Where the operation runs."
+              },
+              "name": {
+                "$ref": "#/$defs/OperationName",
+                "description": "The operation's identity, split into namespace and local name at the first dot."
+              },
+              "open_world": {
+                "description": "The declared MCP open-world hint.",
+                "type": "boolean"
+              },
+              "output": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Schema"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The result JSON Schema, where supplied; object and boolean schemas are admitted."
+              },
+              "positional": {
+                "default": [],
+                "description": "Input properties taken as positional command-line arguments, in order.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "preview": {
+                "default": false,
+                "description": "Whether the operation accepts a dry run.",
+                "type": "boolean"
+              },
+              "principals": {
+                "description": "The kinds admitted; when omitted, defaults from `effect`.",
+                "items": {
+                  "$ref": "#/$defs/PrincipalKind"
+                },
+                "type": "array"
+              },
+              "refusals": {
+                "additionalProperties": {
+                  "$ref": "#/$defs/Category"
+                },
+                "default": {},
+                "description": "Each declared refusal code and the category front ends act on.",
+                "type": "object"
+              },
+              "resource": {
+                "description": "A query's resource URI template, where supplied.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "streams": {
+                "default": false,
+                "description": "Whether typed records precede the result.",
+                "type": "boolean"
+              },
+              "title": {
+                "description": "The name people read, where supplied.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "description",
+              "input",
+              "effect",
+              "locality",
+              "idempotent",
+              "open_world"
+            ],
+            "type": "object"
+          },
+          "OperationName": {
+            "maxLength": 128,
+            "minLength": 1,
+            "not": {
+              "pattern": "[^A-Za-z0-9_.-]"
+            },
+            "pattern": "^[A-Za-z0-9_.-]+$",
+            "type": "string"
+          },
+          "PrincipalKind": {
+            "description": "The kind of caller running an operation.",
+            "oneOf": [
+              {
+                "const": "human",
+                "description": "A person using the host.",
+                "type": "string"
+              },
+              {
+                "const": "agent",
+                "description": "An agent acting under the host's authority.",
+                "type": "string"
+              },
+              {
+                "const": "service",
+                "description": "A service authenticated by the host.",
+                "type": "string"
+              },
+              {
+                "const": "system",
+                "description": "The host acting for itself.",
+                "type": "string"
+              }
+            ]
+          },
+          "Schema": {
+            "type": [
+              "object",
+              "boolean"
+            ]
+          }
+        },
+        "$id": "https://raw.githubusercontent.com/thirtytwobits/clapham/main/crates/clapham/schemas/catalogue.schema.json",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "anyOf": [
+          {
+            "description": "Every admitted descriptor in the caller's selection, in name order.",
+            "items": {
+              "$ref": "#/$defs/Operation"
+            },
+            "type": "array"
+          },
+          {
+            "$ref": "#/$defs/Operation",
+            "description": "The admitted descriptor requested by name."
+          }
+        ],
+        "description": "The catalogue returned by `clapham.describe`.\n\nListing returns an array of descriptors. A named lookup returns one descriptor.",
+        "title": "Catalogue"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Read the library version and the application's recorded name and version.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "clapham.version",
+      "outputSchema": {
+        "$defs": {
+          "ApplicationInfo": {
+            "additionalProperties": false,
+            "description": "The host application's identity, recorded at composition without rewriting it.",
+            "properties": {
+              "name": {
+                "description": "The application's name.",
+                "type": "string"
+              },
+              "version": {
+                "description": "The application's version.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "version"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "description": "The result of `clapham.version`.",
+        "properties": {
+          "application": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ApplicationInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The application's identity, where supplied at composition."
+          },
+          "clapham": {
+            "description": "The core library's package version.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "clapham"
+        ],
+        "title": "VersionInfo",
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Add an unticked item to a list.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "item": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "text"
+            ],
+            "type": "object"
+          },
+          "list_id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id",
+          "item"
+        ],
+        "type": "object"
+      },
+      "name": "items.add",
+      "outputSchema": {
+        "$defs": {
+          "Item": {
+            "additionalProperties": false,
+            "description": "One list item, in insertion order within its list.",
+            "properties": {
+              "id": {
+                "description": "The item's identity within its list.",
+                "type": "string"
+              },
+              "text": {
+                "description": "The item's text, which may be empty.",
+                "type": "string"
+              },
+              "ticked": {
+                "description": "Whether the item has been ticked.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "text",
+              "ticked"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "description": "A complete list snapshot. Revisions increase across all committed fixture changes.",
+        "properties": {
+          "id": {
+            "description": "The list's identity.",
+            "type": "string"
+          },
+          "items": {
+            "description": "Items in insertion order.",
+            "items": {
+              "$ref": "#/$defs/Item"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "The list's name.",
+            "type": "string"
+          },
+          "revision": {
+            "description": "The revision used to fence a rename, including across deletion and recreation.",
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "revision",
+          "items"
+        ],
+        "title": "List",
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Mark an item as ticked; ticking it again leaves the revision unchanged.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "list_id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "list_id",
+          "id"
+        ],
+        "type": "object"
+      },
+      "name": "items.tick",
+      "outputSchema": {
+        "$defs": {
+          "Item": {
+            "additionalProperties": false,
+            "description": "One list item, in insertion order within its list.",
+            "properties": {
+              "id": {
+                "description": "The item's identity within its list.",
+                "type": "string"
+              },
+              "text": {
+                "description": "The item's text, which may be empty.",
+                "type": "string"
+              },
+              "ticked": {
+                "description": "Whether the item has been ticked.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "text",
+              "ticked"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "description": "A complete list snapshot. Revisions increase across all committed fixture changes.",
+        "properties": {
+          "id": {
+            "description": "The list's identity.",
+            "type": "string"
+          },
+          "items": {
+            "description": "Items in insertion order.",
+            "items": {
+              "$ref": "#/$defs/Item"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "The list's name.",
+            "type": "string"
+          },
+          "revision": {
+            "description": "The revision used to fence a rename, including across deletion and recreation.",
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "revision",
+          "items"
+        ],
+        "title": "List",
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "io.github.thirtytwobits.clapham/effect": "administrative"
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Remove ticked items from every list and return how many were removed.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "lists.compact",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "removed": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "removed"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Create a list, or preview its result without creating it.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "list": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "type": "object"
+          }
+        },
+        "required": [
+          "list"
+        ],
+        "type": "object"
+      },
+      "name": "lists.create",
+      "outputSchema": {
+        "$defs": {
+          "Item": {
+            "additionalProperties": false,
+            "description": "One list item, in insertion order within its list.",
+            "properties": {
+              "id": {
+                "description": "The item's identity within its list.",
+                "type": "string"
+              },
+              "text": {
+                "description": "The item's text, which may be empty.",
+                "type": "string"
+              },
+              "ticked": {
+                "description": "Whether the item has been ticked.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "text",
+              "ticked"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "description": "A complete list snapshot. Revisions increase across all committed fixture changes.",
+        "properties": {
+          "id": {
+            "description": "The list's identity.",
+            "type": "string"
+          },
+          "items": {
+            "description": "Items in insertion order.",
+            "items": {
+              "$ref": "#/$defs/Item"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "The list's name.",
+            "type": "string"
+          },
+          "revision": {
+            "description": "The revision used to fence a rename, including across deletion and recreation.",
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "revision",
+          "items"
+        ],
+        "title": "List",
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Delete a list and return its final snapshot with the deletion revision.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "name": "lists.delete",
+      "outputSchema": {
+        "$defs": {
+          "Item": {
+            "additionalProperties": false,
+            "description": "One list item, in insertion order within its list.",
+            "properties": {
+              "id": {
+                "description": "The item's identity within its list.",
+                "type": "string"
+              },
+              "text": {
+                "description": "The item's text, which may be empty.",
+                "type": "string"
+              },
+              "ticked": {
+                "description": "Whether the item has been ticked.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "text",
+              "ticked"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "description": "A complete list snapshot. Revisions increase across all committed fixture changes.",
+        "properties": {
+          "id": {
+            "description": "The list's identity.",
+            "type": "string"
+          },
+          "items": {
+            "description": "Items in insertion order.",
+            "items": {
+              "$ref": "#/$defs/Item"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "The list's name.",
+            "type": "string"
+          },
+          "revision": {
+            "description": "The revision used to fence a rename, including across deletion and recreation.",
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "revision",
+          "items"
+        ],
+        "title": "List",
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Stream a snapshot of a list's items in insertion order, then return their count.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "name": "lists.export",
+      "outputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Return an intentionally undeclared refusal without changing state.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "lists.fault"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Read one list, including its revision and items.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "name": "lists.get",
+      "outputSchema": {
+        "$defs": {
+          "Item": {
+            "additionalProperties": false,
+            "description": "One list item, in insertion order within its list.",
+            "properties": {
+              "id": {
+                "description": "The item's identity within its list.",
+                "type": "string"
+              },
+              "text": {
+                "description": "The item's text, which may be empty.",
+                "type": "string"
+              },
+              "ticked": {
+                "description": "Whether the item has been ticked.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "text",
+              "ticked"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "description": "A complete list snapshot. Revisions increase across all committed fixture changes.",
+        "properties": {
+          "id": {
+            "description": "The list's identity.",
+            "type": "string"
+          },
+          "items": {
+            "description": "Items in insertion order.",
+            "items": {
+              "$ref": "#/$defs/Item"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "The list's name.",
+            "type": "string"
+          },
+          "revision": {
+            "description": "The revision used to fence a rename, including across deletion and recreation.",
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "revision",
+          "items"
+        ],
+        "title": "List",
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "List all lists in identity order.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "lists.list",
+      "outputSchema": {
+        "$defs": {
+          "Item": {
+            "additionalProperties": false,
+            "description": "One list item, in insertion order within its list.",
+            "properties": {
+              "id": {
+                "description": "The item's identity within its list.",
+                "type": "string"
+              },
+              "text": {
+                "description": "The item's text, which may be empty.",
+                "type": "string"
+              },
+              "ticked": {
+                "description": "Whether the item has been ticked.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "text",
+              "ticked"
+            ],
+            "type": "object"
+          },
+          "List": {
+            "additionalProperties": false,
+            "description": "A complete list snapshot. Revisions increase across all committed fixture changes.",
+            "properties": {
+              "id": {
+                "description": "The list's identity.",
+                "type": "string"
+              },
+              "items": {
+                "description": "Items in insertion order.",
+                "items": {
+                  "$ref": "#/$defs/Item"
+                },
+                "type": "array"
+              },
+              "name": {
+                "description": "The list's name.",
+                "type": "string"
+              },
+              "revision": {
+                "description": "The revision used to fence a rename, including across deletion and recreation.",
+                "format": "uint64",
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "revision",
+              "items"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "items": {
+          "$ref": "#/$defs/List"
+        },
+        "title": "Array_of_List",
+        "type": "array"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Rename a list only if its current revision matches the supplied fence.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "revision": {
+            "maximum": 18446744073709551615,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "revision"
+        ],
+        "type": "object"
+      },
+      "name": "lists.rename",
+      "outputSchema": {
+        "$defs": {
+          "Item": {
+            "additionalProperties": false,
+            "description": "One list item, in insertion order within its list.",
+            "properties": {
+              "id": {
+                "description": "The item's identity within its list.",
+                "type": "string"
+              },
+              "text": {
+                "description": "The item's text, which may be empty.",
+                "type": "string"
+              },
+              "ticked": {
+                "description": "Whether the item has been ticked.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "text",
+              "ticked"
+            ],
+            "type": "object"
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false,
+        "description": "A complete list snapshot. Revisions increase across all committed fixture changes.",
+        "properties": {
+          "id": {
+            "description": "The list's identity.",
+            "type": "string"
+          },
+          "items": {
+            "description": "Items in insertion order.",
+            "items": {
+              "$ref": "#/$defs/Item"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "The list's name.",
+            "type": "string"
+          },
+          "revision": {
+            "description": "The revision used to fence a rename, including across deletion and recreation.",
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "revision",
+          "items"
+        ],
+        "title": "List",
+        "type": "object"
+      }
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Watch future changes to a list identity until cancelled, including deletion and recreation.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "name": "lists.watch"
+    }
+  ]
+}

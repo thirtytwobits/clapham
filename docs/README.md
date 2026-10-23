@@ -18,8 +18,10 @@ Generated schemas are in `crates/clapham/schemas/`.
 The [lists-and-items contribution](conformance.md) supplies shared in-memory state,
 scripted holds and an example gate. The [CLI command tree](cli.md) supplies descriptor-derived
 help, schema-based input binding, in-process calls, process output and safeguards.
-The [MCP stdio server](../crates/clapham-mcp-server/README.md) exposes selected tools and resources with principal-bound discovery, previews and unchanged refusals. Streamable HTTP,
-the MCP client and the example follow in their implementation issues.
+The [MCP server](../crates/clapham-mcp-server/README.md) exposes selected tools and resources
+over stdio and stateless Streamable HTTP, with principal-bound discovery, previews,
+unchanged refusals and per-request authentication. Its conformance tests check the generated
+MCP wire record. The MCP client and the example follow in their implementation issues.
 Each library has a generated public API snapshot in `api/`.
 
 `cargo xtask schemas` generates the operation, refusal, catalogue and CLI envelope schemas.

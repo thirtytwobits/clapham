@@ -35,3 +35,10 @@ The MCP tests drive a real child process over stdin/stdout and deterministic dup
 They cover effect annotations, principal filtering, unchanged refusals, preview isolation,
 resource binding, finite-stream draining, held-call cancellation, selection, pagination and
 encoded message limits. No elapsed-time checks are used.
+
+The stateless HTTP harness uses scripted credentials, reuses one service across human and
+agent requests, and holds explicit futures to check concurrent identity, cancellation and
+queue bounds. Unmapped credentials are rejected before body consumption or gate admission.
+`crates/clapham-conformance/records/mcp-protocol.json` records the lists wire surface;
+`cargo test -p clapham-conformance --test mcp_protocol` refuses stale output. To write an
+intentional update, run that test with `CLAPHAM_WRITE_RECORDS=1` and review the generated diff.

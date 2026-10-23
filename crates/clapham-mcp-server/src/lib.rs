@@ -1,5 +1,10 @@
 #![doc = include_str!("../README.md")]
 
+#[cfg(feature = "http")]
+mod http;
+#[cfg(feature = "http")]
+pub use http::{Authenticator, Credential, HttpServer};
+
 mod mapping;
 mod resource;
 #[cfg(feature = "stdio")]
@@ -36,6 +41,8 @@ pub struct Server {
     discovery: Selection,
     principal: Principal,
     slots: Arc<tokio::sync::Semaphore>,
+    #[cfg(feature = "http")]
+    http_failure: Option<Arc<std::sync::atomic::AtomicBool>>,
 }
 
 impl Server {
@@ -50,6 +57,8 @@ impl Server {
             set,
             principal,
             slots,
+            #[cfg(feature = "http")]
+            http_failure: None,
         };
         server.validate_resources()?;
         Ok(server)
@@ -74,18 +83,7 @@ impl Server {
     }
 
     fn validate_resources(&self) -> Result<(), Refusal> {
-        let mut templates = std::collections::BTreeSet::new();
-        for op in self.selection.operations() {
-            if op.resource.is_some() {
-                let template = resource::Template::parse(op)?;
-                if !templates.insert(template.shape().to_vec()) {
-                    return Err(configuration(
-                        "two operations use the same resource template shape",
-                    ));
-                }
-            }
-        }
-        Ok(())
+        validate_resources(&self.selection)
     }
 
     // Named describes avoid forcing the complete catalogue into one core result.
@@ -146,6 +144,17 @@ impl Server {
             () = context.ct.cancelled() => { cancel.cancel(); call.await },
             result = &mut call => result,
         }
+    }
+
+    #[cfg(feature = "http")]
+    fn reject_http_reply(&self) -> ErrorData {
+        if let Some(failure) = &self.http_failure {
+            failure.store(true, std::sync::atomic::Ordering::Release);
+        }
+        ErrorData::internal_error(
+            "the encoded reply exceeds bounds.message_bytes; operation effects are uncertain",
+            None,
+        )
     }
 
     fn response_budget(&self, context: &RequestContext<RoleServer>) -> usize {
@@ -285,6 +294,15 @@ impl ServerHandler for Server {
         Ok(result)
     }
 
+    fn get_tool(&self, name: &str) -> Option<Tool> {
+        // rmcp uses this descriptor only to validate HTTP routing headers; actual
+        // visibility and dispatch still go through describe and the call runner.
+        self.selection
+            .operations()
+            .find(|op| op.name.as_str() == name)
+            .and_then(|op| mapping::tool(op, self.set.bounds().schema_bytes).ok())
+    }
+
     async fn call_tool(
         &self,
         request: CallToolRequestParams,
@@ -319,6 +337,17 @@ impl ServerHandler for Server {
         let result = match outcome {
             Ok(outcome) => mapping::outcome(outcome),
             Err(refusal) => mapping::refusal(refusal),
+        };
+        #[cfg(feature = "http")]
+        let result = if self.http_failure.is_some()
+            && mapping::size(&result, self.response_budget(&context)).is_none()
+        {
+            if result.is_error == Some(true) {
+                return Err(self.reject_http_reply());
+            }
+            mapping::refusal(mapping::too_large())
+        } else {
+            result
         };
         Ok(result.into())
     }
@@ -433,8 +462,16 @@ impl ServerHandler for Server {
             ),
         };
         let budget = self.response_budget(&context);
+        #[cfg(feature = "http")]
+        if self.http_failure.is_some() && refusal && mapping::size(&value, budget).is_none() {
+            return Err(self.reject_http_reply());
+        }
         if refusal || mapping::size(&value, budget).is_some() {
             let result = resource_result(value, &request.uri);
+            #[cfg(feature = "http")]
+            if self.http_failure.is_some() && refusal && mapping::size(&result, budget).is_none() {
+                return Err(self.reject_http_reply());
+            }
             if refusal || mapping::size(&result, budget).is_some() {
                 return Ok(result.into());
             }
@@ -464,4 +501,19 @@ fn resource_result(value: Value, uri: &str) -> ReadResourceResult {
     ])
     .with_ttl_ms(0)
     .with_cache_scope(CacheScope::Private)
+}
+
+fn validate_resources(selection: &Selection) -> Result<(), Refusal> {
+    let mut templates = std::collections::BTreeSet::new();
+    for op in selection.operations() {
+        if op.resource.is_some() {
+            let template = resource::Template::parse(op)?;
+            if !templates.insert(template.shape().to_vec()) {
+                return Err(configuration(
+                    "two operations use the same resource template shape",
+                ));
+            }
+        }
+    }
+    Ok(())
 }
