@@ -2,7 +2,8 @@ use std::io::{self, Write};
 use std::sync::Arc;
 
 use clapham::{
-    ContentBlock as CoreContent, Operation, Outcome, Refusal, ResourceContents as CoreResource,
+    Category, ContentBlock as CoreContent, Evidence, Operation, Outcome, Refusal,
+    ResourceContents as CoreResource,
 };
 use rmcp::{ErrorData, model::*};
 use serde::Serialize;
@@ -135,4 +136,13 @@ pub(crate) fn size<T: Serialize + ?Sized>(value: &T, limit: usize) -> Option<usi
     let mut counter = Counter { size: 0, limit };
     serde_json::to_writer(&mut counter, value).ok()?;
     Some(counter.size)
+}
+
+pub(crate) fn too_large() -> Refusal {
+    Refusal::new(
+        "result_too_large",
+        Category::Usage,
+        "the encoded result exceeds bounds.message_bytes",
+    )
+    .with_evidence(Evidence::Uncertain)
 }

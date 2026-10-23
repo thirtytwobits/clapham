@@ -22,6 +22,10 @@ use sha2::{Digest, Sha256};
 /// Request metadata key selecting a dry run.
 pub const PREVIEW_META_KEY: &str = "io.github.thirtytwobits.clapham/preview";
 
+// Space for the JSON-RPC envelope, lifecycle metadata, cursor and newline. The
+// stdio transport rechecks the exact encoded frame before writing any bytes.
+const ENVELOPE_RESERVE: usize = 1024;
+
 /// MCP 2026-07-28 over a selection, bound to one application-supplied principal.
 ///
 /// Clones share admission and execution state. Identity never comes from MCP input.
@@ -36,7 +40,7 @@ pub struct Server {
 
 impl Server {
     /// Expose all operations. Resource templates must use simple string variables
-    /// (`lists://{id}`); unsupported or ambiguous templates refuse configuration.
+    /// (`lists://{id}`); unsupported forms and duplicate template shapes refuse configuration.
     pub fn new(set: ComposedSet, principal: Principal) -> Result<Self, Refusal> {
         let selection = set.all();
         let slots = Arc::new(tokio::sync::Semaphore::new(set.bounds().in_flight));
@@ -72,11 +76,11 @@ impl Server {
     fn validate_resources(&self) -> Result<(), Refusal> {
         let mut templates = std::collections::BTreeSet::new();
         for op in self.selection.operations() {
-            if let Some(uri) = &op.resource {
-                resource::Template::parse(op)?;
-                if !templates.insert(uri) {
+            if op.resource.is_some() {
+                let template = resource::Template::parse(op)?;
+                if !templates.insert(template.shape().to_vec()) {
                     return Err(configuration(
-                        "two operations use the same resource template",
+                        "two operations use the same resource template shape",
                     ));
                 }
             }
@@ -86,9 +90,12 @@ impl Server {
 
     // Named describes avoid forcing the complete catalogue into one core result.
     // The same gate filters discovery and dispatch, including custom admission policy.
-    async fn catalogue(&self) -> Result<Vec<Operation>, ErrorData> {
+    async fn catalogue(
+        &self,
+        include: fn(&Operation) -> bool,
+    ) -> Result<Vec<Operation>, ErrorData> {
         let mut operations = Vec::new();
-        for op in self.selection.operations() {
+        for op in self.selection.operations().filter(|op| include(op)) {
             let result = self
                 .set
                 .call(
@@ -141,6 +148,12 @@ impl Server {
         }
     }
 
+    fn response_budget(&self, context: &RequestContext<RoleServer>) -> usize {
+        let limit = self.set.bounds().message_bytes;
+        let id_size = mapping::size(&context.id, limit).unwrap_or(limit);
+        limit.saturating_sub(ENVELOPE_RESERVE + id_size)
+    }
+
     fn page<T: Serialize + Clone>(
         &self,
         kind: &str,
@@ -149,6 +162,8 @@ impl Server {
         context: &RequestContext<RoleServer>,
     ) -> Result<(Vec<T>, Option<String>), ErrorData> {
         let bounds = self.set.bounds();
+        // Resources and templates are subsets of operations, so the same count
+        // limit also bounds their lists.
         if items.len() > bounds.tools || mapping::size(items, bounds.catalogue_bytes).is_none() {
             return Err(ErrorData::internal_error(
                 "catalogue exceeds connection bounds",
@@ -184,11 +199,7 @@ impl Server {
                 (start, page)
             }
         };
-        // Reserve the envelope, lifecycle metadata and cursor; account separately
-        // for an arbitrary request ID. The transport checks the final frame too.
-        let id_size =
-            mapping::size(&context.id, bounds.message_bytes).unwrap_or(bounds.message_bytes);
-        let budget = bounds.message_bytes.saturating_sub(1024 + id_size);
+        let budget = self.response_budget(context);
         let mut result = Vec::new();
         let mut used = 2;
         let mut end = start;
@@ -241,7 +252,7 @@ impl ServerHandler for Server {
     }
 
     async fn discover(&self, _: RequestContext<RoleServer>) -> Result<DiscoverResult, ErrorData> {
-        let operations = self.catalogue().await?;
+        let operations = self.catalogue(|_| true).await?;
         let mut capabilities = ServerCapabilities::default();
         if !operations.is_empty() {
             capabilities.tools = self.get_info().capabilities.tools;
@@ -261,7 +272,7 @@ impl ServerHandler for Server {
         context: RequestContext<RoleServer>,
     ) -> Result<ListToolsResult, ErrorData> {
         let tools = self
-            .catalogue()
+            .catalogue(|_| true)
             .await?
             .iter()
             .map(|op| mapping::tool(op, self.set.bounds().schema_bytes))
@@ -289,6 +300,8 @@ impl ServerHandler for Server {
                 ));
             }
         };
+        // A cancelled waiter may skip its permit: invoke forwards cancellation,
+        // and core returns before admission or dispatch.
         let permit = tokio::select! {
             biased;
             () = context.ct.cancelled() => None,
@@ -316,7 +329,7 @@ impl ServerHandler for Server {
         context: RequestContext<RoleServer>,
     ) -> Result<ListResourceTemplatesResult, ErrorData> {
         let templates = self
-            .catalogue()
+            .catalogue(|op| op.resource.is_some())
             .await?
             .iter()
             .filter_map(|op| {
@@ -343,7 +356,7 @@ impl ServerHandler for Server {
         context: RequestContext<RoleServer>,
     ) -> Result<ListResourcesResult, ErrorData> {
         let resources = self
-            .catalogue()
+            .catalogue(|op| op.resource.is_some())
             .await?
             .iter()
             .filter_map(|op| {
@@ -372,7 +385,7 @@ impl ServerHandler for Server {
         request: ReadResourceRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<ReadResourceResponse, ErrorData> {
-        let operations = self.catalogue().await?;
+        let operations = self.catalogue(|op| op.resource.is_some()).await?;
         let exact = operations
             .iter()
             .any(|op| op.resource.as_deref() == Some(request.uri.as_str()));
@@ -393,6 +406,7 @@ impl ServerHandler for Server {
         }
         let (name, input) =
             matched.ok_or_else(|| ErrorData::resource_not_found("resource not found", None))?;
+        // Core refuses a cancelled waiter before dispatch, without a permit.
         let _permit = tokio::select! {
             biased;
             () = context.ct.cancelled() => None,
@@ -401,18 +415,34 @@ impl ServerHandler for Server {
         let outcome = self
             .invoke(&name, Value::Object(input), false, &context)
             .await;
-        // resources/read has no tool-error union. Carry the same Refusal as JSON
-        // resource contents so operation failures are not recast as protocol faults.
-        let value = match outcome {
-            Ok(outcome) => outcome.result.unwrap_or(Value::Null),
-            Err(refusal) => serde_json::to_value(refusal).expect("refusals serialize"),
+        // Resource reads have no tool-error union. Preserve refusals as JSON, and
+        // retain the full Outcome when a plain result would discard semantics.
+        let (value, refusal) = match outcome {
+            Ok(outcome)
+                if outcome.is_error || outcome.content.is_some() || outcome.result.is_none() =>
+            {
+                (
+                    serde_json::to_value(outcome).expect("outcomes serialize"),
+                    false,
+                )
+            }
+            Ok(outcome) => (outcome.result.expect("plain outcome has a result"), false),
+            Err(refusal) => (
+                serde_json::to_value(refusal).expect("refusals serialize"),
+                true,
+            ),
         };
-        Ok(ReadResourceResult::new(vec![
-            ResourceContents::text(value.to_string(), request.uri)
-                .with_mime_type("application/json"),
-        ])
-        .with_ttl_ms(0)
-        .with_cache_scope(CacheScope::Private)
+        let budget = self.response_budget(&context);
+        if refusal || mapping::size(&value, budget).is_some() {
+            let result = resource_result(value, &request.uri);
+            if refusal || mapping::size(&result, budget).is_some() {
+                return Ok(result.into());
+            }
+        }
+        Ok(resource_result(
+            serde_json::to_value(mapping::too_large()).expect("refusals serialize"),
+            &request.uri,
+        )
         .into())
     }
 }
@@ -426,4 +456,12 @@ fn protocol_refusal(refusal: Refusal) -> ErrorData {
         "cannot describe the admitted selection",
         Some(serde_json::to_value(refusal).expect("refusals serialize")),
     )
+}
+
+fn resource_result(value: Value, uri: &str) -> ReadResourceResult {
+    ReadResourceResult::new(vec![
+        ResourceContents::text(value.to_string(), uri).with_mime_type("application/json"),
+    ])
+    .with_ttl_ms(0)
+    .with_cache_scope(CacheScope::Private)
 }

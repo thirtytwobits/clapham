@@ -368,3 +368,203 @@ fn unsupported_resource_templates_refuse_before_serving() {
         );
     }
 }
+
+#[tokio::test]
+async fn describe_admission_is_required_for_discovery_but_does_not_disable_calls() {
+    for (decision, code) in [
+        (clapham::Admission::Deny, "not_admitted"),
+        (clapham::Admission::Pending, "admission_pending"),
+    ] {
+        let handle = ListsHandle::new();
+        handle.create_list("tasks", "Tasks").unwrap();
+        let set = compose_with_options(
+            handle.contributions(),
+            Bounds::default(),
+            ComposeOptions {
+                gate: Arc::new(move |_: &Principal, op: &Operation| {
+                    if op.name.as_str() == "clapham.describe" {
+                        decision
+                    } else {
+                        clapham::Admission::Allow
+                    }
+                }),
+                ..ComposeOptions::default()
+            },
+        )
+        .unwrap();
+        let mut wire = Wire::new(
+            Server::new(set, principal())
+                .unwrap()
+                .select(["lists.get"])
+                .unwrap(),
+        );
+        for (index, method) in [
+            "server/discover",
+            "tools/list",
+            "resources/list",
+            "resources/templates/list",
+            "resources/read",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            wire.send(
+                index as u64,
+                method,
+                if method == "resources/read" {
+                    json!({"uri":"lists://tasks"})
+                } else {
+                    json!({})
+                },
+            )
+            .await;
+            let response = wire.response().await;
+            assert_eq!(
+                response["error"]["data"]["code"], code,
+                "{method}: {response}"
+            );
+        }
+        let result = wire
+            .result(
+                10,
+                "tools/call",
+                json!({"name":"lists.get","arguments":{"id":"tasks"}}),
+            )
+            .await;
+        assert_eq!(result["structuredContent"]["name"], "Tasks");
+        wire.close().await;
+    }
+}
+
+#[tokio::test]
+async fn oversized_resource_result_returns_refusal_and_keeps_connection_usable() {
+    let mut op = descriptor("probe.large");
+    op.resource = Some("probe://large".into());
+    let contribution = Contribution::new("probe").operation(op, |_: Call| async {
+        Ok(Outcome::new(json!({"text":"x".repeat(8192)})))
+    });
+    let set = compose(
+        [contribution],
+        Bounds {
+            message_bytes: 8192,
+            schema_bytes: 8192,
+            ..Bounds::default()
+        },
+    )
+    .unwrap();
+    let mut wire = Wire::new(Server::new(set, principal()).unwrap());
+    let result = wire
+        .result(1, "resources/read", json!({"uri":"probe://large"}))
+        .await;
+    let refusal: Value =
+        serde_json::from_str(result["contents"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(refusal["code"], "result_too_large");
+    assert_eq!(refusal["category"], "usage");
+    assert_eq!(refusal["evidence"], "uncertain");
+    let next = wire
+        .result(2, "tools/call", json!({"name":"clapham.version"}))
+        .await;
+    assert_eq!(next["isError"], false);
+    wire.close().await;
+}
+
+#[tokio::test]
+async fn resource_error_outcomes_retain_content_and_error_flag() {
+    let mut op = descriptor("probe.error");
+    op.resource = Some("probe://error".into());
+    let contribution = Contribution::new("probe").operation(op, |_: Call| async {
+        Ok(Outcome {
+            result: Some(json!({"reason":"unavailable"})),
+            content: Some(vec![clapham::ContentBlock::Text {
+                text: "Details".into(),
+            }]),
+            is_error: true,
+            evidence: clapham::Evidence::Completed,
+        })
+    });
+    let set = compose([contribution], Bounds::default()).unwrap();
+    let mut wire = Wire::new(Server::new(set, principal()).unwrap());
+    let result = wire
+        .result(1, "resources/read", json!({"uri":"probe://error"}))
+        .await;
+    let outcome: Value =
+        serde_json::from_str(result["contents"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(outcome["is_error"], true);
+    assert_eq!(outcome["result"]["reason"], "unavailable");
+    assert_eq!(outcome["content"][0]["text"], "Details");
+    wire.close().await;
+}
+
+#[tokio::test]
+async fn cancelled_request_id_cannot_be_reused_on_the_connection() {
+    let (handle, server) = fixture();
+    let mut held = handle.hold("lists.get").unwrap();
+    let mut wire = Wire::new(server);
+    wire.send(
+        1,
+        "tools/call",
+        json!({"name":"lists.get","arguments":{"id":"tasks"}}),
+    )
+    .await;
+    assert!(held.entered().await);
+    wire.raw(json!({"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":1}}))
+        .await;
+    wire.send(1, "tools/call", json!({"name":"clapham.version"}))
+        .await;
+    let mut line = String::new();
+    assert_eq!(wire.output.read_line(&mut line).await.unwrap(), 0);
+    assert!(!held.release());
+    wire.close().await;
+}
+
+#[test]
+fn equivalent_resource_template_shapes_refuse_before_serving() {
+    let mut contribution = Contribution::new("probe");
+    for (name, variable) in [("probe.first", "id"), ("probe.second", "name")] {
+        let mut op = descriptor(name);
+        op.input = json!({"type":"object","properties":{variable:{"type":"string"}}})
+            .as_object()
+            .unwrap()
+            .clone();
+        op.resource = Some(format!("probe://{{{variable}}}"));
+        contribution =
+            contribution.operation(op, |_: Call| async { Ok(Outcome::new(Value::Null)) });
+    }
+    let set = compose([contribution], Bounds::default()).unwrap();
+    assert_eq!(
+        Server::new(set, principal()).unwrap_err().code,
+        "mcp_configuration"
+    );
+}
+
+#[tokio::test]
+async fn resource_discovery_does_not_describe_unrelated_tools() {
+    use std::sync::Mutex;
+    let calls = Arc::new(Mutex::new(Vec::new()));
+    let seen = calls.clone();
+    let handle = ListsHandle::new();
+    handle.create_list("tasks", "Tasks").unwrap();
+    let set = compose_with_options(
+        handle.contributions(),
+        Bounds::default(),
+        ComposeOptions {
+            gate: Arc::new(move |_: &Principal, op: &Operation| {
+                seen.lock().unwrap().push(op.name.to_string());
+                clapham::Admission::Allow
+            }),
+            ..ComposeOptions::default()
+        },
+    )
+    .unwrap();
+    let mut wire = Wire::new(Server::new(set, principal()).unwrap());
+    wire.result(1, "resources/read", json!({"uri":"lists://tasks"}))
+        .await;
+    assert!(
+        calls
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|name| ["clapham.describe", "lists.list", "lists.get"].contains(&name.as_str()))
+    );
+    wire.close().await;
+}

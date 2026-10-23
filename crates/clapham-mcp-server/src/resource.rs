@@ -62,6 +62,11 @@ impl Template {
         })
     }
 
+    // Variable names do not distinguish the set of URIs a template can match.
+    pub(crate) fn shape(&self) -> &[String] {
+        &self.literals
+    }
+
     pub(crate) fn bind(&self, uri: &str) -> Option<Map<String, Value>> {
         let mut rest = uri.strip_prefix(&self.literals[0])?;
         let mut input = Map::new();
