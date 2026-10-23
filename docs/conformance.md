@@ -42,3 +42,6 @@ queue bounds. Unmapped credentials are rejected before body consumption or gate 
 `crates/clapham-conformance/records/mcp-protocol.json` records the lists wire surface;
 `cargo test -p clapham-conformance --test mcp_protocol` refuses stale output. To write an
 intentional update, run that test with `CLAPHAM_WRITE_RECORDS=1` and review the generated diff.
+The test compares canonical bytes and takes request metadata keys from the server's published
+`REQUEST_META_KEYS`, rather than the HTTP fixture. `cargo xtask check` removes the writing flag
+from child Cargo commands, even if it was inherited from the caller.

@@ -12,7 +12,7 @@ use bytes::Bytes;
 use clapham::{Category, ComposedSet, Evidence, Principal, Refusal, Selection};
 use http::{Request, Response, StatusCode, header};
 use http_body::Body;
-use http_body_util::{BodyExt, Full, Limited};
+use http_body_util::{BodyExt, Empty, Full, Limited, combinators::BoxBody};
 use rmcp::transport::streamable_http_server::{
     StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
 };
@@ -24,7 +24,7 @@ use crate::{Server, validate_resources};
 ///
 /// Missing Authorization is represented by [`Default`]; only the application's
 /// authenticator decides whether that credential represents a principal.
-#[derive(Clone, Default, PartialEq, Eq)]
+#[derive(Clone, Default)]
 pub struct Credential {
     authorization: Option<String>,
 }
@@ -83,7 +83,7 @@ pub struct HttpServer {
     authenticator: Arc<dyn Authenticator>,
     outstanding: Arc<Semaphore>,
     executing: Arc<Semaphore>,
-    calls: Arc<Semaphore>,
+    authentication_challenge: Option<http::HeaderValue>,
     allowed_hosts: Vec<String>,
     allowed_origins: Vec<String>,
 }
@@ -108,7 +108,7 @@ impl HttpServer {
         Ok(Self {
             outstanding: Arc::new(Semaphore::new(bounds.in_flight + bounds.waiting)),
             executing: Arc::new(Semaphore::new(bounds.in_flight)),
-            calls: Arc::new(Semaphore::new(bounds.in_flight)),
+            authentication_challenge: None,
             set,
             discovery: selection.clone(),
             selection,
@@ -156,6 +156,26 @@ impl HttpServer {
         self
     }
 
+    /// Set the WWW-Authenticate challenge on unmapped credentials. No challenge
+    /// is supplied by default; the host chooses its scheme and parameters.
+    pub fn with_authentication_challenge(mut self, challenge: http::HeaderValue) -> Self {
+        self.authentication_challenge = Some(challenge);
+        self
+    }
+
+    fn transport_config(&self) -> StreamableHttpServerConfig {
+        StreamableHttpServerConfig::default()
+            .with_legacy_session_mode(false)
+            .with_json_response(true)
+            .with_sse_keep_alive(None)
+            .with_sse_retry(None)
+            .with_max_request_body_bytes(self.set.bounds().message_bytes)
+            .with_stateless_protocol_metadata_required(true)
+            .with_allowed_hosts(self.allowed_hosts.clone())
+            .with_allowed_origins(self.allowed_origins.clone())
+            .enforce_origin_validation()
+    }
+
     /// Handle one request using rmcp's stateless server transport, returning a
     /// bounded JSON response. HTTP admission happens before body consumption.
     ///
@@ -167,6 +187,26 @@ impl HttpServer {
         B: Body<Data = Bytes> + Send + 'static,
         B::Error: fmt::Display,
     {
+        let limit = self.set.bounds().message_bytes;
+        let config = self.transport_config();
+        // rmcp 3.6.0 keeps its Host/Origin validator private. An OPTIONS probe
+        // follows that exact policy and stops at 405, without parsing a body or
+        // constructing a handler. Reusing it avoids a second authority/origin parser.
+        let validator = StreamableHttpService::<Server, _>::new(
+            || Err(std::io::Error::other("HTTP policy probe cannot dispatch")),
+            Arc::new(LocalSessionManager::default()),
+            config.clone(),
+        );
+        let mut probe = Request::new(Empty::<Bytes>::new());
+        *probe.method_mut() = http::Method::OPTIONS;
+        *probe.uri_mut() = request.uri().clone();
+        *probe.version_mut() = request.version();
+        *probe.headers_mut() = request.headers().clone();
+        let checked = validator.handle(probe).await;
+        if checked.status() != StatusCode::METHOD_NOT_ALLOWED {
+            return bounded_response(checked, limit, false).await;
+        }
+
         let mut authorization = request.headers().get_all(header::AUTHORIZATION).iter();
         let credential = match (authorization.next(), authorization.next()) {
             (None, None) => Credential::default(),
@@ -197,10 +237,11 @@ impl HttpServer {
                 Category::Refused,
                 "the credential was not authenticated",
             );
-            response.headers_mut().insert(
-                header::WWW_AUTHENTICATE,
-                http::HeaderValue::from_static("Bearer"),
-            );
+            if let Some(challenge) = &self.authentication_challenge {
+                response
+                    .headers_mut()
+                    .insert(header::WWW_AUTHENTICATE, challenge.clone());
+            }
             return response;
         };
         let Ok(_outstanding) = self.outstanding.try_acquire() else {
@@ -222,41 +263,17 @@ impl HttpServer {
             selection: self.selection.clone(),
             discovery: self.discovery.clone(),
             principal,
-            slots: self.calls.clone(),
+            // The outer HTTP execution permit covers this entire request.
+            slots: None,
             http_failure: Some(failure.clone()),
         };
-        let limit = self.set.bounds().message_bytes;
-        let config = StreamableHttpServerConfig::default()
-            .with_legacy_session_mode(false)
-            .with_json_response(true)
-            .with_sse_keep_alive(None)
-            .with_sse_retry(None)
-            .with_max_request_body_bytes(limit)
-            .with_stateless_protocol_metadata_required(true)
-            .with_allowed_hosts(self.allowed_hosts.clone())
-            .with_allowed_origins(self.allowed_origins.clone())
-            .enforce_origin_validation();
         let service = StreamableHttpService::new(
             move || Ok(server.clone()),
             Arc::new(LocalSessionManager::default()),
             config,
         );
         let response = service.handle(request).await;
-        let (mut parts, body) = response.into_parts();
-        // rmcp normally carries JSON-RPC internal errors in HTTP 200. A failed
-        // reply budget is an HTTP delivery failure, rather than an operation refusal.
-        if failure.load(Ordering::Acquire) {
-            parts.status = StatusCode::INTERNAL_SERVER_ERROR;
-        }
-        match Limited::new(body, limit).collect().await {
-            Ok(body) => Response::from_parts(parts, Full::new(body.to_bytes())),
-            Err(_) => refusal_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "reply_unavailable",
-                Category::Unavailable,
-                "the HTTP response exceeds bounds.message_bytes; operation effects are uncertain",
-            ),
-        }
+        bounded_response(response, limit, failure.load(Ordering::Acquire)).await
     }
 }
 
@@ -297,4 +314,25 @@ fn refusal_response(
             serde_json::to_vec(&refusal).expect("refusals serialize"),
         )))
         .expect("static HTTP response is valid")
+}
+
+async fn bounded_response(
+    response: Response<BoxBody<Bytes, Infallible>>,
+    limit: usize,
+    failed: bool,
+) -> Response<Full<Bytes>> {
+    let (mut parts, body) = response.into_parts();
+    // A failed reply budget is an HTTP delivery failure, rather than an operation refusal.
+    if failed {
+        parts.status = StatusCode::INTERNAL_SERVER_ERROR;
+    }
+    match Limited::new(body, limit).collect().await {
+        Ok(body) => Response::from_parts(parts, Full::new(body.to_bytes())),
+        Err(_) => refusal_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "reply_unavailable",
+            Category::Unavailable,
+            "the HTTP response exceeds bounds.message_bytes; operation effects are uncertain",
+        ),
+    }
 }

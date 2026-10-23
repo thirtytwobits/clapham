@@ -67,7 +67,9 @@ struct Dependency {
     rename: Option<String>,
 }
 
-// These enable rmcp server code, either directly or through a workspace feature.
+// Audited against rmcp 3.6.0's Cargo.toml feature graph. Only `default` forwards
+// `server`; `tower` and `auth` do not enable any server feature. Re-audit on a bump.
+// These enable server code, either directly or through a workspace feature.
 const RMCP_SERVER_FEATURES: &[&str] = &[
     "default",
     "server",

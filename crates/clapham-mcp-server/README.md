@@ -102,8 +102,11 @@ The application supplies [`Authenticator`], which receives the complete Authoriz
 as an opaque [`Credential`]. A missing field is a default credential; only the authenticator
 may explicitly map it to a principal. Credential debug output reports presence without printing
 the value. Duplicate or malformed Authorization fields receive HTTP 400. An unmapped credential
-receives HTTP 401 with a Bearer challenge and a `not_authenticated` refusal carrying
-`not_dispatched` evidence, before body consumption or any operation. Authentication repeats on
+receives HTTP 401 with a `not_authenticated` refusal carrying `not_dispatched` evidence,
+before body consumption or any operation. No authentication scheme is assumed: the host
+may set `with_authentication_challenge` with a validated HTTP header value, including a
+Basic realm or Bearer `resource_metadata` parameter. Without it, no WWW-Authenticate field
+is emitted. Authentication repeats on
 every request, including when requests overlap or reuse the same JSON-RPC ID. MCP metadata
 cannot override the authenticated principal.
 
@@ -111,12 +114,17 @@ cannot override the authenticated principal.
 allow-list; `with_allowed_hosts` replaces it (an empty list disables host filtering). Origin
 validation rejects every present Origin by default. `with_allowed_origins` permits named
 browser origins; non-browser clients without Origin remain permitted by this check.
+Host and Origin checks run before credential parsing and authentication, using rmcp's own
+authority/origin policy; rejected requests never invoke the authenticator.
 The transport requires MCP 2026-07-28 metadata and its corresponding `MCP-Protocol-Version`,
 `Mcp-Method` and, for named requests, `Mcp-Name` headers. rmcp checks routing headers against
 the body, including input properties annotated with `x-mcp-header`. GET and DELETE return 405.
 
 HTTP requests share `Bounds::in_flight` execution slots and `in_flight + waiting` outstanding
-slots across clones. A full queue receives HTTP 503 with `server_busy` and not-dispatched
+slots across clones. Unlike stdio's operation slots, an HTTP execution slot covers the whole
+request: body reading, discovery, dispatch and reply buffering. Discovery can therefore queue
+behind long-running calls, and a slow authenticated upload occupies an execution slot.
+A full queue receives HTTP 503 with `server_busy` and not-dispatched
 evidence. Dropping a pending HTTP response future cancels the core call and releases its
 slots. rmcp enforces request body bytes while reading, without relying on Content-Length;
 oversized input receives HTTP 413. Catalogue, schema and reply budgets also apply. Oversized
@@ -125,7 +133,10 @@ or tool error outcome that cannot fit produces a bounded HTTP 500 infrastructure
 without substituting another operation refusal. Effects are uncertain when a reply is lost.
 
 The conformance crate keeps `records/mcp-protocol.json`: the listed tools with schemas,
-annotations and metadata, resource templates, protocol versions and request metadata keys.
+annotations and metadata, resource templates, protocol versions and the server-published
+`REQUEST_META_KEYS` contract. Its comparison checks canonical pretty-printed bytes, including
+formatting and key order. `cargo xtask check` clears `CLAPHAM_WRITE_RECORDS` in every child
+Cargo command, so check mode never silently regenerates the record.
 `cargo test -p clapham-conformance --test mcp_protocol` refuses a changed wire form.
 After reviewing an intentional change, regenerate it with:
 

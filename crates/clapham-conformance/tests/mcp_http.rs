@@ -108,6 +108,7 @@ async fn unmapped_credentials_are_refused_before_body_or_gate_or_handler() {
     let response = server
         .handle(
             Request::post("/mcp")
+                .header("host", "localhost")
                 .header("authorization", "Bearer unknown")
                 .body(UnreadBody)
                 .unwrap(),
@@ -121,7 +122,12 @@ async fn unmapped_credentials_are_refused_before_body_or_gate_or_handler() {
     assert_eq!(gate_calls.load(Ordering::SeqCst), 0);
     assert!(handle.snapshot().is_empty());
     let missing = server
-        .handle(Request::post("/mcp").body(UnreadBody).unwrap())
+        .handle(
+            Request::post("/mcp")
+                .header("host", "localhost")
+                .body(UnreadBody)
+                .unwrap(),
+        )
         .await;
     assert_eq!(missing.status(), StatusCode::UNAUTHORIZED);
 }
@@ -396,4 +402,153 @@ async fn oversized_declared_refusal_returns_http_failure_without_replacing_its_c
         assert_eq!(reply["error"]["code"], -32603);
         assert!(reply.get("result").is_none());
     }
+}
+
+#[tokio::test]
+async fn rejected_host_and_origin_never_reach_authentication_or_the_body() {
+    let calls = Arc::new(AtomicUsize::new(0));
+    let observed = calls.clone();
+    let server = HttpServer::new(
+        compose([], Bounds::default()).unwrap(),
+        move |credential: &Credential| {
+            observed.fetch_add(1, Ordering::SeqCst);
+            support::authenticate(credential)
+        },
+    )
+    .unwrap();
+    for credential in ["Bearer human", "Bearer unknown"] {
+        for (host, origin) in [
+            ("unlisted.invalid", None),
+            ("localhost", Some("https://unlisted.invalid")),
+        ] {
+            let mut request = Request::post("/mcp")
+                .header("host", host)
+                .header("authorization", credential);
+            if let Some(origin) = origin {
+                request = request.header("origin", origin);
+            }
+            let response = server.handle(request.body(UnreadBody).unwrap()).await;
+            assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        }
+    }
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
+}
+
+#[tokio::test]
+async fn configured_host_and_origin_reuse_rmcp_authority_matching() {
+    let server = HttpServer::new(
+        compose([], Bounds::default()).unwrap(),
+        support::authenticate,
+    )
+    .unwrap()
+    .with_allowed_hosts(["[::1]:8443"])
+    .with_allowed_origins(["https://client.invalid:443"]);
+    let mut request = support::request("tools/list", json!({}), "Bearer human");
+    request
+        .headers_mut()
+        .insert("host", "[::1]:8443".parse().unwrap());
+    request
+        .headers_mut()
+        .insert("origin", "https://client.invalid".parse().unwrap());
+    assert_eq!(server.handle(request).await.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn authentication_challenge_is_supplied_only_by_the_host() {
+    let server = HttpServer::new(
+        compose([], Bounds::default()).unwrap(),
+        support::authenticate,
+    )
+    .unwrap();
+    let response = server
+        .handle(support::request("tools/list", json!({}), "Bearer unknown"))
+        .await;
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    assert!(!response.headers().contains_key("www-authenticate"));
+    for challenge in [
+        "Basic realm=\"lists\"",
+        "Bearer resource_metadata=\"https://host.invalid/.well-known/oauth-protected-resource\"",
+    ] {
+        let configured = server
+            .clone()
+            .with_authentication_challenge(challenge.parse().unwrap());
+        let response = configured
+            .handle(support::request("tools/list", json!({}), "Bearer unknown"))
+            .await;
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+        assert_eq!(response.headers()["www-authenticate"], challenge);
+    }
+}
+
+#[tokio::test]
+async fn empty_authorization_is_distinct_from_missing_authorization() {
+    use std::sync::Mutex;
+    let values = Arc::new(Mutex::new(Vec::new()));
+    let seen = values.clone();
+    let server = HttpServer::new(
+        compose([], Bounds::default()).unwrap(),
+        move |credential: &Credential| {
+            seen.lock()
+                .unwrap()
+                .push(credential.authorization().map(str::to_owned));
+            None
+        },
+    )
+    .unwrap();
+    let missing = Request::post("/mcp")
+        .header("host", "localhost")
+        .body(UnreadBody)
+        .unwrap();
+    assert_eq!(
+        server.handle(missing).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+    let empty = Request::post("/mcp")
+        .header("host", "localhost")
+        .header("authorization", "")
+        .body(UnreadBody)
+        .unwrap();
+    assert_eq!(
+        server.handle(empty).await.status(),
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(*values.lock().unwrap(), vec![None, Some(String::new())]);
+}
+
+#[tokio::test]
+async fn a_long_request_id_cannot_force_an_oversized_replacement_refusal() {
+    let set = compose(
+        [
+            Contribution::new("probe").operation(probe(), |_: Call| async {
+                Ok(Outcome::new(json!("x".repeat(8192))))
+            }),
+        ],
+        Bounds {
+            message_bytes: 8192,
+            schema_bytes: 8192,
+            ..Bounds::default()
+        },
+    )
+    .unwrap();
+    let server = HttpServer::new(set, support::authenticate).unwrap();
+    let request = support::request("tools/call", json!({"name":"probe.large"}), "Bearer human");
+    let (parts, body) = request.into_parts();
+    let mut value: Value =
+        serde_json::from_slice(&body.collect().await.unwrap().to_bytes()).unwrap();
+    value["id"] = json!("x".repeat(7600));
+    let bytes = serde_json::to_vec(&value).unwrap();
+    assert!(bytes.len() < 8192);
+    let request = Request::from_parts(parts, http_body_util::Full::new(Bytes::from(bytes)));
+    let response = server.handle(request).await;
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    assert!(
+        response
+            .into_body()
+            .collect()
+            .await
+            .unwrap()
+            .to_bytes()
+            .len()
+            <= 8192
+    );
 }

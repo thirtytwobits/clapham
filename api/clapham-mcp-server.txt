@@ -5,22 +5,16 @@ pub fn clapham_mcp_server::Credential::authorization(&self) -> core::option::Opt
 pub fn clapham_mcp_server::Credential::new(authorization: impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for clapham_mcp_server::Credential
 pub fn clapham_mcp_server::Credential::clone(&self) -> clapham_mcp_server::Credential
-impl core::cmp::Eq for clapham_mcp_server::Credential
-impl core::cmp::PartialEq for clapham_mcp_server::Credential
-pub fn clapham_mcp_server::Credential::eq(&self, other: &clapham_mcp_server::Credential) -> bool
 impl core::default::Default for clapham_mcp_server::Credential
 pub fn clapham_mcp_server::Credential::default() -> clapham_mcp_server::Credential
 impl core::fmt::Debug for clapham_mcp_server::Credential
 pub fn clapham_mcp_server::Credential::fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::StructuralPartialEq for clapham_mcp_server::Credential
 impl core::marker::Freeze for clapham_mcp_server::Credential
 impl core::marker::Send for clapham_mcp_server::Credential
 impl core::marker::Sync for clapham_mcp_server::Credential
 impl core::marker::Unpin for clapham_mcp_server::Credential
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_server::Credential
 impl core::panic::unwind_safe::UnwindSafe for clapham_mcp_server::Credential
-impl<Q, K> equivalent::Equivalent<K> for clapham_mcp_server::Credential where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
-pub fn clapham_mcp_server::Credential::equivalent(&self, key: &K) -> bool
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_mcp_server::Credential where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_mcp_server::Credential where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham_mcp_server::Credential where U: core::convert::From<T>
@@ -59,6 +53,7 @@ pub fn clapham_mcp_server::HttpServer::new(set: clapham::composition::ComposedSe
 pub fn clapham_mcp_server::HttpServer::select<I, S>(self, names: I) -> core::result::Result<Self, clapham::refusal::Refusal> where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::AsRef<str>
 pub fn clapham_mcp_server::HttpServer::with_allowed_hosts<I, S>(self, hosts: I) -> Self where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::Into<alloc::string::String>
 pub fn clapham_mcp_server::HttpServer::with_allowed_origins<I, S>(self, origins: I) -> Self where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::Into<alloc::string::String>
+pub fn clapham_mcp_server::HttpServer::with_authentication_challenge(self, challenge: http::header::value::HeaderValue) -> Self
 impl core::clone::Clone for clapham_mcp_server::HttpServer
 pub fn clapham_mcp_server::HttpServer::clone(&self) -> clapham_mcp_server::HttpServer
 impl core::fmt::Debug for clapham_mcp_server::HttpServer
@@ -69,7 +64,7 @@ pub type clapham_mcp_server::HttpServer::Future = core::pin::Pin<alloc::boxed::B
 pub type clapham_mcp_server::HttpServer::Response = http::response::Response<http_body_util::full::Full<bytes::bytes::Bytes>>
 pub fn clapham_mcp_server::HttpServer::call(&mut self, request: http::request::Request<B>) -> Self::Future
 pub fn clapham_mcp_server::HttpServer::poll_ready(&mut self, _: &mut core::task::wake::Context<'_>) -> core::task::poll::Poll<core::result::Result<(), Self::Error>>
-impl core::marker::Freeze for clapham_mcp_server::HttpServer
+impl !core::marker::Freeze for clapham_mcp_server::HttpServer
 impl core::marker::Send for clapham_mcp_server::HttpServer
 impl core::marker::Sync for clapham_mcp_server::HttpServer
 impl core::marker::Unpin for clapham_mcp_server::HttpServer
@@ -177,6 +172,7 @@ impl<T> typenum::type_operators::Same for clapham_mcp_server::Server
 pub type clapham_mcp_server::Server::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_server::Server where T: ?core::marker::Sized
 pub const clapham_mcp_server::PREVIEW_META_KEY: &str
+pub const clapham_mcp_server::REQUEST_META_KEYS: &[&str]
 pub trait clapham_mcp_server::Authenticator: core::marker::Send + core::marker::Sync + 'static
 pub fn clapham_mcp_server::Authenticator::authenticate(&self, credential: &clapham_mcp_server::Credential) -> core::option::Option<clapham::principal::Principal>
 impl<F> clapham_mcp_server::Authenticator for F where F: core::ops::function::Fn(&clapham_mcp_server::Credential) -> core::option::Option<clapham::principal::Principal> + core::marker::Send + core::marker::Sync + 'static
