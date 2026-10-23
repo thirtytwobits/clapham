@@ -90,7 +90,8 @@ The Cargo workspace, repository gates, core contract, composition and call runne
 with published operation, refusal and catalogue schemas. Every set includes `clapham.describe`
 for the caller's admitted catalogue and `clapham.version` for library and application identity.
 Calls enforce selection, admission, preview support, locality and the declared refusal contract.
-The front ends, conformance contribution and lists example are stubs.
+The neutral lists-and-items contribution exercises the core call contract with scripted
+concurrency. The front ends, their conformance harness and the lists example remain stubs.
 [thirtytwobits/london#2](https://github.com/thirtytwobits/london/issues/2) holds the design
 and the plan for the first release. See [CONTRIBUTING.md](CONTRIBUTING.md) for the gate commands
 and [the workspace guide](docs/README.md) for the crate boundaries.

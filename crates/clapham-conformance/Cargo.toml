@@ -13,6 +13,14 @@ clapham.workspace = true
 clapham-cli.workspace = true
 clapham-mcp-server.workspace = true
 clapham-mcp-client.workspace = true
+futures-channel = "0.3"
+futures-util = { version = "0.3", default-features = false, features = ["std", "async-await"] }
+schemars = "1.2.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[dev-dependencies]
+futures-executor = "0.3"
 
 [lints]
 workspace = true
