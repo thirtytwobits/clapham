@@ -1,0 +1,246 @@
+{
+  "$id": "https://raw.githubusercontent.com/thirtytwobits/clapham/main/crates/clapham/schemas/operation.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Operation",
+  "description": "An operation's language-neutral descriptor.\n\nOmitting `principals` admits the effect's default kinds. An explicit empty list\nadmits no kinds. The remaining MCP hints, `idempotent` and `open_world`, are\nrequired rather than silently defaulted. Composition compiles the schemas and\nchecks the descriptor's cross-field semantics before calls can run.",
+  "type": "object",
+  "properties": {
+    "description": {
+      "description": "What the operation does; this field is required.",
+      "type": "string"
+    },
+    "effect": {
+      "description": "What the operation does to its environment.",
+      "$ref": "#/$defs/Effect"
+    },
+    "idempotent": {
+      "description": "The declared MCP idempotency hint; queries always map to true.",
+      "type": "boolean"
+    },
+    "input": {
+      "description": "The input JSON Schema, explicitly declaring `type: object` at its root.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "object"
+        }
+      },
+      "additionalProperties": true,
+      "required": [
+        "type"
+      ]
+    },
+    "locality": {
+      "description": "Where the operation runs.",
+      "$ref": "#/$defs/Locality"
+    },
+    "name": {
+      "description": "The operation's identity, split into namespace and local name at the first dot.",
+      "$ref": "#/$defs/OperationName"
+    },
+    "open_world": {
+      "description": "The declared MCP open-world hint.",
+      "type": "boolean"
+    },
+    "output": {
+      "description": "The result JSON Schema, where supplied; object and boolean schemas are admitted.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Schema"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "positional": {
+      "description": "Input properties taken as positional command-line arguments, in order.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "preview": {
+      "description": "Whether the operation accepts a dry run.",
+      "type": "boolean",
+      "default": false
+    },
+    "principals": {
+      "description": "The kinds admitted; when omitted, defaults from `effect`.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PrincipalKind"
+      }
+    },
+    "refusals": {
+      "description": "Each declared refusal code and the category front ends act on.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/Category"
+      },
+      "default": {}
+    },
+    "resource": {
+      "description": "A query's resource URI template, where supplied.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "streams": {
+      "description": "Whether typed records precede the result.",
+      "type": "boolean",
+      "default": false
+    },
+    "title": {
+      "description": "The name people read, where supplied.",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "description",
+    "input",
+    "effect",
+    "locality",
+    "idempotent",
+    "open_world"
+  ],
+  "$defs": {
+    "Category": {
+      "description": "The fixed categories front ends act on when an operation refuses a call.",
+      "oneOf": [
+        {
+          "description": "The invocation was wrong.",
+          "type": "string",
+          "const": "usage"
+        },
+        {
+          "description": "The input failed its schema or the operation's checks.",
+          "type": "string",
+          "const": "invalid_input"
+        },
+        {
+          "description": "What the input names is absent.",
+          "type": "string",
+          "const": "not_found"
+        },
+        {
+          "description": "A fence or state conflict prevents the change.",
+          "type": "string",
+          "const": "conflict"
+        },
+        {
+          "description": "A gate, policy or approval said no.",
+          "type": "string",
+          "const": "refused"
+        },
+        {
+          "description": "A required workspace, daemon or remote is unavailable.",
+          "type": "string",
+          "const": "unavailable"
+        },
+        {
+          "description": "The call was cancelled, timed out or stopped by shutdown.",
+          "type": "string",
+          "const": "interrupted"
+        },
+        {
+          "description": "The host's configuration is wrong.",
+          "type": "string",
+          "const": "configuration"
+        },
+        {
+          "description": "A fault, including an undeclared refusal code.",
+          "type": "string",
+          "const": "internal"
+        }
+      ]
+    },
+    "Effect": {
+      "description": "What an operation does to its environment, declared independently of transport.",
+      "oneOf": [
+        {
+          "description": "Reads without changing state.",
+          "type": "string",
+          "const": "query"
+        },
+        {
+          "description": "Changes state within the operation's domain.",
+          "type": "string",
+          "const": "mutation"
+        },
+        {
+          "description": "Changes the host's own administrative state.",
+          "type": "string",
+          "const": "administrative"
+        },
+        {
+          "description": "May destroy or overwrite state.",
+          "type": "string",
+          "const": "destructive"
+        }
+      ]
+    },
+    "Locality": {
+      "description": "Where an operation runs.",
+      "oneOf": [
+        {
+          "description": "Runs against the workspace under its lock.",
+          "type": "string",
+          "const": "workspace"
+        },
+        {
+          "description": "Needs the running daemon.",
+          "type": "string",
+          "const": "daemon"
+        }
+      ]
+    },
+    "OperationName": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 1,
+      "not": {
+        "pattern": "[^A-Za-z0-9_.-]"
+      },
+      "pattern": "^[A-Za-z0-9_.-]+$"
+    },
+    "PrincipalKind": {
+      "description": "The kind of caller running an operation.",
+      "oneOf": [
+        {
+          "description": "A person using the host.",
+          "type": "string",
+          "const": "human"
+        },
+        {
+          "description": "An agent acting under the host's authority.",
+          "type": "string",
+          "const": "agent"
+        },
+        {
+          "description": "A service authenticated by the host.",
+          "type": "string",
+          "const": "service"
+        },
+        {
+          "description": "The host acting for itself.",
+          "type": "string",
+          "const": "system"
+        }
+      ]
+    },
+    "Schema": {
+      "type": [
+        "object",
+        "boolean"
+      ]
+    }
+  }
+}

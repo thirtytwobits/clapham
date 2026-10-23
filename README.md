@@ -86,7 +86,8 @@ unchanged and enforces the gate.
 
 ## Status
 
-The Cargo workspace and repository gates are in place; the libraries and lists example are
+The Cargo workspace, repository gates and core descriptor types are in place, with published
+operation and refusal schemas. The front ends, conformance contribution and lists example are
 stubs. [thirtytwobits/london#2](https://github.com/thirtytwobits/london/issues/2) holds the design
 and the plan for the first release. See [CONTRIBUTING.md](CONTRIBUTING.md) for the gate commands
 and [the workspace guide](docs/README.md) for the crate boundaries.

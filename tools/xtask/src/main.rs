@@ -2,6 +2,7 @@
 
 mod api;
 mod boundaries;
+mod schemas;
 
 use std::error::Error;
 use std::path::{Path, PathBuf};
@@ -30,11 +31,13 @@ fn dispatch() -> Result<()> {
         ["boundaries"] => boundaries::check(&root),
         ["api"] => api::check(&root, false),
         ["api", "--update"] => api::check(&root, true),
+        ["schemas"] => schemas::run(&root, false),
+        ["schemas", "--check"] => schemas::run(&root, true),
         ["help"] | ["--help"] | ["-h"] | [] => {
-            println!("cargo xtask <check|boundaries|api [--update]>");
+            println!("cargo xtask <check|boundaries|api [--update]|schemas [--check]>");
             Ok(())
         }
-        _ => Err("usage: cargo xtask <check|boundaries|api [--update]>".into()),
+        _ => Err("usage: cargo xtask <check|boundaries|api [--update]|schemas [--check]>".into()),
     }
 }
 
@@ -64,6 +67,7 @@ fn capture(command: &mut Command) -> Result<String> {
 
 fn check(root: &Path) -> Result<()> {
     boundaries::check(root)?;
+    schemas::run(root, true)?;
     run(&mut cargo(root, &["fmt", "--all", "--", "--check"]))?;
     for features in [None, Some("--all-features")] {
         let mut clippy = cargo(

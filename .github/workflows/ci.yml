@@ -42,6 +42,7 @@ jobs:
           persist-credentials: false
       - run: rustup toolchain install 1.85.0 --profile minimal
       - run: cargo +1.85.0 check --locked -p clapham
+      - run: cargo +1.85.0 test --locked -p clapham
 
   mcp-msrv:
     name: MCP MSRV
