@@ -81,6 +81,15 @@ impl Refusal {
         }
     }
 
+    /// A refusal issued before dispatch, with no details and no retryability claim.
+    pub fn not_dispatched(
+        code: impl Into<String>,
+        category: Category,
+        message: impl Into<String>,
+    ) -> Self {
+        Self::new(code, category, message).with_evidence(Evidence::NotDispatched)
+    }
+
     /// Carry explicit dispatch evidence, including uncertainty from a remote reply loss.
     pub fn with_evidence(mut self, evidence: Evidence) -> Self {
         self.evidence = evidence;

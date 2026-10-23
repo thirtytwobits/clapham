@@ -1,0 +1,21 @@
+{
+  "open_world": false,
+  "idempotent": true,
+  "locality": "workspace",
+  "effect": "query",
+  "output": {
+    "required": ["id"],
+    "type": "object",
+    "properties": { "id": { "minLength": 1, "type": "string" } },
+    "additionalProperties": false
+  },
+  "input": {
+    "required": ["id"],
+    "properties": { "id": { "minLength": 1, "type": "string" } },
+    "additionalProperties": false,
+    "type": "object"
+  },
+  "refusals": { "list_missing": "not_found" },
+  "description": "Read an item.",
+  "name": "lists.items.get"
+}

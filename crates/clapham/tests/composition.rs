@@ -292,7 +292,7 @@ fn boxed_handlers_can_borrow_state_and_receive_validated_input_under_the_own_nam
     assert_send_sync::<ComposedSet>();
     let handler: Box<dyn Handler> = Box::new(BorrowingHandler("item-2".into()));
     let set = compose(
-        [Contribution::new("lists").operation(descriptor("lists.items.get"), handler)],
+        [Contribution::new("lists").operation_boxed(descriptor("lists.items.get"), handler)],
         Bounds::default(),
     )
     .unwrap();
@@ -583,6 +583,130 @@ fn revision_probe() {
             .unwrap()
             .revision()
     );
+}
+
+#[test]
+fn revision_v1_matches_the_independent_golden_digest() {
+    // The fixture has deliberately unordered nested keys and omitted principal
+    // defaults. This literal pins the documented preimage across both map backends.
+    let operation: Operation =
+        serde_json::from_str(include_str!("fixtures/revision-v1.json")).unwrap();
+    assert_eq!(
+        one(operation, Bounds::default()).unwrap().revision(),
+        "sha256:0cf27f0b33f394b0fa9d5048705443e9150834eaa75c602a1d651449b10f86e8"
+    );
+}
+
+#[test]
+fn an_empty_principal_list_composes_without_granting_default_kinds() {
+    let mut operation = descriptor("lists.items.get");
+    operation.principals.clear();
+    let set = one(operation, Bounds::default()).unwrap();
+    assert!(
+        set.get("lists.items.get")
+            .unwrap()
+            .descriptor()
+            .principals
+            .is_empty()
+    );
+}
+
+#[test]
+fn output_schemas_can_describe_any_json_result_shape() {
+    for (schema, result) in [
+        (
+            json!({ "type": "array", "items": { "type": "integer" } }),
+            json!([1, 2]),
+        ),
+        (json!({ "type": "string" }), json!("item-1")),
+        (json!({ "type": "number" }), json!(1.5)),
+        (json!({ "type": "boolean" }), json!(true)),
+        (json!({ "type": "null" }), Value::Null),
+        (json!(true), json!([1, "item-1"])),
+    ] {
+        let mut descriptor = descriptor("lists.items.get");
+        descriptor.output = Some(schema.try_into().unwrap());
+        let expected = result.clone();
+        let set = compose(
+            [Contribution::new("lists").operation(descriptor, move |_| {
+                let result = result.clone();
+                async move { Ok(Outcome::new(result)) }
+            })],
+            Bounds::default(),
+        )
+        .unwrap();
+        let outcome = block_on(set.get("lists.items.get").unwrap().invoke(call())).unwrap();
+        assert_eq!(outcome.result, Some(expected));
+    }
+}
+
+#[test]
+fn a_sink_failure_with_unresolved_effects_keeps_uncertain_evidence() {
+    let refusal = Refusal::new(
+        "record_delivery_failed",
+        Category::Unavailable,
+        "The record was not acknowledged.",
+    )
+    .with_evidence(Evidence::Uncertain);
+    let expected = refusal.clone();
+    let mut descriptor = descriptor("lists.items.get");
+    descriptor.streams = true;
+    let set = compose(
+        [
+            Contribution::new("lists").operation(descriptor, |call: Call| async move {
+                call.records.send(json!({ "id": "item-1" })).await?;
+                Ok(Outcome::new(call.input))
+            }),
+        ],
+        Bounds::default(),
+    )
+    .unwrap();
+    let mut call = call();
+    call.records = RecordSink::new(move |_| {
+        let refusal = refusal.clone();
+        async move { Err(refusal) }
+    });
+    assert_eq!(
+        block_on(set.get("lists.items.get").unwrap().invoke(call)).unwrap_err(),
+        expected
+    );
+}
+
+#[test]
+fn cancellation_wins_when_the_held_handler_is_also_ready_to_complete() {
+    let (release, held) = futures_channel::oneshot::channel::<()>();
+    let held = Mutex::new(Some(held));
+    let set =
+        compose(
+            [Contribution::new("lists").operation(
+                descriptor("lists.items.get"),
+                move |call: Call| {
+                    let held = held.lock().unwrap().take().unwrap();
+                    async move {
+                        held.await.unwrap();
+                        Ok(Outcome::new(call.input))
+                    }
+                },
+            )],
+            Bounds::default(),
+        )
+        .unwrap();
+    let call = call();
+    let cancel = call.cancel.clone();
+    let mut invocation = pin!(set.get("lists.items.get").unwrap().invoke(call));
+    let waker = noop_waker();
+    assert!(
+        invocation
+            .as_mut()
+            .poll(&mut Context::from_waker(&waker))
+            .is_pending()
+    );
+    // Both awaited futures become ready before the next poll.
+    release.send(()).unwrap();
+    cancel.cancel();
+    let refusal = block_on(invocation).unwrap_err();
+    assert_eq!(refusal.code, "cancelled");
+    assert_eq!(refusal.evidence, Evidence::Uncertain);
 }
 
 #[test]

@@ -31,6 +31,37 @@ fn default_bounds_match_the_connection_budgets_and_validate() {
 }
 
 #[test]
+fn minimum_catalogue_bound_fits_the_empty_json_array() {
+    let invalid = Bounds {
+        catalogue_bytes: 1,
+        ..Bounds::default()
+    };
+    assert!(invalid.validate().is_err());
+    assert_eq!(
+        compose([], invalid).unwrap_err().code.as_str(),
+        "invalid_bounds"
+    );
+    let minimum = Bounds {
+        catalogue_bytes: 2,
+        ..Bounds::default()
+    };
+    minimum.validate().unwrap();
+    assert_eq!(compose([], minimum).unwrap().operations().len(), 0);
+}
+
+#[test]
+fn pre_dispatch_constructor_carries_explicit_evidence_in_the_wire_form() {
+    let refusal = Refusal::not_dispatched("list_missing", Category::NotFound, "List not found.");
+    assert_eq!(refusal.evidence, Evidence::NotDispatched);
+    assert_eq!(
+        serde_json::to_value(&refusal).unwrap()["evidence"],
+        "not_dispatched"
+    );
+    assert_eq!(refusal.code, "list_missing");
+    assert!(!refusal.retryable);
+}
+
+#[test]
 fn invalid_bounds_are_refused_before_composition_including_overflow_and_total_buffering() {
     for field in 0..8 {
         for value in [0, usize::MAX] {

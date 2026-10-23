@@ -20,7 +20,7 @@ annotations. `Operation::annotations` supplies its declared hints to this mappin
 with a fixed `Category`, message, optional JSON details and retryability flag.
 Its `evidence` distinguishes `not_dispatched`, `completed` and `uncertain` effects.
 `Category::exit_code` supplies the command-line exit code. A new handler refusal
-defaults to completed evidence; pre-dispatch checks set not-dispatched evidence.
+defaults to completed evidence; pre-dispatch checks use `Refusal::not_dispatched`.
 
 `Contribution::new(namespace).operation(descriptor, handler)` pairs descriptors
 with object-safe asynchronous handlers or closures. `compose(contributions, bounds)`

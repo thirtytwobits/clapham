@@ -884,6 +884,7 @@ pub clapham::Contribution::operations: alloc::vec::Vec<(clapham::Operation, allo
 impl clapham::Contribution
 pub fn clapham::Contribution::new(namespace: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn clapham::Contribution::operation(self, descriptor: clapham::Operation, handler: impl clapham::Handler + 'static) -> Self
+pub fn clapham::Contribution::operation_boxed(self, descriptor: clapham::Operation, handler: alloc::boxed::Box<dyn clapham::Handler>) -> Self
 impl core::fmt::Debug for clapham::Contribution
 pub fn clapham::Contribution::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Freeze for clapham::Contribution
@@ -1347,6 +1348,7 @@ pub clapham::Refusal::message: alloc::string::String
 pub clapham::Refusal::retryable: bool
 impl clapham::Refusal
 pub fn clapham::Refusal::new(code: impl core::convert::Into<alloc::string::String>, category: clapham::Category, message: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn clapham::Refusal::not_dispatched(code: impl core::convert::Into<alloc::string::String>, category: clapham::Category, message: impl core::convert::Into<alloc::string::String>) -> Self
 pub fn clapham::Refusal::with_evidence(self, evidence: clapham::Evidence) -> Self
 impl core::clone::Clone for clapham::Refusal
 pub fn clapham::Refusal::clone(&self) -> clapham::Refusal

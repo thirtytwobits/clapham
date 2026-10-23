@@ -5,7 +5,7 @@ use std::fmt;
 pub struct Bounds {
     /// Maximum frame or response body size, from 8 KiB to 8 MiB.
     pub message_bytes: usize,
-    /// Maximum serialised catalogue size, at most 64 MiB.
+    /// Maximum serialised catalogue size, from 2 bytes (`[]`) to 64 MiB.
     pub catalogue_bytes: usize,
     /// Maximum size of each input or output schema, no greater than a message.
     pub schema_bytes: usize,
@@ -40,7 +40,7 @@ impl Bounds {
     /// Check individual limits and the combined 64 MiB buffering budget.
     pub fn validate(&self) -> Result<(), InvalidBounds> {
         if !(8192..=8 * 1024 * 1024).contains(&self.message_bytes)
-            || !(1..=64 * 1024 * 1024).contains(&self.catalogue_bytes)
+            || !(2..=64 * 1024 * 1024).contains(&self.catalogue_bytes)
             || self.schema_bytes == 0
             || self.schema_bytes > self.message_bytes
             || !(1..=4096).contains(&self.tools)

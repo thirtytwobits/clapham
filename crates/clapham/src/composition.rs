@@ -28,8 +28,14 @@ impl Contribution {
     }
 
     /// Add an operation, accepting a handler object or an asynchronous closure.
-    pub fn operation(mut self, descriptor: Operation, handler: impl Handler + 'static) -> Self {
-        self.operations.push((descriptor, Box::new(handler)));
+    /// Use [`Self::operation_boxed`] for a handler that is already boxed.
+    pub fn operation(self, descriptor: Operation, handler: impl Handler + 'static) -> Self {
+        self.operation_boxed(descriptor, Box::new(handler))
+    }
+
+    /// Add an already boxed handler without allocating another box around it.
+    pub fn operation_boxed(mut self, descriptor: Operation, handler: Box<dyn Handler>) -> Self {
+        self.operations.push((descriptor, handler));
         self
     }
 }
@@ -134,8 +140,7 @@ impl ComposedOperation {
     /// Validate arguments with the schema compiled at composition.
     pub fn validate_input(&self, input: &Value) -> Result<(), Refusal> {
         self.input.validate(input).map_err(|error| {
-            Refusal::new("invalid_input", Category::InvalidInput, error.to_string())
-                .with_evidence(Evidence::NotDispatched)
+            Refusal::not_dispatched("invalid_input", Category::InvalidInput, error.to_string())
         })
     }
 
@@ -168,6 +173,8 @@ impl ComposedOperation {
     /// preview and declared-refusal policies around it. Cancellation before dispatch
     /// is certain; cancellation once the handler is entered is uncertain. The handler's
     /// explicit evidence is preserved when it returns, including remote reply loss.
+    /// If cancellation and completion are both ready when polled, cancellation wins
+    /// and the result is conservatively reported as uncertain.
     pub async fn invoke(&self, mut call: Call) -> Result<Outcome, Refusal> {
         if call.cancel.is_cancelled() {
             return Err(cancelled(Evidence::NotDispatched));
