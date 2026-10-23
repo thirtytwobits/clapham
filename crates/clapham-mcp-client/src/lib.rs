@@ -1,1 +1,14 @@
+//! Copyright (c) Scott A Dixon
 #![doc = include_str!("../README.md")]
+mod binding;
+mod connection;
+#[cfg(feature = "http")]
+mod http;
+#[cfg(feature = "stdio")]
+mod stdio;
+mod wire;
+
+pub use binding::{McpCatalogue, McpDiagnostic, McpSelection, McpToolBinding};
+pub use connection::{McpConfig, McpConnection, McpError};
+#[cfg(feature = "http")]
+pub use http::McpHttpOptions;

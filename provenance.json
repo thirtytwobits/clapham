@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "source_repository": "https://github.com/thirtytwobits/battersea",
+  "extractions": [
+    {
+      "issue": 13,
+      "source_tag": "v0.17.0",
+      "source_commit": "3f291ac68745eb8bb1820cf85eadf99e63653cf8",
+      "source_paths": [
+        "crates/battersea-mcp/src",
+        "crates/battersea-mcp/tests",
+        "crates/battersea-mcp/Cargo.toml",
+        "contracts/mcp.md",
+        "NOTICE"
+      ],
+      "destination_paths": [
+        "crates/clapham-mcp-client",
+        "docs/mcp.md",
+        "NOTICE"
+      ],
+      "adaptations": [
+        "Replace model/tool registry integration with Clapham contributions, outcomes, refusals and shared bounds.",
+        "Replace timed fixture synchronisation with explicit holds and acknowledgements.",
+        "Use shared per-schema bounds and Clapham name and namespace rules; retain original record admission and transport behaviour."
+      ]
+    }
+  ]
+}

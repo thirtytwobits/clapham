@@ -1,1 +1,392 @@
 pub mod clapham_mcp_client
+pub enum clapham_mcp_client::McpError
+pub clapham_mcp_client::McpError::Busy
+pub clapham_mcp_client::McpError::Configuration
+pub clapham_mcp_client::McpError::Invocation(i32)
+pub clapham_mcp_client::McpError::Limit
+pub clapham_mcp_client::McpError::Protocol
+pub clapham_mcp_client::McpError::Selection
+pub clapham_mcp_client::McpError::Stale
+pub clapham_mcp_client::McpError::Timeout
+pub clapham_mcp_client::McpError::Transport
+pub clapham_mcp_client::McpError::UnsupportedInteraction
+impl clapham_mcp_client::McpError
+pub fn clapham_mcp_client::McpError::refusal(&self, evidence: clapham::call::Evidence) -> clapham::refusal::Refusal
+impl core::clone::Clone for clapham_mcp_client::McpError
+pub fn clapham_mcp_client::McpError::clone(&self) -> clapham_mcp_client::McpError
+impl core::cmp::Eq for clapham_mcp_client::McpError
+impl core::cmp::PartialEq for clapham_mcp_client::McpError
+pub fn clapham_mcp_client::McpError::eq(&self, other: &clapham_mcp_client::McpError) -> bool
+impl core::error::Error for clapham_mcp_client::McpError
+impl core::fmt::Debug for clapham_mcp_client::McpError
+pub fn clapham_mcp_client::McpError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for clapham_mcp_client::McpError
+pub fn clapham_mcp_client::McpError::fmt(&self, __formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for clapham_mcp_client::McpError
+impl core::marker::Freeze for clapham_mcp_client::McpError
+impl core::marker::Send for clapham_mcp_client::McpError
+impl core::marker::Sync for clapham_mcp_client::McpError
+impl core::marker::Unpin for clapham_mcp_client::McpError
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_client::McpError
+impl core::panic::unwind_safe::UnwindSafe for clapham_mcp_client::McpError
+impl<Q, K> equivalent::Equivalent<K> for clapham_mcp_client::McpError where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham_mcp_client::McpError::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_mcp_client::McpError where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_mcp_client::McpError where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_mcp_client::McpError where U: core::convert::From<T>
+pub fn clapham_mcp_client::McpError::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_mcp_client::McpError where U: core::convert::Into<T>
+pub type clapham_mcp_client::McpError::Error = core::convert::Infallible
+pub fn clapham_mcp_client::McpError::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_mcp_client::McpError where U: core::convert::TryFrom<T>
+pub type clapham_mcp_client::McpError::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_mcp_client::McpError::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_mcp_client::McpError where T: core::clone::Clone
+pub type clapham_mcp_client::McpError::Owned = T
+pub fn clapham_mcp_client::McpError::clone_into(&self, target: &mut T)
+pub fn clapham_mcp_client::McpError::to_owned(&self) -> T
+impl<T> alloc::string::ToString for clapham_mcp_client::McpError where T: core::fmt::Display + ?core::marker::Sized
+pub fn clapham_mcp_client::McpError::to_string(&self) -> alloc::string::String
+impl<T> core::any::Any for clapham_mcp_client::McpError where T: 'static + ?core::marker::Sized
+pub fn clapham_mcp_client::McpError::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_mcp_client::McpError where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpError::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_mcp_client::McpError where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpError::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_mcp_client::McpError where T: core::clone::Clone
+pub unsafe fn clapham_mcp_client::McpError::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_mcp_client::McpError
+pub fn clapham_mcp_client::McpError::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_mcp_client::McpError where T: core::clone::Clone
+pub fn clapham_mcp_client::McpError::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_mcp_client::McpError where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpError::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_client::McpError::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_mcp_client::McpError
+impl<T> tracing::instrument::WithSubscriber for clapham_mcp_client::McpError
+impl<T> typenum::type_operators::Same for clapham_mcp_client::McpError
+pub type clapham_mcp_client::McpError::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_client::McpError where T: ?core::marker::Sized
+pub struct clapham_mcp_client::McpCatalogue
+impl clapham_mcp_client::McpCatalogue
+pub fn clapham_mcp_client::McpCatalogue::bind(&self, selections: alloc::vec::Vec<clapham_mcp_client::McpSelection>) -> core::result::Result<clapham_mcp_client::McpToolBinding, clapham_mcp_client::McpError>
+pub fn clapham_mcp_client::McpCatalogue::diagnostics(&self) -> &[clapham_mcp_client::McpDiagnostic]
+pub fn clapham_mcp_client::McpCatalogue::provenance(&self, name: &str) -> core::option::Option<&serde_json::value::Value>
+pub fn clapham_mcp_client::McpCatalogue::remote_names(&self) -> impl core::iter::traits::iterator::Iterator<Item = &str>
+pub fn clapham_mcp_client::McpCatalogue::revision(&self) -> u64
+impl core::marker::Freeze for clapham_mcp_client::McpCatalogue
+impl core::marker::Send for clapham_mcp_client::McpCatalogue
+impl core::marker::Sync for clapham_mcp_client::McpCatalogue
+impl core::marker::Unpin for clapham_mcp_client::McpCatalogue
+impl !core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_client::McpCatalogue
+impl !core::panic::unwind_safe::UnwindSafe for clapham_mcp_client::McpCatalogue
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_mcp_client::McpCatalogue where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_mcp_client::McpCatalogue where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_mcp_client::McpCatalogue where U: core::convert::From<T>
+pub fn clapham_mcp_client::McpCatalogue::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_mcp_client::McpCatalogue where U: core::convert::Into<T>
+pub type clapham_mcp_client::McpCatalogue::Error = core::convert::Infallible
+pub fn clapham_mcp_client::McpCatalogue::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_mcp_client::McpCatalogue where U: core::convert::TryFrom<T>
+pub type clapham_mcp_client::McpCatalogue::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_mcp_client::McpCatalogue::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> core::any::Any for clapham_mcp_client::McpCatalogue where T: 'static + ?core::marker::Sized
+pub fn clapham_mcp_client::McpCatalogue::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_mcp_client::McpCatalogue where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpCatalogue::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_mcp_client::McpCatalogue where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpCatalogue::borrow_mut(&mut self) -> &mut T
+impl<T> core::convert::From<T> for clapham_mcp_client::McpCatalogue
+pub fn clapham_mcp_client::McpCatalogue::from(t: T) -> T
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_mcp_client::McpCatalogue where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpCatalogue::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_client::McpCatalogue::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_mcp_client::McpCatalogue
+impl<T> tracing::instrument::WithSubscriber for clapham_mcp_client::McpCatalogue
+impl<T> typenum::type_operators::Same for clapham_mcp_client::McpCatalogue
+pub type clapham_mcp_client::McpCatalogue::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_client::McpCatalogue where T: ?core::marker::Sized
+pub struct clapham_mcp_client::McpConfig
+pub clapham_mcp_client::McpConfig::bounds: clapham::bounds::Bounds
+pub clapham_mcp_client::McpConfig::credential_scope_revision: alloc::string::String
+pub clapham_mcp_client::McpConfig::operation_timeout: core::time::Duration
+pub clapham_mcp_client::McpConfig::server_id: alloc::string::String
+impl clapham_mcp_client::McpConfig
+pub fn clapham_mcp_client::McpConfig::new(server_id: impl core::convert::Into<alloc::string::String>, credential_scope_revision: impl core::convert::Into<alloc::string::String>) -> Self
+impl core::clone::Clone for clapham_mcp_client::McpConfig
+pub fn clapham_mcp_client::McpConfig::clone(&self) -> clapham_mcp_client::McpConfig
+impl core::fmt::Debug for clapham_mcp_client::McpConfig
+pub fn clapham_mcp_client::McpConfig::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for clapham_mcp_client::McpConfig
+impl core::marker::Send for clapham_mcp_client::McpConfig
+impl core::marker::Sync for clapham_mcp_client::McpConfig
+impl core::marker::Unpin for clapham_mcp_client::McpConfig
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_client::McpConfig
+impl core::panic::unwind_safe::UnwindSafe for clapham_mcp_client::McpConfig
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_mcp_client::McpConfig where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_mcp_client::McpConfig where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_mcp_client::McpConfig where U: core::convert::From<T>
+pub fn clapham_mcp_client::McpConfig::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_mcp_client::McpConfig where U: core::convert::Into<T>
+pub type clapham_mcp_client::McpConfig::Error = core::convert::Infallible
+pub fn clapham_mcp_client::McpConfig::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_mcp_client::McpConfig where U: core::convert::TryFrom<T>
+pub type clapham_mcp_client::McpConfig::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_mcp_client::McpConfig::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_mcp_client::McpConfig where T: core::clone::Clone
+pub type clapham_mcp_client::McpConfig::Owned = T
+pub fn clapham_mcp_client::McpConfig::clone_into(&self, target: &mut T)
+pub fn clapham_mcp_client::McpConfig::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_mcp_client::McpConfig where T: 'static + ?core::marker::Sized
+pub fn clapham_mcp_client::McpConfig::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_mcp_client::McpConfig where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpConfig::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_mcp_client::McpConfig where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpConfig::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_mcp_client::McpConfig where T: core::clone::Clone
+pub unsafe fn clapham_mcp_client::McpConfig::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_mcp_client::McpConfig
+pub fn clapham_mcp_client::McpConfig::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_mcp_client::McpConfig where T: core::clone::Clone
+pub fn clapham_mcp_client::McpConfig::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_mcp_client::McpConfig where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpConfig::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_client::McpConfig::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_mcp_client::McpConfig
+impl<T> tracing::instrument::WithSubscriber for clapham_mcp_client::McpConfig
+impl<T> typenum::type_operators::Same for clapham_mcp_client::McpConfig
+pub type clapham_mcp_client::McpConfig::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_client::McpConfig where T: ?core::marker::Sized
+pub struct clapham_mcp_client::McpConnection(_)
+impl clapham_mcp_client::McpConnection
+pub fn clapham_mcp_client::McpConnection::close(&self)
+pub fn clapham_mcp_client::McpConnection::credential_scope_revision(&self) -> &str
+pub async fn clapham_mcp_client::McpConnection::discover(&self) -> core::result::Result<clapham_mcp_client::McpCatalogue, clapham_mcp_client::McpError>
+pub fn clapham_mcp_client::McpConnection::server_id(&self) -> &str
+impl clapham_mcp_client::McpConnection
+pub async fn clapham_mcp_client::McpConnection::http(options: clapham_mcp_client::McpHttpOptions, config: clapham_mcp_client::McpConfig) -> core::result::Result<Self, clapham_mcp_client::McpError>
+impl clapham_mcp_client::McpConnection
+pub async fn clapham_mcp_client::McpConnection::stdio<R, W>(reader: R, writer: W, shutdown: tokio_util::sync::cancellation_token::CancellationToken, config: clapham_mcp_client::McpConfig) -> core::result::Result<Self, clapham_mcp_client::McpError> where R: tokio::io::async_read::AsyncRead + core::marker::Unpin + core::marker::Send + 'static, W: tokio::io::async_write::AsyncWrite + core::marker::Unpin + core::marker::Send + 'static
+impl core::clone::Clone for clapham_mcp_client::McpConnection
+pub fn clapham_mcp_client::McpConnection::clone(&self) -> clapham_mcp_client::McpConnection
+impl core::marker::Freeze for clapham_mcp_client::McpConnection
+impl core::marker::Send for clapham_mcp_client::McpConnection
+impl core::marker::Sync for clapham_mcp_client::McpConnection
+impl core::marker::Unpin for clapham_mcp_client::McpConnection
+impl !core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_client::McpConnection
+impl !core::panic::unwind_safe::UnwindSafe for clapham_mcp_client::McpConnection
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_mcp_client::McpConnection where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_mcp_client::McpConnection where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_mcp_client::McpConnection where U: core::convert::From<T>
+pub fn clapham_mcp_client::McpConnection::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_mcp_client::McpConnection where U: core::convert::Into<T>
+pub type clapham_mcp_client::McpConnection::Error = core::convert::Infallible
+pub fn clapham_mcp_client::McpConnection::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_mcp_client::McpConnection where U: core::convert::TryFrom<T>
+pub type clapham_mcp_client::McpConnection::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_mcp_client::McpConnection::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_mcp_client::McpConnection where T: core::clone::Clone
+pub type clapham_mcp_client::McpConnection::Owned = T
+pub fn clapham_mcp_client::McpConnection::clone_into(&self, target: &mut T)
+pub fn clapham_mcp_client::McpConnection::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_mcp_client::McpConnection where T: 'static + ?core::marker::Sized
+pub fn clapham_mcp_client::McpConnection::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_mcp_client::McpConnection where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpConnection::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_mcp_client::McpConnection where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpConnection::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_mcp_client::McpConnection where T: core::clone::Clone
+pub unsafe fn clapham_mcp_client::McpConnection::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_mcp_client::McpConnection
+pub fn clapham_mcp_client::McpConnection::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_mcp_client::McpConnection where T: core::clone::Clone
+pub fn clapham_mcp_client::McpConnection::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_mcp_client::McpConnection where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpConnection::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_client::McpConnection::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_mcp_client::McpConnection
+impl<T> tracing::instrument::WithSubscriber for clapham_mcp_client::McpConnection
+impl<T> typenum::type_operators::Same for clapham_mcp_client::McpConnection
+pub type clapham_mcp_client::McpConnection::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_client::McpConnection where T: ?core::marker::Sized
+pub struct clapham_mcp_client::McpDiagnostic
+pub clapham_mcp_client::McpDiagnostic::error: clapham_mcp_client::McpError
+pub clapham_mcp_client::McpDiagnostic::index: usize
+pub clapham_mcp_client::McpDiagnostic::name: core::option::Option<alloc::string::String>
+impl core::clone::Clone for clapham_mcp_client::McpDiagnostic
+pub fn clapham_mcp_client::McpDiagnostic::clone(&self) -> clapham_mcp_client::McpDiagnostic
+impl core::cmp::Eq for clapham_mcp_client::McpDiagnostic
+impl core::cmp::PartialEq for clapham_mcp_client::McpDiagnostic
+pub fn clapham_mcp_client::McpDiagnostic::eq(&self, other: &clapham_mcp_client::McpDiagnostic) -> bool
+impl core::fmt::Debug for clapham_mcp_client::McpDiagnostic
+pub fn clapham_mcp_client::McpDiagnostic::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for clapham_mcp_client::McpDiagnostic
+impl core::marker::Freeze for clapham_mcp_client::McpDiagnostic
+impl core::marker::Send for clapham_mcp_client::McpDiagnostic
+impl core::marker::Sync for clapham_mcp_client::McpDiagnostic
+impl core::marker::Unpin for clapham_mcp_client::McpDiagnostic
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_client::McpDiagnostic
+impl core::panic::unwind_safe::UnwindSafe for clapham_mcp_client::McpDiagnostic
+impl<Q, K> equivalent::Equivalent<K> for clapham_mcp_client::McpDiagnostic where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham_mcp_client::McpDiagnostic::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_mcp_client::McpDiagnostic where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_mcp_client::McpDiagnostic where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_mcp_client::McpDiagnostic where U: core::convert::From<T>
+pub fn clapham_mcp_client::McpDiagnostic::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_mcp_client::McpDiagnostic where U: core::convert::Into<T>
+pub type clapham_mcp_client::McpDiagnostic::Error = core::convert::Infallible
+pub fn clapham_mcp_client::McpDiagnostic::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_mcp_client::McpDiagnostic where U: core::convert::TryFrom<T>
+pub type clapham_mcp_client::McpDiagnostic::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_mcp_client::McpDiagnostic::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_mcp_client::McpDiagnostic where T: core::clone::Clone
+pub type clapham_mcp_client::McpDiagnostic::Owned = T
+pub fn clapham_mcp_client::McpDiagnostic::clone_into(&self, target: &mut T)
+pub fn clapham_mcp_client::McpDiagnostic::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_mcp_client::McpDiagnostic where T: 'static + ?core::marker::Sized
+pub fn clapham_mcp_client::McpDiagnostic::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_mcp_client::McpDiagnostic where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpDiagnostic::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_mcp_client::McpDiagnostic where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpDiagnostic::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_mcp_client::McpDiagnostic where T: core::clone::Clone
+pub unsafe fn clapham_mcp_client::McpDiagnostic::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_mcp_client::McpDiagnostic
+pub fn clapham_mcp_client::McpDiagnostic::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_mcp_client::McpDiagnostic where T: core::clone::Clone
+pub fn clapham_mcp_client::McpDiagnostic::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_mcp_client::McpDiagnostic where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpDiagnostic::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_client::McpDiagnostic::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_mcp_client::McpDiagnostic
+impl<T> tracing::instrument::WithSubscriber for clapham_mcp_client::McpDiagnostic
+impl<T> typenum::type_operators::Same for clapham_mcp_client::McpDiagnostic
+pub type clapham_mcp_client::McpDiagnostic::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_client::McpDiagnostic where T: ?core::marker::Sized
+pub struct clapham_mcp_client::McpHttpOptions
+pub clapham_mcp_client::McpHttpOptions::bearer_token: core::option::Option<alloc::string::String>
+pub clapham_mcp_client::McpHttpOptions::endpoint: alloc::string::String
+impl clapham_mcp_client::McpHttpOptions
+pub fn clapham_mcp_client::McpHttpOptions::new(endpoint: impl core::convert::Into<alloc::string::String>) -> Self
+impl core::fmt::Debug for clapham_mcp_client::McpHttpOptions
+pub fn clapham_mcp_client::McpHttpOptions::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for clapham_mcp_client::McpHttpOptions
+impl core::marker::Send for clapham_mcp_client::McpHttpOptions
+impl core::marker::Sync for clapham_mcp_client::McpHttpOptions
+impl core::marker::Unpin for clapham_mcp_client::McpHttpOptions
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_client::McpHttpOptions
+impl core::panic::unwind_safe::UnwindSafe for clapham_mcp_client::McpHttpOptions
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_mcp_client::McpHttpOptions where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_mcp_client::McpHttpOptions where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_mcp_client::McpHttpOptions where U: core::convert::From<T>
+pub fn clapham_mcp_client::McpHttpOptions::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_mcp_client::McpHttpOptions where U: core::convert::Into<T>
+pub type clapham_mcp_client::McpHttpOptions::Error = core::convert::Infallible
+pub fn clapham_mcp_client::McpHttpOptions::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_mcp_client::McpHttpOptions where U: core::convert::TryFrom<T>
+pub type clapham_mcp_client::McpHttpOptions::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_mcp_client::McpHttpOptions::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> core::any::Any for clapham_mcp_client::McpHttpOptions where T: 'static + ?core::marker::Sized
+pub fn clapham_mcp_client::McpHttpOptions::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_mcp_client::McpHttpOptions where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpHttpOptions::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_mcp_client::McpHttpOptions where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpHttpOptions::borrow_mut(&mut self) -> &mut T
+impl<T> core::convert::From<T> for clapham_mcp_client::McpHttpOptions
+pub fn clapham_mcp_client::McpHttpOptions::from(t: T) -> T
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_mcp_client::McpHttpOptions where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpHttpOptions::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_client::McpHttpOptions::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_mcp_client::McpHttpOptions
+impl<T> tracing::instrument::WithSubscriber for clapham_mcp_client::McpHttpOptions
+impl<T> typenum::type_operators::Same for clapham_mcp_client::McpHttpOptions
+pub type clapham_mcp_client::McpHttpOptions::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_client::McpHttpOptions where T: ?core::marker::Sized
+pub struct clapham_mcp_client::McpSelection
+pub clapham_mcp_client::McpSelection::alias: core::option::Option<alloc::string::String>
+pub clapham_mcp_client::McpSelection::principals: core::option::Option<alloc::vec::Vec<clapham::principal::PrincipalKind>>
+pub clapham_mcp_client::McpSelection::remote_name: alloc::string::String
+impl clapham_mcp_client::McpSelection
+pub fn clapham_mcp_client::McpSelection::new(remote_name: impl core::convert::Into<alloc::string::String>) -> Self
+impl core::clone::Clone for clapham_mcp_client::McpSelection
+pub fn clapham_mcp_client::McpSelection::clone(&self) -> clapham_mcp_client::McpSelection
+impl core::fmt::Debug for clapham_mcp_client::McpSelection
+pub fn clapham_mcp_client::McpSelection::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for clapham_mcp_client::McpSelection
+impl core::marker::Send for clapham_mcp_client::McpSelection
+impl core::marker::Sync for clapham_mcp_client::McpSelection
+impl core::marker::Unpin for clapham_mcp_client::McpSelection
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_client::McpSelection
+impl core::panic::unwind_safe::UnwindSafe for clapham_mcp_client::McpSelection
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_mcp_client::McpSelection where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_mcp_client::McpSelection where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_mcp_client::McpSelection where U: core::convert::From<T>
+pub fn clapham_mcp_client::McpSelection::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_mcp_client::McpSelection where U: core::convert::Into<T>
+pub type clapham_mcp_client::McpSelection::Error = core::convert::Infallible
+pub fn clapham_mcp_client::McpSelection::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_mcp_client::McpSelection where U: core::convert::TryFrom<T>
+pub type clapham_mcp_client::McpSelection::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_mcp_client::McpSelection::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_mcp_client::McpSelection where T: core::clone::Clone
+pub type clapham_mcp_client::McpSelection::Owned = T
+pub fn clapham_mcp_client::McpSelection::clone_into(&self, target: &mut T)
+pub fn clapham_mcp_client::McpSelection::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_mcp_client::McpSelection where T: 'static + ?core::marker::Sized
+pub fn clapham_mcp_client::McpSelection::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_mcp_client::McpSelection where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpSelection::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_mcp_client::McpSelection where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpSelection::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_mcp_client::McpSelection where T: core::clone::Clone
+pub unsafe fn clapham_mcp_client::McpSelection::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_mcp_client::McpSelection
+pub fn clapham_mcp_client::McpSelection::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_mcp_client::McpSelection where T: core::clone::Clone
+pub fn clapham_mcp_client::McpSelection::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_mcp_client::McpSelection where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpSelection::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_client::McpSelection::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_mcp_client::McpSelection
+impl<T> tracing::instrument::WithSubscriber for clapham_mcp_client::McpSelection
+impl<T> typenum::type_operators::Same for clapham_mcp_client::McpSelection
+pub type clapham_mcp_client::McpSelection::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_client::McpSelection where T: ?core::marker::Sized
+pub struct clapham_mcp_client::McpToolBinding
+impl clapham_mcp_client::McpToolBinding
+pub fn clapham_mcp_client::McpToolBinding::contribution(&self) -> clapham::composition::Contribution
+pub fn clapham_mcp_client::McpToolBinding::credential_scope_revision(&self) -> &str
+pub fn clapham_mcp_client::McpToolBinding::operations(&self) -> &[clapham::operation::Operation]
+pub fn clapham_mcp_client::McpToolBinding::revision(&self) -> &str
+impl core::marker::Freeze for clapham_mcp_client::McpToolBinding
+impl core::marker::Send for clapham_mcp_client::McpToolBinding
+impl core::marker::Sync for clapham_mcp_client::McpToolBinding
+impl core::marker::Unpin for clapham_mcp_client::McpToolBinding
+impl !core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_client::McpToolBinding
+impl !core::panic::unwind_safe::UnwindSafe for clapham_mcp_client::McpToolBinding
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_mcp_client::McpToolBinding where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_mcp_client::McpToolBinding where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_mcp_client::McpToolBinding where U: core::convert::From<T>
+pub fn clapham_mcp_client::McpToolBinding::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_mcp_client::McpToolBinding where U: core::convert::Into<T>
+pub type clapham_mcp_client::McpToolBinding::Error = core::convert::Infallible
+pub fn clapham_mcp_client::McpToolBinding::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_mcp_client::McpToolBinding where U: core::convert::TryFrom<T>
+pub type clapham_mcp_client::McpToolBinding::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_mcp_client::McpToolBinding::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> core::any::Any for clapham_mcp_client::McpToolBinding where T: 'static + ?core::marker::Sized
+pub fn clapham_mcp_client::McpToolBinding::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_mcp_client::McpToolBinding where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpToolBinding::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_mcp_client::McpToolBinding where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpToolBinding::borrow_mut(&mut self) -> &mut T
+impl<T> core::convert::From<T> for clapham_mcp_client::McpToolBinding
+pub fn clapham_mcp_client::McpToolBinding::from(t: T) -> T
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_mcp_client::McpToolBinding where T: ?core::marker::Sized
+pub fn clapham_mcp_client::McpToolBinding::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_client::McpToolBinding::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_mcp_client::McpToolBinding
+impl<T> tracing::instrument::WithSubscriber for clapham_mcp_client::McpToolBinding
+impl<T> typenum::type_operators::Same for clapham_mcp_client::McpToolBinding
+pub type clapham_mcp_client::McpToolBinding::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_client::McpToolBinding where T: ?core::marker::Sized

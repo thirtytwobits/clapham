@@ -45,3 +45,8 @@ intentional update, run that test with `CLAPHAM_WRITE_RECORDS=1` and review the 
 The test compares canonical bytes and takes request metadata keys from the server's published
 `REQUEST_META_KEYS`, rather than the HTTP fixture. `cargo xtask check` removes the writing flag
 from child Cargo commands, even if it was inherited from the caller.
+
+The MCP client conformance tests bind the server over stdio and authenticated Streamable HTTP.
+A composed `remote.lists.get` returns the same structured result as its local counterpart.
+A remote `list_not_found` remains a tool-error outcome with the refusal code unchanged.
+Scripted in-flight cancellation preserves uncertain dispatch evidence.
