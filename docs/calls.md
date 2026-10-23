@@ -93,3 +93,21 @@ backpressure. Handlers must await sink delivery to preserve record order. A prop
 sink refusal must be declared by the operation; if delivery failure leaves effects
 unresolved, it must carry `uncertain` evidence. Streaming cancellation tests hold and
 release explicit futures, without timers or retries.
+
+## Transport-generated refusals
+
+Transport refusals, like runner-generated refusals, do not require a contribution declaration.
+They describe delivery failures after the ordinary call runner has completed. A handler that
+returns a similarly named code still follows its descriptor's declared category and contract;
+the adapter does not reinterpret an existing refusal.
+
+| Code | Category | Condition |
+|---|---|---|
+| `result_too_large` | `usage` | MCP successful tool reply or resource outcome exceeds the connection's encoded response budget; evidence is `uncertain` |
+
+The MCP stdio adapter preserves existing refusal codes, even when the handler declares
+`result_too_large` under another category. An existing refusal or tool error reply that cannot
+fit closes the connection; it is not replaced with another refusal. Resource reads carry
+transport refusals in JSON resource contents. Replacement tool replies preserve the original
+response metadata. An oversized request ID or response envelope can still make delivery
+impossible, in which case the connection closes.
