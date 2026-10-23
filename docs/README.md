@@ -7,7 +7,7 @@
 | `clapham-mcp-server` | MCP server | `clapham` |
 | `clapham-mcp-client` | MCP client | `clapham` |
 | `clapham-conformance` | Lists-and-items contribution and conformance harness | The four libraries above |
-| `clapham-lists` | Example binary assembling the front ends over the contribution | Command line, MCP server and conformance library |
+| `clapham-lists` | Example binary assembling the front ends over the contribution | Core, command line, MCP server and conformance library |
 | `xtask` | Repository gates and schema generation | `clapham`, `clapham-cli` |
 
 The core exports the contract, contribution, composition, selection, gate and call types,
@@ -22,8 +22,10 @@ The [MCP server](../crates/clapham-mcp-server/README.md) exposes selected tools 
 over stdio and stateless Streamable HTTP, with principal-bound discovery, previews,
 unchanged refusals and per-request authentication. Its conformance tests check the generated
 MCP wire record. The [MCP client](mcp.md#client) binds remote tools as daemon contributions,
-with shared bounds, pinned definitions, stale checks and explicit dispatch evidence. The lists
-example follows in its implementation issue.
+with shared bounds, pinned definitions, stale checks and explicit dispatch evidence. The [lists example](../examples/lists/README.md) assembles the CLI and both MCP servers.
+The reusable `run` harness launches it through every front end and checks results, refusals,
+gate visibility and ordered records; downstream contributions supply fresh fixture factories
+and finite cases to the same library.
 Each library has a generated public API snapshot in `api/`.
 
 `cargo xtask schemas` generates the operation, refusal, catalogue and CLI envelope schemas.

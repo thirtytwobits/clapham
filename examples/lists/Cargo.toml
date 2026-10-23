@@ -7,7 +7,15 @@ repository.workspace = true
 rust-version = "1.88"
 publish = false
 
+[[bin]]
+name = "lists"
+path = "src/main.rs"
+
 [dependencies]
+clapham.workspace = true
+serde_json = "1.0"
+tokio = { version = "1", features = ["rt", "macros", "net", "io-util", "io-std", "signal"] }
+axum = "0.8.6"
 clapham-cli.workspace = true
 clapham-mcp-server.workspace = true
 clapham-conformance.workspace = true

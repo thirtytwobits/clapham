@@ -69,6 +69,7 @@ fn all_rows_compose_with_the_effects_resources_positional_and_preview_metadata()
             "clapham.version",
             "items.add",
             "items.tick",
+            "lists.busy",
             "lists.compact",
             "lists.create",
             "lists.delete",

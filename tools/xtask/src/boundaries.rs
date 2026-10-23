@@ -34,7 +34,12 @@ const POLICIES: &[(&str, &str, &[&str])] = &[
     (
         "clapham-lists",
         "examples/lists",
-        &["clapham-cli", "clapham-mcp-server", "clapham-conformance"],
+        &[
+            "clapham",
+            "clapham-cli",
+            "clapham-mcp-server",
+            "clapham-conformance",
+        ],
     ),
     ("xtask", "tools/xtask", &["clapham", "clapham-cli"]),
 ];

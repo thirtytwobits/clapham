@@ -97,8 +97,9 @@ and generated shell completions. The MCP server exposes selected tools and query
 on stdio and stateless Streamable HTTP, with per-request HTTP authentication, principal-bound
 discovery, effect annotations, previews and unchanged refusals. The checked-in MCP wire record
 guards that surface. The MCP client binds discovered tools as daemon contributions with bounded
-transports, pinned revisions, stale checks and explicit dispatch evidence. The lists example
-follows in its implementation issue.
+transports, pinned revisions, stale checks and explicit dispatch evidence. The reusable conformance harness compares fresh fixtures through every front end.
+The [lists example](examples/lists/README.md) assembles the CLI and both MCP servers and is
+launched by the same harness.
 [thirtytwobits/london#2](https://github.com/thirtytwobits/london/issues/2) holds the design
 and the plan for the first release. See [CONTRIBUTING.md](CONTRIBUTING.md) for the gate commands
 and [the workspace guide](docs/README.md) for the crate boundaries.

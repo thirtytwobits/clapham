@@ -19,12 +19,13 @@ pub(crate) enum Kind {
     Watch,
     Export,
     Fault,
+    Busy,
     Add,
     Tick,
 }
 
 impl Kind {
-    const ALL: [Self; 11] = [
+    const ALL: [Self; 12] = [
         Self::List,
         Self::Get,
         Self::Create,
@@ -34,6 +35,7 @@ impl Kind {
         Self::Watch,
         Self::Export,
         Self::Fault,
+        Self::Busy,
         Self::Add,
         Self::Tick,
     ];
@@ -49,6 +51,7 @@ impl Kind {
             Self::Watch => "lists.watch",
             Self::Export => "lists.export",
             Self::Fault => "lists.fault",
+            Self::Busy => "lists.busy",
             Self::Add => "items.add",
             Self::Tick => "items.tick",
         }
@@ -137,6 +140,12 @@ impl Kind {
                 identified.clone(),
                 Some(count_schema("count")),
             ),
+            Self::Busy => (
+                Effect::Query,
+                "Report a scripted temporary failure without dispatching an effect.",
+                empty.clone(),
+                None,
+            ),
             Self::Fault => (
                 Effect::Mutation,
                 "Return an intentionally undeclared refusal without changing state.",
@@ -194,6 +203,9 @@ impl Kind {
             refusals.insert("revision_exhausted".into(), Category::Internal);
         }
         match self {
+            Self::Busy => {
+                refusals.insert("list_busy".into(), Category::Unavailable);
+            }
             Self::Create => {
                 refusals.insert("list_exists".into(), Category::Conflict);
             }
@@ -303,6 +315,15 @@ impl Handler for FixtureHandler {
                 kind => {
                     self.handle.pause(kind).await;
                     let result = match kind {
+                        Kind::Busy => {
+                            let mut refusal = Refusal::new(
+                                "list_busy",
+                                Category::Unavailable,
+                                "The list service is temporarily busy.",
+                            );
+                            refusal.retryable = true;
+                            return Err(refusal);
+                        }
                         Kind::List => wire(self.handle.snapshot()),
                         Kind::Get => wire(
                             self.handle

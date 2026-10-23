@@ -1,7 +1,8 @@
 # Lists-and-items fixture
 
 `clapham-conformance` provides the neutral contribution that front ends and other
-contributions are tested beside. It has no disk state or runtime requirement.
+contributions are tested beside. The fixture has no disk state or runtime requirement;
+the process and transport harness uses Tokio.
 See the [crate guide](../crates/clapham-conformance/README.md) for operation inputs,
 outputs and a complete composition example.
 
@@ -28,8 +29,7 @@ object flags, whole-object JSON from arguments and stdin, descriptor help,
 principal overrides, admission and validation before dispatch. Process tests use
 the `clapham-cli-fixture` binary to verify output, exit codes, effect safeguards,
 completions and a deadline signalled after a write is explicitly held. Terminal
-status is supplied by the fixture for deterministic human-mode checks. The remaining
-front-end conformance harness follows when those adapters are implemented.
+status is supplied by the fixture for deterministic human-mode checks. The reusable harness now drives all front ends against fresh copies of the same fixture.
 
 The MCP tests drive a real child process over stdin/stdout and deterministic duplex streams.
 They cover effect annotations, principal filtering, unchanged refusals, preview isolation,
@@ -50,3 +50,24 @@ The MCP client conformance tests bind the server over stdio and authenticated St
 A composed `remote.lists.get` returns the same structured result as its local counterpart.
 A remote `list_not_found` remains a tool-error outcome with the refusal code unchanged.
 Scripted in-flight cancellation preserves uncertain dispatch evidence.
+
+The public `run(&fixture, gate, front_ends)` API compares explicit finite cases against an
+independent in-process baseline. The reference lists executable is launched for the CLI,
+stdio server, HTTP server and the MCP client bound to both servers. CLI inputs travel on
+stdin, including a Unicode JSON case larger than Windows' argument limit. HTTP readiness
+is an explicit bound-address line, and stdin EOF shuts servers down without timed polling.
+
+Every operation has a case, and a fully denied principal is checked for refusal and omission
+from describe. The selective agent denial for `items.tick` is checked too. A hidden tool
+cannot be bound by the client, so that front end must refuse as `mcp_selection`; admitted
+operation refusals retain code, category and retryability through all adapters. Finite export
+checks records before exactly one result on the two front ends that carry records. The
+watch uses a missing-list refusal in this finite matrix; its live stream and cancellation
+remain covered by the scripted watch tests above. Duplicate namespace admission is checked
+before a driver starts.
+
+`lists.busy` returns a declared retryable refusal, so a front-end double which drops
+`retryable` is rejected. Other doubles exercise code/category loss, exit status, ordering and
+duplicate results. The crate README documents downstream Git-tag consumption and custom
+`FrontEnd` drivers. `cargo test -p clapham-lists --test conformance` runs the complete matrix;
+workspace checks on both CI platforms and the Rust 1.88 lane include it.

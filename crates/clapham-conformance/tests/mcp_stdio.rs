@@ -84,7 +84,7 @@ fn stdio_lists_effects_calls_refusals_resources_and_preview() {
     assert_eq!(catalogue["ttlMs"], 0);
     assert_eq!(catalogue["cacheScope"], "private");
     let tools = catalogue["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 13);
+    assert_eq!(tools.len(), 14);
     for (name, readonly, destructive, idempotent) in [
         ("lists.get", true, false, true),
         ("lists.create", false, false, false),
