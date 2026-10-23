@@ -15,8 +15,10 @@ with compiled schema validation and deterministic revisions. See [composition](c
 for the boundaries, [calls](calls.md) for admission, dispatch and refusal handling, and
 [the catalogue](catalogue.md) for the built-in discovery and version operations.
 Generated schemas are in `crates/clapham/schemas/`.
-The other four libraries and the example remain stubs. Each library has a generated
-public API snapshot in `api/`.
+The [lists-and-items contribution](conformance.md) supplies shared in-memory state,
+scripted holds and an example gate. The three front-end libraries, their conformance
+harness and the example remain stubs. Each library has a generated public API snapshot
+in `api/`.
 
 `cargo xtask schemas` generates the operation, refusal and catalogue schemas with schemars.
 `cargo xtask schemas --check` refuses missing or stale files without rewriting them;
@@ -28,8 +30,8 @@ forbidden edge. Dependencies named `battersea-*`, `clerkenwell-*` or `walthamsto
 refused in every workspace member.
 
 CI runs `check` and `boundaries` on Ubuntu 26.04 and Windows 2025 with Rust 1.99.0. Separate
-lanes check and test the core on Rust 1.85.0, the MCP tests and transport feature combinations
-on Rust 1.88.0, and API snapshots on both runners with nightly-2025-08-02 and cargo-public-api
+lanes check and test the core on Rust 1.85.0, the MCP and conformance tests and transport
+feature combinations on Rust 1.88.0, and API snapshots on both runners with nightly-2025-08-02 and cargo-public-api
 0.50.2. The only workflow action is `actions/checkout`, pinned to the v7.0.1 commit; its
 release's `action.yml` declares the Node 24 runtime (verified when adding the workflow).
 Rust commands themselves use Cargo and rustup.

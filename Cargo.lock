@@ -127,6 +127,12 @@ dependencies = [
  "clapham-cli",
  "clapham-mcp-client",
  "clapham-mcp-server",
+ "futures-channel",
+ "futures-executor",
+ "futures-util",
+ "schemars",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -35,7 +35,7 @@ Check the minimum supported Rust versions with the committed lockfile:
 cargo +1.85.0 check --locked -p clapham
 cargo +1.85.0 test --locked -p clapham
 cargo +1.85.0 test --locked -p clapham --features serde_json/preserve_order revision_
-cargo +1.88.0 test --locked -p clapham-mcp-server -p clapham-mcp-client --all-features
+cargo +1.88.0 test --locked -p clapham-mcp-server -p clapham-mcp-client -p clapham-conformance --all-features
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features stdio
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features http
@@ -46,8 +46,9 @@ Generate the public operation, refusal and catalogue schemas from the core types
 `cargo xtask schemas --check` checks them without writing. The schemas use JSON Schema
 2020-12. Tests validate descriptors and refusals against the checked-in files.
 
-The MCP crates reserve `stdio` and `http` features for their transports. The front ends,
-conformance contribution and example bodies are stubs until their implementation issues
-land. The MCP wire-form generator follows with the server implementation.
+The MCP crates reserve `stdio` and `http` features for their transports. The neutral
+conformance contribution is implemented; the front ends and example remain stubs until
+their implementation issues land. The MCP wire-form generator follows with the server
+implementation.
 
 See [the workspace guide](docs/README.md) for the crate boundaries and CI lanes.
