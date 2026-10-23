@@ -10,9 +10,11 @@
 | `clapham-lists` | Example binary assembling the front ends over the contribution | Command line, MCP server and conformance library |
 | `xtask` | Repository gates and schema generation | `clapham` |
 
-The core exports the operation, effect, principal, locality, name and refusal types,
-with generated schemas in `crates/clapham/schemas/`. The other four libraries and the
-example remain stubs. Each library has a generated public API snapshot in `api/`.
+The core exports the contract, contribution, call and composition types, with compiled
+schema validation and deterministic revisions. See [composition](composition.md) for
+the boundaries and dispatch primitive. Generated schemas are in `crates/clapham/schemas/`.
+The other four libraries and the example remain stubs. Each library has a generated
+public API snapshot in `api/`.
 
 `cargo xtask schemas` generates the operation and refusal schemas with schemars.
 `cargo xtask schemas --check` refuses missing or stale files without rewriting them;

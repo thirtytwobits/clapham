@@ -44,6 +44,12 @@ impl core::marker::Sync for clapham::Category
 impl core::marker::Unpin for clapham::Category
 impl core::panic::unwind_safe::RefUnwindSafe for clapham::Category
 impl core::panic::unwind_safe::UnwindSafe for clapham::Category
+impl<Q, K> equivalent::Comparable<K> for clapham::Category where Q: core::cmp::Ord + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::Category::compare(&self, key: &K) -> core::cmp::Ordering
+impl<Q, K> equivalent::Equivalent<K> for clapham::Category where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::Category::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::Category where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::Category where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham::Category where U: core::convert::From<T>
 pub fn clapham::Category::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for clapham::Category where U: core::convert::Into<T>
@@ -68,7 +74,144 @@ impl<T> core::convert::From<T> for clapham::Category
 pub fn clapham::Category::from(t: T) -> T
 impl<T> dyn_clone::DynClone for clapham::Category where T: core::clone::Clone
 pub fn clapham::Category::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> outref::AsOut<T> for clapham::Category where T: core::marker::Copy
+pub fn clapham::Category::as_out(&mut self) -> outref::Out<'_, T>
 impl<T> serde_core::de::DeserializeOwned for clapham::Category where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> typenum::type_operators::Same for clapham::Category
+pub type clapham::Category::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::Category where T: ?core::marker::Sized
+pub enum clapham::CompositionCode
+pub clapham::CompositionCode::CatalogueTooLarge
+pub clapham::CompositionCode::DuplicateOperation
+pub clapham::CompositionCode::InvalidBounds
+pub clapham::CompositionCode::InvalidName
+pub clapham::CompositionCode::InvalidSchema
+pub clapham::CompositionCode::MissingDescription
+pub clapham::CompositionCode::NamespaceClaimed
+pub clapham::CompositionCode::SchemaTooLarge
+pub clapham::CompositionCode::TooManyOperations
+impl clapham::CompositionCode
+pub const fn clapham::CompositionCode::as_str(self) -> &'static str
+impl core::clone::Clone for clapham::CompositionCode
+pub fn clapham::CompositionCode::clone(&self) -> clapham::CompositionCode
+impl core::cmp::Eq for clapham::CompositionCode
+impl core::cmp::PartialEq for clapham::CompositionCode
+pub fn clapham::CompositionCode::eq(&self, other: &clapham::CompositionCode) -> bool
+impl core::fmt::Debug for clapham::CompositionCode
+pub fn clapham::CompositionCode::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for clapham::CompositionCode
+impl core::marker::StructuralPartialEq for clapham::CompositionCode
+impl core::marker::Freeze for clapham::CompositionCode
+impl core::marker::Send for clapham::CompositionCode
+impl core::marker::Sync for clapham::CompositionCode
+impl core::marker::Unpin for clapham::CompositionCode
+impl core::panic::unwind_safe::RefUnwindSafe for clapham::CompositionCode
+impl core::panic::unwind_safe::UnwindSafe for clapham::CompositionCode
+impl<Q, K> equivalent::Equivalent<K> for clapham::CompositionCode where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::CompositionCode::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::CompositionCode where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::CompositionCode where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham::CompositionCode where U: core::convert::From<T>
+pub fn clapham::CompositionCode::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham::CompositionCode where U: core::convert::Into<T>
+pub type clapham::CompositionCode::Error = core::convert::Infallible
+pub fn clapham::CompositionCode::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham::CompositionCode where U: core::convert::TryFrom<T>
+pub type clapham::CompositionCode::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham::CompositionCode::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham::CompositionCode where T: core::clone::Clone
+pub type clapham::CompositionCode::Owned = T
+pub fn clapham::CompositionCode::clone_into(&self, target: &mut T)
+pub fn clapham::CompositionCode::to_owned(&self) -> T
+impl<T> core::any::Any for clapham::CompositionCode where T: 'static + ?core::marker::Sized
+pub fn clapham::CompositionCode::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham::CompositionCode where T: ?core::marker::Sized
+pub fn clapham::CompositionCode::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham::CompositionCode where T: ?core::marker::Sized
+pub fn clapham::CompositionCode::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham::CompositionCode where T: core::clone::Clone
+pub unsafe fn clapham::CompositionCode::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham::CompositionCode
+pub fn clapham::CompositionCode::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham::CompositionCode where T: core::clone::Clone
+pub fn clapham::CompositionCode::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> outref::AsOut<T> for clapham::CompositionCode where T: core::marker::Copy
+pub fn clapham::CompositionCode::as_out(&mut self) -> outref::Out<'_, T>
+impl<T> typenum::type_operators::Same for clapham::CompositionCode
+pub type clapham::CompositionCode::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::CompositionCode where T: ?core::marker::Sized
+pub enum clapham::ContentBlock
+pub clapham::ContentBlock::Audio
+pub clapham::ContentBlock::Audio::mime_type: alloc::string::String
+pub clapham::ContentBlock::Audio::url: alloc::string::String
+pub clapham::ContentBlock::Image
+pub clapham::ContentBlock::Image::mime_type: alloc::string::String
+pub clapham::ContentBlock::Image::url: alloc::string::String
+pub clapham::ContentBlock::Resource
+pub clapham::ContentBlock::Resource::contents: clapham::ResourceContents
+pub clapham::ContentBlock::Resource::mime_type: core::option::Option<alloc::string::String>
+pub clapham::ContentBlock::Resource::uri: alloc::string::String
+pub clapham::ContentBlock::ResourceLink
+pub clapham::ContentBlock::ResourceLink::mime_type: core::option::Option<alloc::string::String>
+pub clapham::ContentBlock::ResourceLink::name: alloc::string::String
+pub clapham::ContentBlock::ResourceLink::uri: alloc::string::String
+pub clapham::ContentBlock::Text
+pub clapham::ContentBlock::Text::text: alloc::string::String
+impl core::clone::Clone for clapham::ContentBlock
+pub fn clapham::ContentBlock::clone(&self) -> clapham::ContentBlock
+impl core::cmp::Eq for clapham::ContentBlock
+impl core::cmp::PartialEq for clapham::ContentBlock
+pub fn clapham::ContentBlock::eq(&self, other: &clapham::ContentBlock) -> bool
+impl core::fmt::Debug for clapham::ContentBlock
+pub fn clapham::ContentBlock::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for clapham::ContentBlock
+impl schemars::JsonSchema for clapham::ContentBlock
+pub fn clapham::ContentBlock::inline_schema() -> bool
+pub fn clapham::ContentBlock::json_schema(generator: &mut schemars::generate::SchemaGenerator) -> schemars::schema::Schema
+pub fn clapham::ContentBlock::schema_id() -> alloc::borrow::Cow<'static, str>
+pub fn clapham::ContentBlock::schema_name() -> alloc::borrow::Cow<'static, str>
+impl serde_core::ser::Serialize for clapham::ContentBlock
+pub fn clapham::ContentBlock::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for clapham::ContentBlock
+pub fn clapham::ContentBlock::deserialize<__D>(__deserializer: __D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for clapham::ContentBlock
+impl core::marker::Send for clapham::ContentBlock
+impl core::marker::Sync for clapham::ContentBlock
+impl core::marker::Unpin for clapham::ContentBlock
+impl core::panic::unwind_safe::RefUnwindSafe for clapham::ContentBlock
+impl core::panic::unwind_safe::UnwindSafe for clapham::ContentBlock
+impl<Q, K> equivalent::Equivalent<K> for clapham::ContentBlock where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::ContentBlock::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::ContentBlock where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::ContentBlock where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham::ContentBlock where U: core::convert::From<T>
+pub fn clapham::ContentBlock::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham::ContentBlock where U: core::convert::Into<T>
+pub type clapham::ContentBlock::Error = core::convert::Infallible
+pub fn clapham::ContentBlock::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham::ContentBlock where U: core::convert::TryFrom<T>
+pub type clapham::ContentBlock::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham::ContentBlock::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham::ContentBlock where T: core::clone::Clone
+pub type clapham::ContentBlock::Owned = T
+pub fn clapham::ContentBlock::clone_into(&self, target: &mut T)
+pub fn clapham::ContentBlock::to_owned(&self) -> T
+impl<T> core::any::Any for clapham::ContentBlock where T: 'static + ?core::marker::Sized
+pub fn clapham::ContentBlock::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham::ContentBlock where T: ?core::marker::Sized
+pub fn clapham::ContentBlock::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham::ContentBlock where T: ?core::marker::Sized
+pub fn clapham::ContentBlock::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham::ContentBlock where T: core::clone::Clone
+pub unsafe fn clapham::ContentBlock::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham::ContentBlock
+pub fn clapham::ContentBlock::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham::ContentBlock where T: core::clone::Clone
+pub fn clapham::ContentBlock::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> serde_core::de::DeserializeOwned for clapham::ContentBlock where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> typenum::type_operators::Same for clapham::ContentBlock
+pub type clapham::ContentBlock::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::ContentBlock where T: ?core::marker::Sized
 pub enum clapham::Effect
 pub clapham::Effect::Administrative
 pub clapham::Effect::Destructive
@@ -103,6 +246,10 @@ impl core::marker::Sync for clapham::Effect
 impl core::marker::Unpin for clapham::Effect
 impl core::panic::unwind_safe::RefUnwindSafe for clapham::Effect
 impl core::panic::unwind_safe::UnwindSafe for clapham::Effect
+impl<Q, K> equivalent::Equivalent<K> for clapham::Effect where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::Effect::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::Effect where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::Effect where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham::Effect where U: core::convert::From<T>
 pub fn clapham::Effect::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for clapham::Effect where U: core::convert::Into<T>
@@ -127,7 +274,74 @@ impl<T> core::convert::From<T> for clapham::Effect
 pub fn clapham::Effect::from(t: T) -> T
 impl<T> dyn_clone::DynClone for clapham::Effect where T: core::clone::Clone
 pub fn clapham::Effect::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> outref::AsOut<T> for clapham::Effect where T: core::marker::Copy
+pub fn clapham::Effect::as_out(&mut self) -> outref::Out<'_, T>
 impl<T> serde_core::de::DeserializeOwned for clapham::Effect where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> typenum::type_operators::Same for clapham::Effect
+pub type clapham::Effect::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::Effect where T: ?core::marker::Sized
+pub enum clapham::Evidence
+pub clapham::Evidence::Completed
+pub clapham::Evidence::NotDispatched
+pub clapham::Evidence::Uncertain
+impl core::clone::Clone for clapham::Evidence
+pub fn clapham::Evidence::clone(&self) -> clapham::Evidence
+impl core::cmp::Eq for clapham::Evidence
+impl core::cmp::PartialEq for clapham::Evidence
+pub fn clapham::Evidence::eq(&self, other: &clapham::Evidence) -> bool
+impl core::fmt::Debug for clapham::Evidence
+pub fn clapham::Evidence::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for clapham::Evidence
+impl core::marker::StructuralPartialEq for clapham::Evidence
+impl schemars::JsonSchema for clapham::Evidence
+pub fn clapham::Evidence::inline_schema() -> bool
+pub fn clapham::Evidence::json_schema(generator: &mut schemars::generate::SchemaGenerator) -> schemars::schema::Schema
+pub fn clapham::Evidence::schema_id() -> alloc::borrow::Cow<'static, str>
+pub fn clapham::Evidence::schema_name() -> alloc::borrow::Cow<'static, str>
+impl serde_core::ser::Serialize for clapham::Evidence
+pub fn clapham::Evidence::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for clapham::Evidence
+pub fn clapham::Evidence::deserialize<__D>(__deserializer: __D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for clapham::Evidence
+impl core::marker::Send for clapham::Evidence
+impl core::marker::Sync for clapham::Evidence
+impl core::marker::Unpin for clapham::Evidence
+impl core::panic::unwind_safe::RefUnwindSafe for clapham::Evidence
+impl core::panic::unwind_safe::UnwindSafe for clapham::Evidence
+impl<Q, K> equivalent::Equivalent<K> for clapham::Evidence where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::Evidence::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::Evidence where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::Evidence where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham::Evidence where U: core::convert::From<T>
+pub fn clapham::Evidence::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham::Evidence where U: core::convert::Into<T>
+pub type clapham::Evidence::Error = core::convert::Infallible
+pub fn clapham::Evidence::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham::Evidence where U: core::convert::TryFrom<T>
+pub type clapham::Evidence::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham::Evidence::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham::Evidence where T: core::clone::Clone
+pub type clapham::Evidence::Owned = T
+pub fn clapham::Evidence::clone_into(&self, target: &mut T)
+pub fn clapham::Evidence::to_owned(&self) -> T
+impl<T> core::any::Any for clapham::Evidence where T: 'static + ?core::marker::Sized
+pub fn clapham::Evidence::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham::Evidence where T: ?core::marker::Sized
+pub fn clapham::Evidence::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham::Evidence where T: ?core::marker::Sized
+pub fn clapham::Evidence::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham::Evidence where T: core::clone::Clone
+pub unsafe fn clapham::Evidence::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham::Evidence
+pub fn clapham::Evidence::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham::Evidence where T: core::clone::Clone
+pub fn clapham::Evidence::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> outref::AsOut<T> for clapham::Evidence where T: core::marker::Copy
+pub fn clapham::Evidence::as_out(&mut self) -> outref::Out<'_, T>
+impl<T> serde_core::de::DeserializeOwned for clapham::Evidence where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> typenum::type_operators::Same for clapham::Evidence
+pub type clapham::Evidence::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::Evidence where T: ?core::marker::Sized
 pub enum clapham::Locality
 pub clapham::Locality::Daemon
 pub clapham::Locality::Workspace
@@ -157,6 +371,10 @@ impl core::marker::Sync for clapham::Locality
 impl core::marker::Unpin for clapham::Locality
 impl core::panic::unwind_safe::RefUnwindSafe for clapham::Locality
 impl core::panic::unwind_safe::UnwindSafe for clapham::Locality
+impl<Q, K> equivalent::Equivalent<K> for clapham::Locality where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::Locality::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::Locality where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::Locality where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham::Locality where U: core::convert::From<T>
 pub fn clapham::Locality::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for clapham::Locality where U: core::convert::Into<T>
@@ -181,7 +399,12 @@ impl<T> core::convert::From<T> for clapham::Locality
 pub fn clapham::Locality::from(t: T) -> T
 impl<T> dyn_clone::DynClone for clapham::Locality where T: core::clone::Clone
 pub fn clapham::Locality::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> outref::AsOut<T> for clapham::Locality where T: core::marker::Copy
+pub fn clapham::Locality::as_out(&mut self) -> outref::Out<'_, T>
 impl<T> serde_core::de::DeserializeOwned for clapham::Locality where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> typenum::type_operators::Same for clapham::Locality
+pub type clapham::Locality::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::Locality where T: ?core::marker::Sized
 pub enum clapham::PrincipalKind
 pub clapham::PrincipalKind::Agent
 pub clapham::PrincipalKind::Human
@@ -217,6 +440,12 @@ impl core::marker::Sync for clapham::PrincipalKind
 impl core::marker::Unpin for clapham::PrincipalKind
 impl core::panic::unwind_safe::RefUnwindSafe for clapham::PrincipalKind
 impl core::panic::unwind_safe::UnwindSafe for clapham::PrincipalKind
+impl<Q, K> equivalent::Comparable<K> for clapham::PrincipalKind where Q: core::cmp::Ord + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::PrincipalKind::compare(&self, key: &K) -> core::cmp::Ordering
+impl<Q, K> equivalent::Equivalent<K> for clapham::PrincipalKind where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::PrincipalKind::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::PrincipalKind where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::PrincipalKind where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham::PrincipalKind where U: core::convert::From<T>
 pub fn clapham::PrincipalKind::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for clapham::PrincipalKind where U: core::convert::Into<T>
@@ -241,7 +470,70 @@ impl<T> core::convert::From<T> for clapham::PrincipalKind
 pub fn clapham::PrincipalKind::from(t: T) -> T
 impl<T> dyn_clone::DynClone for clapham::PrincipalKind where T: core::clone::Clone
 pub fn clapham::PrincipalKind::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> outref::AsOut<T> for clapham::PrincipalKind where T: core::marker::Copy
+pub fn clapham::PrincipalKind::as_out(&mut self) -> outref::Out<'_, T>
 impl<T> serde_core::de::DeserializeOwned for clapham::PrincipalKind where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> typenum::type_operators::Same for clapham::PrincipalKind
+pub type clapham::PrincipalKind::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::PrincipalKind where T: ?core::marker::Sized
+pub enum clapham::ResourceContents
+pub clapham::ResourceContents::Base64(alloc::string::String)
+pub clapham::ResourceContents::Text(alloc::string::String)
+impl core::clone::Clone for clapham::ResourceContents
+pub fn clapham::ResourceContents::clone(&self) -> clapham::ResourceContents
+impl core::cmp::Eq for clapham::ResourceContents
+impl core::cmp::PartialEq for clapham::ResourceContents
+pub fn clapham::ResourceContents::eq(&self, other: &clapham::ResourceContents) -> bool
+impl core::fmt::Debug for clapham::ResourceContents
+pub fn clapham::ResourceContents::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for clapham::ResourceContents
+impl schemars::JsonSchema for clapham::ResourceContents
+pub fn clapham::ResourceContents::inline_schema() -> bool
+pub fn clapham::ResourceContents::json_schema(generator: &mut schemars::generate::SchemaGenerator) -> schemars::schema::Schema
+pub fn clapham::ResourceContents::schema_id() -> alloc::borrow::Cow<'static, str>
+pub fn clapham::ResourceContents::schema_name() -> alloc::borrow::Cow<'static, str>
+impl serde_core::ser::Serialize for clapham::ResourceContents
+pub fn clapham::ResourceContents::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for clapham::ResourceContents
+pub fn clapham::ResourceContents::deserialize<__D>(__deserializer: __D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for clapham::ResourceContents
+impl core::marker::Send for clapham::ResourceContents
+impl core::marker::Sync for clapham::ResourceContents
+impl core::marker::Unpin for clapham::ResourceContents
+impl core::panic::unwind_safe::RefUnwindSafe for clapham::ResourceContents
+impl core::panic::unwind_safe::UnwindSafe for clapham::ResourceContents
+impl<Q, K> equivalent::Equivalent<K> for clapham::ResourceContents where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::ResourceContents::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::ResourceContents where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::ResourceContents where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham::ResourceContents where U: core::convert::From<T>
+pub fn clapham::ResourceContents::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham::ResourceContents where U: core::convert::Into<T>
+pub type clapham::ResourceContents::Error = core::convert::Infallible
+pub fn clapham::ResourceContents::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham::ResourceContents where U: core::convert::TryFrom<T>
+pub type clapham::ResourceContents::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham::ResourceContents::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham::ResourceContents where T: core::clone::Clone
+pub type clapham::ResourceContents::Owned = T
+pub fn clapham::ResourceContents::clone_into(&self, target: &mut T)
+pub fn clapham::ResourceContents::to_owned(&self) -> T
+impl<T> core::any::Any for clapham::ResourceContents where T: 'static + ?core::marker::Sized
+pub fn clapham::ResourceContents::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham::ResourceContents where T: ?core::marker::Sized
+pub fn clapham::ResourceContents::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham::ResourceContents where T: ?core::marker::Sized
+pub fn clapham::ResourceContents::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham::ResourceContents where T: core::clone::Clone
+pub unsafe fn clapham::ResourceContents::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham::ResourceContents
+pub fn clapham::ResourceContents::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham::ResourceContents where T: core::clone::Clone
+pub fn clapham::ResourceContents::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> serde_core::de::DeserializeOwned for clapham::ResourceContents where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> typenum::type_operators::Same for clapham::ResourceContents
+pub type clapham::ResourceContents::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::ResourceContents where T: ?core::marker::Sized
 pub struct clapham::Annotations
 pub clapham::Annotations::destructive_hint: bool
 pub clapham::Annotations::idempotent_hint: bool
@@ -270,6 +562,8 @@ impl core::marker::Sync for clapham::Annotations
 impl core::marker::Unpin for clapham::Annotations
 impl core::panic::unwind_safe::RefUnwindSafe for clapham::Annotations
 impl core::panic::unwind_safe::UnwindSafe for clapham::Annotations
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::Annotations where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::Annotations where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham::Annotations where U: core::convert::From<T>
 pub fn clapham::Annotations::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for clapham::Annotations where U: core::convert::Into<T>
@@ -295,6 +589,385 @@ pub fn clapham::Annotations::from(t: T) -> T
 impl<T> dyn_clone::DynClone for clapham::Annotations where T: core::clone::Clone
 pub fn clapham::Annotations::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
 impl<T> serde_core::de::DeserializeOwned for clapham::Annotations where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> typenum::type_operators::Same for clapham::Annotations
+pub type clapham::Annotations::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::Annotations where T: ?core::marker::Sized
+pub struct clapham::Bounds
+pub clapham::Bounds::catalogue_bytes: usize
+pub clapham::Bounds::in_flight: usize
+pub clapham::Bounds::message_bytes: usize
+pub clapham::Bounds::notifications: usize
+pub clapham::Bounds::pages: usize
+pub clapham::Bounds::schema_bytes: usize
+pub clapham::Bounds::tools: usize
+pub clapham::Bounds::waiting: usize
+impl clapham::Bounds
+pub fn clapham::Bounds::validate(&self) -> core::result::Result<(), clapham::InvalidBounds>
+impl core::clone::Clone for clapham::Bounds
+pub fn clapham::Bounds::clone(&self) -> clapham::Bounds
+impl core::cmp::Eq for clapham::Bounds
+impl core::cmp::PartialEq for clapham::Bounds
+pub fn clapham::Bounds::eq(&self, other: &clapham::Bounds) -> bool
+impl core::default::Default for clapham::Bounds
+pub fn clapham::Bounds::default() -> Self
+impl core::fmt::Debug for clapham::Bounds
+pub fn clapham::Bounds::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for clapham::Bounds
+impl core::marker::Freeze for clapham::Bounds
+impl core::marker::Send for clapham::Bounds
+impl core::marker::Sync for clapham::Bounds
+impl core::marker::Unpin for clapham::Bounds
+impl core::panic::unwind_safe::RefUnwindSafe for clapham::Bounds
+impl core::panic::unwind_safe::UnwindSafe for clapham::Bounds
+impl<Q, K> equivalent::Equivalent<K> for clapham::Bounds where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::Bounds::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::Bounds where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::Bounds where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham::Bounds where U: core::convert::From<T>
+pub fn clapham::Bounds::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham::Bounds where U: core::convert::Into<T>
+pub type clapham::Bounds::Error = core::convert::Infallible
+pub fn clapham::Bounds::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham::Bounds where U: core::convert::TryFrom<T>
+pub type clapham::Bounds::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham::Bounds::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham::Bounds where T: core::clone::Clone
+pub type clapham::Bounds::Owned = T
+pub fn clapham::Bounds::clone_into(&self, target: &mut T)
+pub fn clapham::Bounds::to_owned(&self) -> T
+impl<T> core::any::Any for clapham::Bounds where T: 'static + ?core::marker::Sized
+pub fn clapham::Bounds::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham::Bounds where T: ?core::marker::Sized
+pub fn clapham::Bounds::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham::Bounds where T: ?core::marker::Sized
+pub fn clapham::Bounds::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham::Bounds where T: core::clone::Clone
+pub unsafe fn clapham::Bounds::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham::Bounds
+pub fn clapham::Bounds::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham::Bounds where T: core::clone::Clone
+pub fn clapham::Bounds::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> typenum::type_operators::Same for clapham::Bounds
+pub type clapham::Bounds::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::Bounds where T: ?core::marker::Sized
+pub struct clapham::Call
+pub clapham::Call::cancel: clapham::Cancellation
+pub clapham::Call::input: serde_json::value::Value
+pub clapham::Call::name: clapham::OperationName
+pub clapham::Call::preview: bool
+pub clapham::Call::principal: clapham::Principal
+pub clapham::Call::records: clapham::RecordSink
+impl clapham::Call
+pub fn clapham::Call::new(name: clapham::OperationName, principal: clapham::Principal, input: serde_json::value::Value) -> Self
+impl core::clone::Clone for clapham::Call
+pub fn clapham::Call::clone(&self) -> clapham::Call
+impl core::fmt::Debug for clapham::Call
+pub fn clapham::Call::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for clapham::Call
+impl core::marker::Send for clapham::Call
+impl core::marker::Sync for clapham::Call
+impl core::marker::Unpin for clapham::Call
+impl !core::panic::unwind_safe::RefUnwindSafe for clapham::Call
+impl !core::panic::unwind_safe::UnwindSafe for clapham::Call
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::Call where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::Call where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham::Call where U: core::convert::From<T>
+pub fn clapham::Call::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham::Call where U: core::convert::Into<T>
+pub type clapham::Call::Error = core::convert::Infallible
+pub fn clapham::Call::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham::Call where U: core::convert::TryFrom<T>
+pub type clapham::Call::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham::Call::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham::Call where T: core::clone::Clone
+pub type clapham::Call::Owned = T
+pub fn clapham::Call::clone_into(&self, target: &mut T)
+pub fn clapham::Call::to_owned(&self) -> T
+impl<T> core::any::Any for clapham::Call where T: 'static + ?core::marker::Sized
+pub fn clapham::Call::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham::Call where T: ?core::marker::Sized
+pub fn clapham::Call::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham::Call where T: ?core::marker::Sized
+pub fn clapham::Call::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham::Call where T: core::clone::Clone
+pub unsafe fn clapham::Call::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham::Call
+pub fn clapham::Call::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham::Call where T: core::clone::Clone
+pub fn clapham::Call::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> typenum::type_operators::Same for clapham::Call
+pub type clapham::Call::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::Call where T: ?core::marker::Sized
+pub struct clapham::Cancellation(_)
+impl clapham::Cancellation
+pub fn clapham::Cancellation::cancel(&self)
+pub async fn clapham::Cancellation::cancelled(&self)
+pub fn clapham::Cancellation::is_cancelled(&self) -> bool
+pub fn clapham::Cancellation::new() -> Self
+impl core::clone::Clone for clapham::Cancellation
+pub fn clapham::Cancellation::clone(&self) -> clapham::Cancellation
+impl core::default::Default for clapham::Cancellation
+pub fn clapham::Cancellation::default() -> clapham::Cancellation
+impl core::fmt::Debug for clapham::Cancellation
+pub fn clapham::Cancellation::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for clapham::Cancellation
+impl core::marker::Send for clapham::Cancellation
+impl core::marker::Sync for clapham::Cancellation
+impl core::marker::Unpin for clapham::Cancellation
+impl core::panic::unwind_safe::RefUnwindSafe for clapham::Cancellation
+impl core::panic::unwind_safe::UnwindSafe for clapham::Cancellation
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::Cancellation where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::Cancellation where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham::Cancellation where U: core::convert::From<T>
+pub fn clapham::Cancellation::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham::Cancellation where U: core::convert::Into<T>
+pub type clapham::Cancellation::Error = core::convert::Infallible
+pub fn clapham::Cancellation::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham::Cancellation where U: core::convert::TryFrom<T>
+pub type clapham::Cancellation::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham::Cancellation::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham::Cancellation where T: core::clone::Clone
+pub type clapham::Cancellation::Owned = T
+pub fn clapham::Cancellation::clone_into(&self, target: &mut T)
+pub fn clapham::Cancellation::to_owned(&self) -> T
+impl<T> core::any::Any for clapham::Cancellation where T: 'static + ?core::marker::Sized
+pub fn clapham::Cancellation::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham::Cancellation where T: ?core::marker::Sized
+pub fn clapham::Cancellation::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham::Cancellation where T: ?core::marker::Sized
+pub fn clapham::Cancellation::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham::Cancellation where T: core::clone::Clone
+pub unsafe fn clapham::Cancellation::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham::Cancellation
+pub fn clapham::Cancellation::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham::Cancellation where T: core::clone::Clone
+pub fn clapham::Cancellation::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> typenum::type_operators::Same for clapham::Cancellation
+pub type clapham::Cancellation::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::Cancellation where T: ?core::marker::Sized
+pub struct clapham::ComposedOperation
+impl clapham::ComposedOperation
+pub fn clapham::ComposedOperation::descriptor(&self) -> &clapham::Operation
+pub async fn clapham::ComposedOperation::invoke(&self, call: clapham::Call) -> core::result::Result<clapham::Outcome, clapham::Refusal>
+pub fn clapham::ComposedOperation::validate_input(&self, input: &serde_json::value::Value) -> core::result::Result<(), clapham::Refusal>
+pub fn clapham::ComposedOperation::validate_output(&self, outcome: &clapham::Outcome) -> core::result::Result<(), clapham::Refusal>
+impl core::fmt::Debug for clapham::ComposedOperation
+pub fn clapham::ComposedOperation::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for clapham::ComposedOperation
+impl core::marker::Send for clapham::ComposedOperation
+impl core::marker::Sync for clapham::ComposedOperation
+impl core::marker::Unpin for clapham::ComposedOperation
+impl !core::panic::unwind_safe::RefUnwindSafe for clapham::ComposedOperation
+impl !core::panic::unwind_safe::UnwindSafe for clapham::ComposedOperation
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::ComposedOperation where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::ComposedOperation where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham::ComposedOperation where U: core::convert::From<T>
+pub fn clapham::ComposedOperation::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham::ComposedOperation where U: core::convert::Into<T>
+pub type clapham::ComposedOperation::Error = core::convert::Infallible
+pub fn clapham::ComposedOperation::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham::ComposedOperation where U: core::convert::TryFrom<T>
+pub type clapham::ComposedOperation::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham::ComposedOperation::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> core::any::Any for clapham::ComposedOperation where T: 'static + ?core::marker::Sized
+pub fn clapham::ComposedOperation::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham::ComposedOperation where T: ?core::marker::Sized
+pub fn clapham::ComposedOperation::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham::ComposedOperation where T: ?core::marker::Sized
+pub fn clapham::ComposedOperation::borrow_mut(&mut self) -> &mut T
+impl<T> core::convert::From<T> for clapham::ComposedOperation
+pub fn clapham::ComposedOperation::from(t: T) -> T
+impl<T> typenum::type_operators::Same for clapham::ComposedOperation
+pub type clapham::ComposedOperation::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::ComposedOperation where T: ?core::marker::Sized
+pub struct clapham::ComposedSet
+impl clapham::ComposedSet
+pub fn clapham::ComposedSet::bounds(&self) -> &clapham::Bounds
+pub fn clapham::ComposedSet::get(&self, name: &str) -> core::option::Option<&clapham::ComposedOperation>
+pub fn clapham::ComposedSet::operations(&self) -> impl core::iter::traits::exact_size::ExactSizeIterator<Item = &clapham::Operation>
+pub fn clapham::ComposedSet::revision(&self) -> &str
+impl core::clone::Clone for clapham::ComposedSet
+pub fn clapham::ComposedSet::clone(&self) -> clapham::ComposedSet
+impl core::fmt::Debug for clapham::ComposedSet
+pub fn clapham::ComposedSet::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for clapham::ComposedSet
+impl core::marker::Send for clapham::ComposedSet
+impl core::marker::Sync for clapham::ComposedSet
+impl core::marker::Unpin for clapham::ComposedSet
+impl !core::panic::unwind_safe::RefUnwindSafe for clapham::ComposedSet
+impl !core::panic::unwind_safe::UnwindSafe for clapham::ComposedSet
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::ComposedSet where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::ComposedSet where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham::ComposedSet where U: core::convert::From<T>
+pub fn clapham::ComposedSet::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham::ComposedSet where U: core::convert::Into<T>
+pub type clapham::ComposedSet::Error = core::convert::Infallible
+pub fn clapham::ComposedSet::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham::ComposedSet where U: core::convert::TryFrom<T>
+pub type clapham::ComposedSet::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham::ComposedSet::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham::ComposedSet where T: core::clone::Clone
+pub type clapham::ComposedSet::Owned = T
+pub fn clapham::ComposedSet::clone_into(&self, target: &mut T)
+pub fn clapham::ComposedSet::to_owned(&self) -> T
+impl<T> core::any::Any for clapham::ComposedSet where T: 'static + ?core::marker::Sized
+pub fn clapham::ComposedSet::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham::ComposedSet where T: ?core::marker::Sized
+pub fn clapham::ComposedSet::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham::ComposedSet where T: ?core::marker::Sized
+pub fn clapham::ComposedSet::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham::ComposedSet where T: core::clone::Clone
+pub unsafe fn clapham::ComposedSet::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham::ComposedSet
+pub fn clapham::ComposedSet::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham::ComposedSet where T: core::clone::Clone
+pub fn clapham::ComposedSet::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> typenum::type_operators::Same for clapham::ComposedSet
+pub type clapham::ComposedSet::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::ComposedSet where T: ?core::marker::Sized
+pub struct clapham::CompositionError
+pub clapham::CompositionError::code: clapham::CompositionCode
+pub clapham::CompositionError::message: alloc::string::String
+impl core::clone::Clone for clapham::CompositionError
+pub fn clapham::CompositionError::clone(&self) -> clapham::CompositionError
+impl core::cmp::Eq for clapham::CompositionError
+impl core::cmp::PartialEq for clapham::CompositionError
+pub fn clapham::CompositionError::eq(&self, other: &clapham::CompositionError) -> bool
+impl core::error::Error for clapham::CompositionError
+impl core::fmt::Debug for clapham::CompositionError
+pub fn clapham::CompositionError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for clapham::CompositionError
+pub fn clapham::CompositionError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for clapham::CompositionError
+impl core::marker::Freeze for clapham::CompositionError
+impl core::marker::Send for clapham::CompositionError
+impl core::marker::Sync for clapham::CompositionError
+impl core::marker::Unpin for clapham::CompositionError
+impl core::panic::unwind_safe::RefUnwindSafe for clapham::CompositionError
+impl core::panic::unwind_safe::UnwindSafe for clapham::CompositionError
+impl<Q, K> equivalent::Equivalent<K> for clapham::CompositionError where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::CompositionError::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::CompositionError where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::CompositionError where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham::CompositionError where U: core::convert::From<T>
+pub fn clapham::CompositionError::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham::CompositionError where U: core::convert::Into<T>
+pub type clapham::CompositionError::Error = core::convert::Infallible
+pub fn clapham::CompositionError::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham::CompositionError where U: core::convert::TryFrom<T>
+pub type clapham::CompositionError::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham::CompositionError::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham::CompositionError where T: core::clone::Clone
+pub type clapham::CompositionError::Owned = T
+pub fn clapham::CompositionError::clone_into(&self, target: &mut T)
+pub fn clapham::CompositionError::to_owned(&self) -> T
+impl<T> alloc::string::ToString for clapham::CompositionError where T: core::fmt::Display + ?core::marker::Sized
+pub fn clapham::CompositionError::to_string(&self) -> alloc::string::String
+impl<T> core::any::Any for clapham::CompositionError where T: 'static + ?core::marker::Sized
+pub fn clapham::CompositionError::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham::CompositionError where T: ?core::marker::Sized
+pub fn clapham::CompositionError::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham::CompositionError where T: ?core::marker::Sized
+pub fn clapham::CompositionError::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham::CompositionError where T: core::clone::Clone
+pub unsafe fn clapham::CompositionError::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham::CompositionError
+pub fn clapham::CompositionError::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham::CompositionError where T: core::clone::Clone
+pub fn clapham::CompositionError::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> typenum::type_operators::Same for clapham::CompositionError
+pub type clapham::CompositionError::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::CompositionError where T: ?core::marker::Sized
+pub struct clapham::Contribution
+pub clapham::Contribution::namespace: alloc::string::String
+pub clapham::Contribution::operations: alloc::vec::Vec<(clapham::Operation, alloc::boxed::Box<dyn clapham::Handler>)>
+impl clapham::Contribution
+pub fn clapham::Contribution::new(namespace: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn clapham::Contribution::operation(self, descriptor: clapham::Operation, handler: impl clapham::Handler + 'static) -> Self
+pub fn clapham::Contribution::operation_boxed(self, descriptor: clapham::Operation, handler: alloc::boxed::Box<dyn clapham::Handler>) -> Self
+impl core::fmt::Debug for clapham::Contribution
+pub fn clapham::Contribution::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for clapham::Contribution
+impl core::marker::Send for clapham::Contribution
+impl core::marker::Sync for clapham::Contribution
+impl core::marker::Unpin for clapham::Contribution
+impl !core::panic::unwind_safe::RefUnwindSafe for clapham::Contribution
+impl !core::panic::unwind_safe::UnwindSafe for clapham::Contribution
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::Contribution where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::Contribution where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham::Contribution where U: core::convert::From<T>
+pub fn clapham::Contribution::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham::Contribution where U: core::convert::Into<T>
+pub type clapham::Contribution::Error = core::convert::Infallible
+pub fn clapham::Contribution::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham::Contribution where U: core::convert::TryFrom<T>
+pub type clapham::Contribution::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham::Contribution::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> core::any::Any for clapham::Contribution where T: 'static + ?core::marker::Sized
+pub fn clapham::Contribution::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham::Contribution where T: ?core::marker::Sized
+pub fn clapham::Contribution::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham::Contribution where T: ?core::marker::Sized
+pub fn clapham::Contribution::borrow_mut(&mut self) -> &mut T
+impl<T> core::convert::From<T> for clapham::Contribution
+pub fn clapham::Contribution::from(t: T) -> T
+impl<T> typenum::type_operators::Same for clapham::Contribution
+pub type clapham::Contribution::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::Contribution where T: ?core::marker::Sized
+pub struct clapham::InvalidBounds
+impl core::clone::Clone for clapham::InvalidBounds
+pub fn clapham::InvalidBounds::clone(&self) -> clapham::InvalidBounds
+impl core::cmp::Eq for clapham::InvalidBounds
+impl core::cmp::PartialEq for clapham::InvalidBounds
+pub fn clapham::InvalidBounds::eq(&self, other: &clapham::InvalidBounds) -> bool
+impl core::error::Error for clapham::InvalidBounds
+impl core::fmt::Debug for clapham::InvalidBounds
+pub fn clapham::InvalidBounds::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for clapham::InvalidBounds
+pub fn clapham::InvalidBounds::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for clapham::InvalidBounds
+impl core::marker::StructuralPartialEq for clapham::InvalidBounds
+impl core::marker::Freeze for clapham::InvalidBounds
+impl core::marker::Send for clapham::InvalidBounds
+impl core::marker::Sync for clapham::InvalidBounds
+impl core::marker::Unpin for clapham::InvalidBounds
+impl core::panic::unwind_safe::RefUnwindSafe for clapham::InvalidBounds
+impl core::panic::unwind_safe::UnwindSafe for clapham::InvalidBounds
+impl<Q, K> equivalent::Equivalent<K> for clapham::InvalidBounds where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::InvalidBounds::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::InvalidBounds where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::InvalidBounds where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham::InvalidBounds where U: core::convert::From<T>
+pub fn clapham::InvalidBounds::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham::InvalidBounds where U: core::convert::Into<T>
+pub type clapham::InvalidBounds::Error = core::convert::Infallible
+pub fn clapham::InvalidBounds::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham::InvalidBounds where U: core::convert::TryFrom<T>
+pub type clapham::InvalidBounds::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham::InvalidBounds::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham::InvalidBounds where T: core::clone::Clone
+pub type clapham::InvalidBounds::Owned = T
+pub fn clapham::InvalidBounds::clone_into(&self, target: &mut T)
+pub fn clapham::InvalidBounds::to_owned(&self) -> T
+impl<T> alloc::string::ToString for clapham::InvalidBounds where T: core::fmt::Display + ?core::marker::Sized
+pub fn clapham::InvalidBounds::to_string(&self) -> alloc::string::String
+impl<T> core::any::Any for clapham::InvalidBounds where T: 'static + ?core::marker::Sized
+pub fn clapham::InvalidBounds::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham::InvalidBounds where T: ?core::marker::Sized
+pub fn clapham::InvalidBounds::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham::InvalidBounds where T: ?core::marker::Sized
+pub fn clapham::InvalidBounds::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham::InvalidBounds where T: core::clone::Clone
+pub unsafe fn clapham::InvalidBounds::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham::InvalidBounds
+pub fn clapham::InvalidBounds::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham::InvalidBounds where T: core::clone::Clone
+pub fn clapham::InvalidBounds::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> outref::AsOut<T> for clapham::InvalidBounds where T: core::marker::Copy
+pub fn clapham::InvalidBounds::as_out(&mut self) -> outref::Out<'_, T>
+impl<T> typenum::type_operators::Same for clapham::InvalidBounds
+pub type clapham::InvalidBounds::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::InvalidBounds where T: ?core::marker::Sized
 pub struct clapham::InvalidOperationName
 impl core::clone::Clone for clapham::InvalidOperationName
 pub fn clapham::InvalidOperationName::clone(&self) -> clapham::InvalidOperationName
@@ -314,6 +987,10 @@ impl core::marker::Sync for clapham::InvalidOperationName
 impl core::marker::Unpin for clapham::InvalidOperationName
 impl core::panic::unwind_safe::RefUnwindSafe for clapham::InvalidOperationName
 impl core::panic::unwind_safe::UnwindSafe for clapham::InvalidOperationName
+impl<Q, K> equivalent::Equivalent<K> for clapham::InvalidOperationName where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::InvalidOperationName::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::InvalidOperationName where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::InvalidOperationName where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham::InvalidOperationName where U: core::convert::From<T>
 pub fn clapham::InvalidOperationName::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for clapham::InvalidOperationName where U: core::convert::Into<T>
@@ -340,6 +1017,11 @@ impl<T> core::convert::From<T> for clapham::InvalidOperationName
 pub fn clapham::InvalidOperationName::from(t: T) -> T
 impl<T> dyn_clone::DynClone for clapham::InvalidOperationName where T: core::clone::Clone
 pub fn clapham::InvalidOperationName::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> outref::AsOut<T> for clapham::InvalidOperationName where T: core::marker::Copy
+pub fn clapham::InvalidOperationName::as_out(&mut self) -> outref::Out<'_, T>
+impl<T> typenum::type_operators::Same for clapham::InvalidOperationName
+pub type clapham::InvalidOperationName::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::InvalidOperationName where T: ?core::marker::Sized
 pub struct clapham::Operation
 pub clapham::Operation::description: alloc::string::String
 pub clapham::Operation::effect: clapham::Effect
@@ -380,6 +1062,8 @@ impl core::marker::Sync for clapham::Operation
 impl core::marker::Unpin for clapham::Operation
 impl core::panic::unwind_safe::RefUnwindSafe for clapham::Operation
 impl core::panic::unwind_safe::UnwindSafe for clapham::Operation
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::Operation where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::Operation where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham::Operation where U: core::convert::From<T>
 pub fn clapham::Operation::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for clapham::Operation where U: core::convert::Into<T>
@@ -405,6 +1089,9 @@ pub fn clapham::Operation::from(t: T) -> T
 impl<T> dyn_clone::DynClone for clapham::Operation where T: core::clone::Clone
 pub fn clapham::Operation::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
 impl<T> serde_core::de::DeserializeOwned for clapham::Operation where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> typenum::type_operators::Same for clapham::Operation
+pub type clapham::Operation::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::Operation where T: ?core::marker::Sized
 pub struct clapham::OperationName(_)
 impl clapham::OperationName
 pub fn clapham::OperationName::as_str(&self) -> &str
@@ -450,6 +1137,12 @@ impl core::marker::Sync for clapham::OperationName
 impl core::marker::Unpin for clapham::OperationName
 impl core::panic::unwind_safe::RefUnwindSafe for clapham::OperationName
 impl core::panic::unwind_safe::UnwindSafe for clapham::OperationName
+impl<Q, K> equivalent::Comparable<K> for clapham::OperationName where Q: core::cmp::Ord + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::OperationName::compare(&self, key: &K) -> core::cmp::Ordering
+impl<Q, K> equivalent::Equivalent<K> for clapham::OperationName where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::OperationName::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::OperationName where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::OperationName where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham::OperationName where U: core::convert::From<T>
 pub fn clapham::OperationName::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for clapham::OperationName where U: core::convert::Into<T>
@@ -477,6 +1170,68 @@ pub fn clapham::OperationName::from(t: T) -> T
 impl<T> dyn_clone::DynClone for clapham::OperationName where T: core::clone::Clone
 pub fn clapham::OperationName::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
 impl<T> serde_core::de::DeserializeOwned for clapham::OperationName where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> typenum::type_operators::Same for clapham::OperationName
+pub type clapham::OperationName::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::OperationName where T: ?core::marker::Sized
+pub struct clapham::Outcome
+pub clapham::Outcome::content: core::option::Option<alloc::vec::Vec<clapham::ContentBlock>>
+pub clapham::Outcome::evidence: clapham::Evidence
+pub clapham::Outcome::is_error: bool
+pub clapham::Outcome::result: core::option::Option<serde_json::value::Value>
+impl clapham::Outcome
+pub fn clapham::Outcome::new(result: serde_json::value::Value) -> Self
+impl core::clone::Clone for clapham::Outcome
+pub fn clapham::Outcome::clone(&self) -> clapham::Outcome
+impl core::cmp::PartialEq for clapham::Outcome
+pub fn clapham::Outcome::eq(&self, other: &clapham::Outcome) -> bool
+impl core::fmt::Debug for clapham::Outcome
+pub fn clapham::Outcome::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for clapham::Outcome
+impl schemars::JsonSchema for clapham::Outcome
+pub fn clapham::Outcome::inline_schema() -> bool
+pub fn clapham::Outcome::json_schema(generator: &mut schemars::generate::SchemaGenerator) -> schemars::schema::Schema
+pub fn clapham::Outcome::schema_id() -> alloc::borrow::Cow<'static, str>
+pub fn clapham::Outcome::schema_name() -> alloc::borrow::Cow<'static, str>
+impl serde_core::ser::Serialize for clapham::Outcome
+pub fn clapham::Outcome::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+impl<'de> serde_core::de::Deserialize<'de> for clapham::Outcome
+pub fn clapham::Outcome::deserialize<__D>(__deserializer: __D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+impl core::marker::Freeze for clapham::Outcome
+impl core::marker::Send for clapham::Outcome
+impl core::marker::Sync for clapham::Outcome
+impl core::marker::Unpin for clapham::Outcome
+impl core::panic::unwind_safe::RefUnwindSafe for clapham::Outcome
+impl core::panic::unwind_safe::UnwindSafe for clapham::Outcome
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::Outcome where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::Outcome where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham::Outcome where U: core::convert::From<T>
+pub fn clapham::Outcome::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham::Outcome where U: core::convert::Into<T>
+pub type clapham::Outcome::Error = core::convert::Infallible
+pub fn clapham::Outcome::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham::Outcome where U: core::convert::TryFrom<T>
+pub type clapham::Outcome::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham::Outcome::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham::Outcome where T: core::clone::Clone
+pub type clapham::Outcome::Owned = T
+pub fn clapham::Outcome::clone_into(&self, target: &mut T)
+pub fn clapham::Outcome::to_owned(&self) -> T
+impl<T> core::any::Any for clapham::Outcome where T: 'static + ?core::marker::Sized
+pub fn clapham::Outcome::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham::Outcome where T: ?core::marker::Sized
+pub fn clapham::Outcome::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham::Outcome where T: ?core::marker::Sized
+pub fn clapham::Outcome::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham::Outcome where T: core::clone::Clone
+pub unsafe fn clapham::Outcome::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham::Outcome
+pub fn clapham::Outcome::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham::Outcome where T: core::clone::Clone
+pub fn clapham::Outcome::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> serde_core::de::DeserializeOwned for clapham::Outcome where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> typenum::type_operators::Same for clapham::Outcome
+pub type clapham::Outcome::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::Outcome where T: ?core::marker::Sized
 pub struct clapham::Principal
 pub clapham::Principal::id: alloc::string::String
 pub clapham::Principal::kind: clapham::PrincipalKind
@@ -507,6 +1262,10 @@ impl core::marker::Sync for clapham::Principal
 impl core::marker::Unpin for clapham::Principal
 impl core::panic::unwind_safe::RefUnwindSafe for clapham::Principal
 impl core::panic::unwind_safe::UnwindSafe for clapham::Principal
+impl<Q, K> equivalent::Equivalent<K> for clapham::Principal where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham::Principal::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::Principal where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::Principal where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham::Principal where U: core::convert::From<T>
 pub fn clapham::Principal::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for clapham::Principal where U: core::convert::Into<T>
@@ -532,14 +1291,65 @@ pub fn clapham::Principal::from(t: T) -> T
 impl<T> dyn_clone::DynClone for clapham::Principal where T: core::clone::Clone
 pub fn clapham::Principal::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
 impl<T> serde_core::de::DeserializeOwned for clapham::Principal where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> typenum::type_operators::Same for clapham::Principal
+pub type clapham::Principal::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::Principal where T: ?core::marker::Sized
+pub struct clapham::RecordSink(_)
+impl clapham::RecordSink
+pub fn clapham::RecordSink::new<F, Fut>(callback: F) -> Self where F: core::ops::function::Fn(serde_json::value::Value) -> Fut + core::marker::Send + core::marker::Sync + 'static, Fut: core::future::future::Future<Output = core::result::Result<(), clapham::Refusal>> + core::marker::Send + 'static
+pub async fn clapham::RecordSink::send(&self, record: serde_json::value::Value) -> core::result::Result<(), clapham::Refusal>
+impl core::clone::Clone for clapham::RecordSink
+pub fn clapham::RecordSink::clone(&self) -> clapham::RecordSink
+impl core::default::Default for clapham::RecordSink
+pub fn clapham::RecordSink::default() -> Self
+impl core::fmt::Debug for clapham::RecordSink
+pub fn clapham::RecordSink::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for clapham::RecordSink
+impl core::marker::Send for clapham::RecordSink
+impl core::marker::Sync for clapham::RecordSink
+impl core::marker::Unpin for clapham::RecordSink
+impl !core::panic::unwind_safe::RefUnwindSafe for clapham::RecordSink
+impl !core::panic::unwind_safe::UnwindSafe for clapham::RecordSink
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::RecordSink where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::RecordSink where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham::RecordSink where U: core::convert::From<T>
+pub fn clapham::RecordSink::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham::RecordSink where U: core::convert::Into<T>
+pub type clapham::RecordSink::Error = core::convert::Infallible
+pub fn clapham::RecordSink::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham::RecordSink where U: core::convert::TryFrom<T>
+pub type clapham::RecordSink::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham::RecordSink::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham::RecordSink where T: core::clone::Clone
+pub type clapham::RecordSink::Owned = T
+pub fn clapham::RecordSink::clone_into(&self, target: &mut T)
+pub fn clapham::RecordSink::to_owned(&self) -> T
+impl<T> core::any::Any for clapham::RecordSink where T: 'static + ?core::marker::Sized
+pub fn clapham::RecordSink::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham::RecordSink where T: ?core::marker::Sized
+pub fn clapham::RecordSink::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham::RecordSink where T: ?core::marker::Sized
+pub fn clapham::RecordSink::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham::RecordSink where T: core::clone::Clone
+pub unsafe fn clapham::RecordSink::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham::RecordSink
+pub fn clapham::RecordSink::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham::RecordSink where T: core::clone::Clone
+pub fn clapham::RecordSink::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> typenum::type_operators::Same for clapham::RecordSink
+pub type clapham::RecordSink::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::RecordSink where T: ?core::marker::Sized
 pub struct clapham::Refusal
 pub clapham::Refusal::category: clapham::Category
 pub clapham::Refusal::code: alloc::string::String
 pub clapham::Refusal::details: core::option::Option<serde_json::value::Value>
+pub clapham::Refusal::evidence: clapham::Evidence
 pub clapham::Refusal::message: alloc::string::String
 pub clapham::Refusal::retryable: bool
 impl clapham::Refusal
 pub fn clapham::Refusal::new(code: impl core::convert::Into<alloc::string::String>, category: clapham::Category, message: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn clapham::Refusal::not_dispatched(code: impl core::convert::Into<alloc::string::String>, category: clapham::Category, message: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn clapham::Refusal::with_evidence(self, evidence: clapham::Evidence) -> Self
 impl core::clone::Clone for clapham::Refusal
 pub fn clapham::Refusal::clone(&self) -> clapham::Refusal
 impl core::cmp::PartialEq for clapham::Refusal
@@ -565,6 +1375,8 @@ impl core::marker::Sync for clapham::Refusal
 impl core::marker::Unpin for clapham::Refusal
 impl core::panic::unwind_safe::RefUnwindSafe for clapham::Refusal
 impl core::panic::unwind_safe::UnwindSafe for clapham::Refusal
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham::Refusal where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham::Refusal where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham::Refusal where U: core::convert::From<T>
 pub fn clapham::Refusal::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for clapham::Refusal where U: core::convert::Into<T>
@@ -592,4 +1404,15 @@ pub fn clapham::Refusal::from(t: T) -> T
 impl<T> dyn_clone::DynClone for clapham::Refusal where T: core::clone::Clone
 pub fn clapham::Refusal::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
 impl<T> serde_core::de::DeserializeOwned for clapham::Refusal where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> typenum::type_operators::Same for clapham::Refusal
+pub type clapham::Refusal::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham::Refusal where T: ?core::marker::Sized
 pub const clapham::EFFECT_META_KEY: &str
+pub trait clapham::Handler: core::marker::Send + core::marker::Sync
+pub fn clapham::Handler::call(&self, call: clapham::Call) -> clapham::HandlerFuture<'_>
+impl clapham::Handler for alloc::boxed::Box<dyn clapham::Handler>
+pub fn alloc::boxed::Box<dyn clapham::Handler>::call(&self, call: clapham::Call) -> clapham::HandlerFuture<'_>
+impl<F, Fut> clapham::Handler for F where F: core::ops::function::Fn(clapham::Call) -> Fut + core::marker::Send + core::marker::Sync, Fut: core::future::future::Future<Output = core::result::Result<clapham::Outcome, clapham::Refusal>> + core::marker::Send + 'static
+pub fn F::call(&self, call: clapham::Call) -> clapham::HandlerFuture<'_>
+pub fn clapham::compose(contributions: impl core::iter::traits::collect::IntoIterator<Item = clapham::Contribution>, bounds: clapham::Bounds) -> core::result::Result<clapham::ComposedSet, clapham::CompositionError>
+pub type clapham::HandlerFuture<'a> = core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::result::Result<clapham::Outcome, clapham::Refusal>> + core::marker::Send + 'a)>>

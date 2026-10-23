@@ -323,13 +323,13 @@ fn refusals_round_trip_without_changing_contributor_codes() {
         let wire = serde_json::to_value(&refusal).unwrap();
         assert_eq!(
             wire,
-            json!({ "code": code, "category": "conflict", "message": "The item has changed.", "details": { "expected": 1, "actual": 2 }, "retryable": true })
+            json!({ "code": code, "category": "conflict", "message": "The item has changed.", "details": { "expected": 1, "actual": 2 }, "retryable": true, "evidence": "completed" })
         );
         validator.validate(&wire).unwrap();
         let decoded: Refusal = serde_json::from_value(wire.clone()).unwrap();
         assert_eq!(decoded, refusal);
         assert_eq!(decoded.code, code);
-        for field in ["code", "category", "message", "retryable"] {
+        for field in ["code", "category", "message", "retryable", "evidence"] {
             let mut invalid = wire.clone();
             invalid.as_object_mut().unwrap().remove(field);
             assert!(serde_json::from_value::<Refusal>(invalid.clone()).is_err());
