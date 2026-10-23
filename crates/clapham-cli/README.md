@@ -15,20 +15,29 @@ set's gate still decides admission.
 Each operation's title, description, property descriptions and effect supply its
 help. Scalar properties become `--<name> <value>`: strings stay strings; integers,
 numbers, booleans and enums retain their JSON types and constraints. Booleans take
-an explicit `true` or `false`. Positional properties appear in descriptor order.
+an explicit `true` or `false`. Positional properties appear in descriptor order,
+with required properties before optional ones.
 Object and array properties use `--<name>-json <document>`. A local JSON Pointer
-`$ref` supplies its target's type; complex, unconstrained or union properties use
+`$ref` supplies its target's type unless the property supplies its own `type`;
+complex, unconstrained or union properties use
 the same JSON argument form.
 
 `--json <document>` supplies the whole input object instead of property arguments;
-`--json -` reads it from the supplied stdin reader, bounded by `bounds.message_bytes`.
+`--json -` reads it from the supplied stdin reader. Both whole-object JSON forms
+are bounded by `bounds.message_bytes` before parsing.
 Required properties remain required in either form. Mixing the two forms refuses
 as `usage`. Optional properties are omitted rather than populated with schema
 defaults. The composed operation's validator checks the complete input before any
-admission or dispatch. Invalid arguments, JSON, types, enum values and schema
-constraints refuse as `usage`, with not-dispatched evidence and exit code 2.
+admission or dispatch. Command syntax, malformed JSON and flag type-conversion
+errors refuse as `usage` (exit 2). Once bound, the complete input is validated;
+schema failures, including enum constraints, nested JSON types and missing or
+extra document properties, retain the core's `invalid_input` refusal (exit 65).
+Both carry not-dispatched evidence. The call runner validates again because an
+`Invocation` can also be constructed or edited by the host.
 
-Malformed command segments, unknown or repeated positional properties, invalid
+The top-level `describe` name is reserved for the built-in alias; contributions
+under that namespace refuse CLI construction. Malformed command segments,
+unknown or repeated positional properties, a required positional after an optional one, invalid
 flag spellings and flag collisions refuse at construction as `cli_configuration`
 (exit 78). `--help`, `--json` and `--as` are reserved; JSON property flags must also
 be distinct from scalar flags, so `data` as an object and `data-json` as a scalar

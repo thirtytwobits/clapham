@@ -10,6 +10,18 @@ An operation name splits at every dot into command levels. `lists.get` is
 `clapham.describe` is also available as `<app> describe`. A command may itself be
 an operation while also having subcommands; property arguments on the parent
 cannot be combined with a child invocation.
+The top-level `describe` name is reserved; a contribution under `describe.*`
+refuses CLI construction as `cli_configuration`. Required positionals must precede
+optional ones. Boolean properties take explicit `true` or `false` values;
+presence-only switches are not generated.
+
+Command syntax, malformed JSON and flag type-conversion errors return `usage`
+(exit 2). Validation of the complete bound input retains the core's
+`invalid_input` refusal (exit 65), including for enum constraints, nested JSON
+types and missing or extra document properties. Handler and call-runner refusals
+also retain their codes and evidence. Every parsing or input-validation failure
+precedes admission and dispatch. Whole-object JSON is bounded by
+`bounds.message_bytes` whether supplied inline or read from stdin.
 
 The [crate guide](../crates/clapham-cli/README.md) describes argument types,
 JSON input, help and the in-process API. Over the neutral contribution:

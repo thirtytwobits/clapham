@@ -109,8 +109,9 @@ impl Cli {
 
     /// Parse arguments including `argv[0]`, reading `stdin` only for `--json -`.
     ///
-    /// Whole-object JSON and property arguments are mutually exclusive. Input
-    /// errors refuse as `usage` (exit 2), before admission or handler dispatch.
+    /// Whole-object JSON and property arguments are mutually exclusive. Syntax
+    /// and flag type-conversion errors refuse as `usage` (exit 2). Complete input
+    /// validation retains the core's `invalid_input` refusal (exit 65).
     /// Help returns [`CliError::Help`] without reading stdin or calling a handler.
     pub fn parse_from<I, T>(&self, args: I, stdin: impl Read) -> Result<Invocation, CliError>
     where
@@ -142,9 +143,9 @@ impl Cli {
             .get(name)
             .expect("the tree uses composed operations");
         let input = input::bind(node, matches, stdin, self.set.bounds().message_bytes)?;
-        operation
-            .validate_input(&input)
-            .map_err(|error| usage(error.message))?;
+        // Validate before returning a prepared invocation. The call runner
+        // validates again because callers may construct or edit Invocation.
+        operation.validate_input(&input)?;
         Ok(Invocation {
             name: name.clone(),
             principal,

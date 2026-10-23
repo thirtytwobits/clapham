@@ -33,13 +33,11 @@ impl Node {
             node.fields = crate::input::fields(operation)?;
         }
         // Keep the complete built-in path as well as its top-level spelling.
-        let describe = root.children["clapham"].children["describe"].clone();
-        let alias = root.children.entry("describe".into()).or_default();
-        if alias.operation.is_some() {
+        if root.children.contains_key("describe") {
             return Err(configuration("describe collides with the built-in command"));
         }
-        alias.operation = describe.operation;
-        alias.fields = describe.fields;
+        let describe = root.children["clapham"].children["describe"].clone();
+        root.children.insert("describe".into(), describe);
         Ok(root)
     }
 

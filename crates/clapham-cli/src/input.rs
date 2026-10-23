@@ -73,6 +73,7 @@ pub(crate) fn fields(operation: &Operation) -> Result<Vec<Field>, Refusal> {
     let properties = operation.input.get("properties").and_then(Value::as_object);
     let required = operation.input.get("required").and_then(Value::as_array);
     let mut positional = BTreeSet::new();
+    let mut optional_seen = false;
     for property in &operation.positional {
         if !properties.is_some_and(|properties| properties.contains_key(property))
             || !positional.insert(property)
@@ -82,11 +83,24 @@ pub(crate) fn fields(operation: &Operation) -> Result<Vec<Field>, Refusal> {
                 operation.name
             )));
         }
+        if required.is_some_and(|names| names.iter().any(|name| name == property)) {
+            if optional_seen {
+                return Err(configuration(format!(
+                    "{} has a required positional property {property} after an optional one",
+                    operation.name
+                )));
+            }
+        } else {
+            optional_seen = true;
+        }
     }
     let mut fields = Vec::new();
     for (property, schema) in properties.into_iter().flatten() {
         let resolved = resolve(schema, &root);
-        let schema_type = resolved.get("type").and_then(Value::as_str);
+        let schema_type = schema
+            .get("type")
+            .or_else(|| resolved.get("type"))
+            .and_then(Value::as_str);
         let kind = match schema_type {
             Some("string") => Kind::String,
             Some("integer") => Kind::Integer,
@@ -177,6 +191,9 @@ pub(crate) fn bind(
         } else {
             document
         };
+        if document.len() > limit {
+            return Err(usage("JSON input exceeds bounds.message_bytes"));
+        }
         return serde_json::from_str(document).map_err(|error| usage(error.to_string()));
     }
     let mut input = Map::new();

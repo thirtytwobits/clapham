@@ -110,15 +110,13 @@ fn binds_scalar_types_enums_and_json_properties_without_coercion() {
 }
 
 #[test]
-fn rejects_each_scalar_type_enum_and_required_error_before_dispatch() {
+fn scalar_conversion_and_missing_arguments_refuse_as_usage() {
     for (schema, value) in [
         (json!({"type":"integer"}), "no"),
         (json!({"type":"integer"}), "1.5"),
         (json!({"type":"number"}), "true"),
         (json!({"type":"number"}), "NaN"),
         (json!({"type":"boolean"}), "1"),
-        (json!({"enum":["a","b"]}), "c"),
-        (json!({"type":"integer","minimum":2}), "1"),
     ] {
         let (cli, calls) = fixture(
             descriptor(json!({"type":"object","properties":{"value":schema},"required":["value"]})),
@@ -269,13 +267,13 @@ fn daemon_operations_never_run_even_in_a_daemon_composed_set() {
 }
 
 #[test]
-fn json_errors_and_stdin_read_errors_are_usage_and_never_dispatch() {
+fn malformed_json_is_usage_but_schema_invalid_json_keeps_invalid_input() {
     let (cli, calls) = fixture(
         descriptor(json!({"type":"object"})),
         ExecutionMode::InProcess,
         Bounds::default(),
     );
-    for document in ["{", "[]", "null", "true"] {
+    for (document, exit) in [("{", 2), ("[]", 65), ("null", 65), ("true", 65)] {
         assert_eq!(
             cli.parse_from(
                 ["test", "lists", "document", "edit", "--json", document],
@@ -283,7 +281,7 @@ fn json_errors_and_stdin_read_errors_are_usage_and_never_dispatch() {
             )
             .unwrap_err()
             .exit_code(),
-            2
+            exit
         );
     }
     struct Broken;
@@ -389,6 +387,11 @@ fn invalid_bindings_return_configuration_refusals_instead_of_panicking() {
             json!({"type":"object"}),
             vec!["absent".into()],
         ),
+        (
+            "lists.edit",
+            json!({"type":"object","properties":{"a":{"type":"string"},"b":{"type":"string"}},"required":["b"]}),
+            vec!["a".into(), "b".into()],
+        ),
     ] {
         let mut operation = descriptor(schema);
         operation.name = name.parse().unwrap();
@@ -481,7 +484,7 @@ fn json_cannot_mix_with_positionals_and_unknown_arguments_are_usage() {
 }
 
 #[test]
-fn optional_properties_stay_absent_and_stdin_is_bounded() {
+fn optional_properties_stay_absent_and_whole_json_is_bounded_in_both_forms() {
     let bounds = Bounds {
         message_bytes: 8192,
         schema_bytes: 8192,
@@ -500,14 +503,191 @@ fn optional_properties_stay_absent_and_stdin_is_bounded() {
             .input,
         json!({})
     );
-    let oversized = vec![b' '; 8193];
-    let error = cli
-        .parse_from(
-            ["test", "lists", "document", "edit", "--json", "-"],
-            oversized.as_slice(),
+    let prefix = r#"{"value":""#;
+    let suffix = r#""}"#;
+    let at_limit = format!(
+        "{prefix}{}{suffix}",
+        "x".repeat(8192 - prefix.len() - suffix.len())
+    );
+    let oversized = format!("{at_limit} ");
+    for document in [&at_limit, &oversized] {
+        let results = [
+            cli.parse_from(
+                ["test", "lists", "document", "edit", "--json", document],
+                Unread,
+            ),
+            cli.parse_from(
+                ["test", "lists", "document", "edit", "--json", "-"],
+                document.as_bytes(),
+            ),
+        ];
+        for result in results {
+            if document.len() == 8192 {
+                assert_eq!(
+                    result.unwrap().input["value"].as_str().unwrap().len(),
+                    8192 - prefix.len() - suffix.len()
+                );
+            } else {
+                let error = result.unwrap_err();
+                assert_eq!(error.exit_code(), 2);
+                assert!(error.to_string().contains("bounds.message_bytes"));
+            }
+        }
+    }
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
+}
+
+#[test]
+fn schema_refusals_are_carried_unchanged_for_flags_json_and_prepared_calls() {
+    for (schema, flag, text, input) in [
+        (
+            json!({"type":"string","minLength":2}),
+            "--value",
+            "x",
+            json!({"value":"x"}),
+        ),
+        (
+            json!({"enum":["a","b"]}),
+            "--value",
+            "c",
+            json!({"value":"c"}),
+        ),
+        (
+            json!({"type":"integer","minimum":2}),
+            "--value",
+            "1",
+            json!({"value":1}),
+        ),
+        (
+            json!({"type":"array","items":{"type":"integer"}}),
+            "--value-json",
+            r#"["x"]"#,
+            json!({"value":["x"]}),
+        ),
+    ] {
+        let operation =
+            descriptor(json!({"type":"object","properties":{"value":schema},"required":["value"]}));
+        let set = clapham::compose(
+            [Contribution::new("lists")
+                .operation(operation.clone(), |_: Call| async { unreachable!() })],
+            Bounds::default(),
         )
-        .unwrap_err();
-    assert_eq!(error.exit_code(), 2);
-    assert!(error.to_string().contains("bounds.message_bytes"));
+        .unwrap();
+        let expected = set
+            .get("lists.document.edit")
+            .unwrap()
+            .validate_input(&input)
+            .unwrap_err();
+        let (cli, calls) = fixture(operation, ExecutionMode::InProcess, Bounds::default());
+        let document = input.to_string();
+        let errors = [
+            run(&cli, &["test", "lists", "document", "edit", flag, text]).unwrap_err(),
+            cli.parse_from(
+                ["test", "lists", "document", "edit", "--json", &document],
+                Unread,
+            )
+            .unwrap_err(),
+            cli.parse_from(
+                ["test", "lists", "document", "edit", "--json", "-"],
+                document.as_bytes(),
+            )
+            .unwrap_err(),
+        ];
+        for error in errors {
+            assert_eq!(error.exit_code(), 65);
+            assert_eq!(error, CliError::Refusal(expected.clone()));
+        }
+        // Public Invocation fields can be set without parse_from, so call must
+        // apply the same schema validator before the handler is reached.
+        let invocation = clapham_cli::Invocation {
+            name: "lists.document.edit".into(),
+            principal: Principal::new("account", PrincipalKind::Human),
+            input,
+        };
+        assert_eq!(
+            block_on(cli.call(invocation, RecordSink::default(), Cancellation::new())).unwrap_err(),
+            expected
+        );
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+    }
+}
+
+#[test]
+fn describe_namespace_conflicts_with_the_reserved_alias() {
+    for name in ["describe.read", "describe.document.read"] {
+        let mut operation = descriptor(json!({"type":"object"}));
+        operation.name = name.parse().unwrap();
+        let set = clapham::compose(
+            [Contribution::new("describe")
+                .operation(operation, |_: Call| async { unreachable!() })],
+            Bounds::default(),
+        )
+        .unwrap();
+        let error =
+            Cli::new("test", set, Principal::new("account", PrincipalKind::Human)).unwrap_err();
+        assert_eq!(error.code, "cli_configuration");
+        assert!(error.message.contains("describe"));
+    }
+}
+
+#[test]
+fn required_positionals_can_be_followed_by_optional_ones() {
+    let mut operation = descriptor(
+        json!({"type":"object","properties":{"a":{"type":"string"},"b":{"type":"string"}},"required":["a"]}),
+    );
+    operation.positional = vec!["a".into(), "b".into()];
+    let (cli, _) = fixture(operation, ExecutionMode::InProcess, Bounds::default());
+    assert_eq!(
+        cli.parse_from(["test", "lists", "document", "edit", "first"], Unread)
+            .unwrap()
+            .input,
+        json!({"a":"first"})
+    );
+    assert_eq!(
+        cli.parse_from(
+            ["test", "lists", "document", "edit", "first", "second"],
+            Unread
+        )
+        .unwrap()
+        .input,
+        json!({"a":"first","b":"second"})
+    );
+}
+
+#[test]
+fn a_type_next_to_ref_controls_the_argument_spelling_and_conversion() {
+    let (cli, calls) = fixture(
+        descriptor(json!({
+            "type":"object", "$defs":{"Open":{}}, "properties":{
+                "value":{"$ref":"#/$defs/Open","type":"integer","description":"The item count."}
+            },"required":["value"]
+        })),
+        ExecutionMode::InProcess,
+        Bounds::default(),
+    );
+    assert_eq!(
+        cli.parse_from(
+            ["test", "lists", "document", "edit", "--value", "3"],
+            Unread
+        )
+        .unwrap()
+        .input,
+        json!({"value":3})
+    );
+    assert_eq!(
+        cli.parse_from(
+            ["test", "lists", "document", "edit", "--value", "false"],
+            Unread
+        )
+        .unwrap_err()
+        .exit_code(),
+        2
+    );
+    assert!(
+        cli.parse_from(["test", "lists", "document", "edit", "--help"], Unread)
+            .unwrap_err()
+            .to_string()
+            .contains("The item count.")
+    );
     assert_eq!(calls.load(Ordering::SeqCst), 0);
 }

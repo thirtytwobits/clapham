@@ -132,11 +132,9 @@ fn help_of_each_operation_contains_its_descriptor_and_effect() {
 }
 
 #[test]
-fn invalid_input_is_usage_and_never_mutates_the_fixture() {
+fn binding_errors_are_usage_and_never_mutate_the_fixture() {
     let (handle, cli) = fixture();
     for args in [
-        vec!["lists-app", "lists", "create", "--json", r#"{"list":12}"#],
-        vec!["lists-app", "lists", "create", "--list-json", "[1]"],
         vec!["lists-app", "lists", "create"],
         vec![
             "lists-app",
@@ -178,6 +176,38 @@ fn invalid_input_is_usage_and_never_mutates_the_fixture() {
         assert_eq!(
             (refusal.code.as_str(), refusal.category, refusal.evidence),
             ("usage", Category::Usage, Evidence::NotDispatched)
+        );
+        assert!(handle.snapshot().is_empty());
+    }
+}
+
+#[test]
+fn invalid_documents_keep_invalid_input_and_never_mutate_the_fixture() {
+    let (handle, cli) = fixture();
+    for args in [
+        vec!["lists-app", "lists", "create", "--json", r#"{"list":12}"#],
+        vec!["lists-app", "lists", "create", "--list-json", "[1]"],
+        vec![
+            "lists-app",
+            "lists",
+            "create",
+            "--json",
+            r#"{"list":{"id":"tasks","name":"Tasks"},"extra":true}"#,
+        ],
+        vec!["lists-app", "lists", "create", "--json", "{}"],
+    ] {
+        let error = run(&cli, &args, &[]).unwrap_err();
+        assert_eq!(error.exit_code(), 65);
+        let CliError::Refusal(refusal) = error else {
+            panic!("expected refusal")
+        };
+        assert_eq!(
+            (refusal.code.as_str(), refusal.category, refusal.evidence),
+            (
+                "invalid_input",
+                Category::InvalidInput,
+                Evidence::NotDispatched
+            )
         );
         assert!(handle.snapshot().is_empty());
     }
