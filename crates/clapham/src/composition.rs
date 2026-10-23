@@ -215,7 +215,7 @@ impl ComposedOperation {
     }
 }
 
-fn cancelled(evidence: Evidence) -> Refusal {
+pub(crate) fn cancelled(evidence: Evidence) -> Refusal {
     let mut refusal = Refusal::new("cancelled", Category::Interrupted, "the call was cancelled")
         .with_evidence(evidence);
     refusal.retryable = true;

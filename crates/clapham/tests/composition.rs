@@ -576,6 +576,7 @@ fn every_descriptor_field_participates_in_the_revision() {
 }
 
 #[test]
+#[ignore = "child-process revision probe; invoked by revision_is_stable_across_processes"]
 fn revision_probe() {
     println!(
         "REVISION={}",
@@ -714,7 +715,7 @@ fn revision_is_stable_across_processes() {
     let expected = one(descriptor("lists.items.get"), Bounds::default()).unwrap();
     for _ in 0..2 {
         let child = std::process::Command::new(std::env::current_exe().unwrap())
-            .args(["--exact", "revision_probe", "--nocapture"])
+            .args(["--ignored", "--exact", "revision_probe", "--nocapture"])
             .output()
             .unwrap();
         assert!(

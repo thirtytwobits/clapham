@@ -39,9 +39,11 @@ operation. A selection belongs to its originating set and its clones. Its revisi
 digests the selected descriptors and any remote revisions supplied through
 `Contribution::with_binding_revision`, so approvals can be tied to that selection.
 
-`ComposedSet::call` checks selection membership, validates input, asks the gate,
+`ComposedSet::call` first returns any cancellation already signalled on entry.
+It then checks selection membership, validates input, asks the gate,
 checks preview support and locality, runs the handler, then validates successful
-output. `DefaultGate` admits the descriptor's principal kinds. Use
+output. Cancellation is checked again before dispatch. `DefaultGate` admits the
+descriptor's principal kinds. Use
 `compose_with_options` to supply a custom `Gate` and `ExecutionMode::Daemon` where
 daemon-local operations can run. A gate may allow, deny or leave approval pending;
 pending calls never dispatch. The default execution mode is `InProcess`.

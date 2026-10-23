@@ -453,8 +453,9 @@ fn undeclared_handler_refusals_preserve_the_original_including_reserved_looking_
         "invalid_result",
         "no_daemon",
     ] {
-        let original = Refusal::new(code, Category::Conflict, "The list changed.")
+        let mut original = Refusal::new(code, Category::Conflict, "The list changed.")
             .with_evidence(Evidence::Uncertain);
+        original.retryable = true;
         let expected = serde_json::to_value(&original).unwrap();
         let set = one(descriptor("lists.get", Effect::Query), move |_| {
             let original = original.clone();
@@ -470,6 +471,7 @@ fn undeclared_handler_refusals_preserve_the_original_including_reserved_looking_
             )
         );
         assert_eq!(refusal.details, Some(expected));
+        assert!(!refusal.retryable);
     }
 }
 
@@ -486,31 +488,56 @@ fn tool_reported_errors_remain_outcomes_with_their_own_result_shape() {
 }
 
 #[test]
-fn cancellation_before_dispatch_is_certain_and_does_not_enter_the_handler() {
-    let entered = Arc::new(AtomicBool::new(false));
-    let observed = entered.clone();
-    let set = one(descriptor("lists.get", Effect::Query), move |call: Call| {
-        observed.store(true, Ordering::SeqCst);
-        echo(call)
-    });
-    let cancel = Cancellation::new();
-    cancel.cancel();
-    let refusal = block_on(set.call(
-        &set.all(),
-        principal(PrincipalKind::Human),
-        "lists.get",
-        input(),
-        RecordSink::default(),
-        cancel,
-        false,
-    ))
-    .unwrap_err();
-    assert_eq!(
-        (refusal.code.as_str(), refusal.category, refusal.evidence),
-        ("cancelled", Category::Interrupted, Evidence::NotDispatched)
-    );
-    assert!(refusal.retryable);
-    assert!(!entered.load(Ordering::SeqCst));
+fn pre_cancelled_calls_skip_validation_and_admission_without_dispatch() {
+    for decision in [Admission::Allow, Admission::Deny, Admission::Pending] {
+        let entered = Arc::new(AtomicBool::new(false));
+        let observed = entered.clone();
+        let consulted = Arc::new(AtomicUsize::new(0));
+        let decisions = consulted.clone();
+        let set = compose_with_options(
+            [Contribution::new("lists").operation(
+                descriptor("lists.get", Effect::Query),
+                move |call: Call| {
+                    observed.store(true, Ordering::SeqCst);
+                    echo(call)
+                },
+            )],
+            Bounds::default(),
+            ComposeOptions {
+                gate: Arc::new(move |_: &Principal, _: &Operation| {
+                    decisions.fetch_add(1, Ordering::SeqCst);
+                    decision
+                }),
+                ..ComposeOptions::default()
+            },
+        )
+        .unwrap();
+        for (name, arguments) in [
+            ("lists.get", input()),
+            ("lists.get", json!({ "id": 17 })),
+            ("lists.absent", input()),
+        ] {
+            let cancel = Cancellation::new();
+            cancel.cancel();
+            let refusal = block_on(set.call(
+                &set.all(),
+                principal(PrincipalKind::Human),
+                name,
+                arguments,
+                RecordSink::default(),
+                cancel,
+                true,
+            ))
+            .unwrap_err();
+            assert_eq!(
+                (refusal.code.as_str(), refusal.category, refusal.evidence),
+                ("cancelled", Category::Interrupted, Evidence::NotDispatched)
+            );
+            assert!(refusal.retryable);
+        }
+        assert_eq!(consulted.load(Ordering::SeqCst), 0);
+        assert!(!entered.load(Ordering::SeqCst));
+    }
 }
 
 #[test]
@@ -689,6 +716,7 @@ fn revision_bound_selection_matches_an_independent_golden_digest() {
 }
 
 #[test]
+#[ignore = "child-process revision probe; invoked by revision_binding_is_stable_across_processes"]
 fn revision_binding_probe() {
     println!("REVISION={}", binding_set("binding-1").all().revision());
 }
@@ -697,7 +725,12 @@ fn revision_binding_probe() {
 fn revision_binding_is_stable_across_processes() {
     let expected = binding_set("binding-1").all().revision().to_owned();
     let child = std::process::Command::new(std::env::current_exe().unwrap())
-        .args(["--exact", "revision_binding_probe", "--nocapture"])
+        .args([
+            "--ignored",
+            "--exact",
+            "revision_binding_probe",
+            "--nocapture",
+        ])
         .output()
         .unwrap();
     assert!(

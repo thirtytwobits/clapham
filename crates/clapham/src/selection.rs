@@ -4,8 +4,8 @@ use std::sync::Arc;
 use serde_json::{Value, json};
 
 use crate::{
-    Admission, Call, Cancellation, Category, ComposedOperation, ComposedSet, ExecutionMode,
-    Locality, Operation, Outcome, Principal, RecordSink, Refusal,
+    Admission, Call, Cancellation, Category, ComposedOperation, ComposedSet, Evidence,
+    ExecutionMode, Locality, Operation, Outcome, Principal, RecordSink, Refusal,
 };
 
 /// The outcome or refusal of a call through a composed set.
@@ -97,10 +97,12 @@ impl ComposedSet {
 
     /// Validate, admit and run a selected operation under the authenticated principal.
     ///
-    /// The order is selection, input, gate, preview support, locality, dispatch and
-    /// successful output validation. Every pre-dispatch refusal carries not-dispatched
-    /// evidence. A selection from another independently composed set cannot authorise
-    /// a call here, even if the descriptors and revision happen to match.
+    /// Already-cancelled calls return before any validation or admission. Otherwise,
+    /// the order is selection, input, gate, preview support, locality, dispatch and
+    /// successful output validation, with cancellation checked again before dispatch.
+    /// Every pre-dispatch refusal carries not-dispatched evidence. A selection from
+    /// another independently composed set cannot authorise a call here, even if the
+    /// descriptors and revision happen to match.
     #[allow(clippy::too_many_arguments)]
     pub async fn call(
         &self,
@@ -112,6 +114,9 @@ impl ComposedSet {
         cancel: Cancellation,
         preview: bool,
     ) -> CallResult {
+        if cancel.is_cancelled() {
+            return Err(crate::composition::cancelled(Evidence::NotDispatched));
+        }
         if !Arc::ptr_eq(&self.identity, &selection.origin) || !selection.contains(name) {
             return Err(unknown_operation());
         }

@@ -24,16 +24,21 @@ revision. With remote bindings, the preimage is `clapham.selection.v1`, a zero b
 then compact JSON with `operations` (the selected descriptor array) and `bindings`
 (an object mapping each selected remote namespace to its revision). Object keys
 are recursively sorted and array order is retained. SHA-256 produces the same
-`sha256:` lowercase hexadecimal form. Fixed fixtures run across processes and JSON
-map backends. A framing or canonicalisation change requires a new version prefix.
+`sha256:` lowercase hexadecimal form. Child-process tests compare revisions within
+one JSON map backend. Golden digests run with both the default map backend and
+`serde_json/preserve_order` in CI. A framing or canonicalisation change requires a
+new version prefix.
 
 ## Gate and execution mode
 
 `Gate::admit(&Principal, &Operation)` returns `Admission::Allow`, `Deny` or `Pending`.
 `DefaultGate` admits the descriptor's principal kinds. The effect defaults therefore
 deny agents administrative and destructive operations; an explicit empty principal
-list admits nobody. A custom gate may override these defaults and is consulted on
-every valid call. Pending approval refuses without dispatch and may be retried.
+list admits nobody. A custom gate may override these defaults and is consulted after
+input validation unless the call was already cancelled on entry. Admission applies
+the same policy to previews and real calls; the gate does not receive the preview
+flag. Pending approval refuses without dispatch and may be retried. The host owns
+approval correlation; `Pending` provides no attempt identifier or approval payload.
 
 Supply a gate in `ComposeOptions` to `compose_with_options`. Its execution mode
 defaults to `ExecutionMode::InProcess`, which refuses daemon-local operations.
@@ -41,13 +46,19 @@ A running daemon uses `ExecutionMode::Daemon` to serve both localities. Set clon
 share the gate and fixed execution mode. A gate can retain synchronised policy
 state when admission must change between calls.
 
+`Bounds::in_flight` and `waiting` are connection budgets for the MCP front ends.
+The core call runner does not queue calls or enforce connection concurrency.
+
 ## Call order and refusals
 
 `set.call(&selection, principal, name, input, sink, cancel, preview).await` returns
-`CallResult`, a result containing an `Outcome` or `Refusal`. The checks run in this
-order: selection membership, input schema, gate, preview support, locality, handler,
-successful output schema. The handler receives the authenticated principal, its own
-operation name, input, sink, cancellation signal and preview flag.
+`CallResult`, a result containing an `Outcome` or `Refusal`. An already-cancelled
+call returns `cancelled` before validation or admission. Otherwise, the checks run
+in this order: selection membership, input schema, gate, preview support, locality,
+cancellation again, handler, successful output schema. These are cancellation
+checkpoints; validation and admission are synchronous and are not interrupted while
+running. The handler receives the authenticated principal, its own operation name,
+input, sink, cancellation signal and preview flag.
 
 | Code | Category | Condition |
 |---|---|---|
@@ -58,7 +69,7 @@ operation name, input, sink, cancellation signal and preview flag.
 | `preview_unsupported` | `usage` | Preview requested for an operation without preview support |
 | `no_daemon` | `unavailable` | Daemon-local operation in an in-process host |
 | `invalid_result` | `internal` | Successful output fails its schema, including absent required output |
-| `undeclared_refusal` | `internal` | Handler returns a code absent from its descriptor |
+| `undeclared_refusal` | `internal` | Handler returns a code absent from its descriptor; never retryable |
 | `cancelled` | `interrupted` | Cancellation before or during dispatch; retryable |
 
 Pre-dispatch refusals carry `not_dispatched` evidence. In-flight cancellation carries
@@ -68,10 +79,11 @@ Returned outcomes retain their evidence, including when output validation fails.
 
 A declared handler refusal keeps its code, message, details, retryability and evidence;
 its category is taken from the descriptor. An undeclared refusal is placed in the
-`details` of `undeclared_refusal`, preserving its evidence on the wrapper. Handler
-codes that resemble runner codes follow the same rule. Runner-generated refusals do
-not need declarations. Tool-reported error outcomes retain their error shape and are
-not validated as successful results.
+`details` of `undeclared_refusal`, preserving its evidence on the wrapper. The
+wrapper is not retryable, even when the original refusal is. Handler codes that
+resemble runner codes follow the same rule. Runner-generated refusals do not need
+declarations. Tool-reported error outcomes retain their error shape and are not
+validated as successful results.
 
 The asynchronous sink acknowledges each record before the handler proceeds, providing
 backpressure. Handlers must await sink delivery to preserve record order. A propagated
