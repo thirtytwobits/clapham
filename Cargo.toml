@@ -1,0 +1,20 @@
+[workspace]
+members = ["crates/*", "tools/xtask", "examples/*"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/thirtytwobits/clapham"
+
+[workspace.dependencies]
+clapham = { version = "0.1.0", path = "crates/clapham" }
+clapham-cli = { version = "0.1.0", path = "crates/clapham-cli" }
+clapham-mcp-server = { version = "0.1.0", path = "crates/clapham-mcp-server" }
+clapham-mcp-client = { version = "0.1.0", path = "crates/clapham-mcp-client" }
+clapham-conformance = { version = "0.1.0", path = "crates/clapham-conformance" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"

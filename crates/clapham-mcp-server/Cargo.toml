@@ -1,0 +1,20 @@
+[package]
+name = "clapham-mcp-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version = "1.88"
+description = "The MCP server front end for composed operations."
+readme = "README.md"
+
+[dependencies]
+clapham.workspace = true
+
+[features]
+default = ["stdio", "http"]
+stdio = []
+http = []
+
+[lints]
+workspace = true

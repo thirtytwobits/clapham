@@ -1,0 +1,15 @@
+[package]
+name = "clapham-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version = "1.85"
+description = "The command-line front end for composed operations."
+readme = "README.md"
+
+[dependencies]
+clapham.workspace = true
+
+[lints]
+workspace = true
