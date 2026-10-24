@@ -9,7 +9,7 @@ cargo run -p clapham-lists -- lists get tasks
 cargo run -p clapham-lists -- lists export --id tasks --format ndjson
 cargo run -p clapham-lists -- lists create --list-json '{"id":"new","name":"New"}'
 cargo run -p clapham-lists -- lists compact --yes
-cargo run -p clapham-lists -- --as agent:agent items tick --list-id tasks --id a
+cargo run -p clapham-lists -- --as agent:agent items tick --list_id tasks --id a
 ```
 
 After installing or building the `lists` binary, use `lists <operation segments>` directly.

@@ -3,9 +3,16 @@
 Read [AGENTS.md](AGENTS.md) before changing the repository. Cargo selects the gate
 compiler from `rust-toolchain.toml`.
 
+[The release contract](docs/contract.md) links each guarantee to named tests. Update the
+guarantee and its test together when behaviour changes. Start with
+[composing an application](docs/composing.md) for the worked example. Each crate's README is
+included as its crate-level API documentation; its Rust examples run as doctests. Public
+items require documentation, and the gate builds API docs with warnings denied.
+
 ```console
 cargo xtask check
 cargo xtask boundaries
+cargo xtask docs
 cargo xtask api
 cargo xtask schemas --check
 cargo xtask release-check
@@ -14,6 +21,11 @@ cargo xtask release-check
 `check` runs dependency, crate-file and generated-schema checks, formatting, Clippy with
 warnings denied, tests and documentation with warnings denied, for default features and
 all features. It also validates release metadata, the changelog and Cargo package inventories.
+Its documentation check (`cargo xtask docs`) resolves each contract Evidence paragraph's
+backticked function names against the preceding linked Rust file, requires evidence for
+each guarantee, and compares the composing guide's first Rust block with the core README's
+Quickstart. The README doctest compiles that shared example. These checks catch reference
+and example drift; reviewers still judge whether the tests prove the documented guarantees.
 Inventories follow Cargo's file selection, including non-ignored untracked files under a
 crate: an unexpected local file can therefore fail `check`. Source archives are supported;
 only Cargo's generated `.cargo_vcs_info.json` may be absent outside a Git work tree.

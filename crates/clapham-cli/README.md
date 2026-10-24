@@ -1,5 +1,8 @@
 # clapham-cli
 
+Requires Rust 1.85. [`Cli`] derives input, help and process output from the core descriptors;
+the host supplies its set, principal and workspace ownership.
+
 Build a command tree at run time from a composed set. `lists.get` becomes
 `<app> lists get`; further dots add command levels. The top-level `describe`
 command also invokes `clapham.describe`.
@@ -162,3 +165,7 @@ output alongside the core schemas.
 `<app> completions bash|zsh|fish|powershell` prints the corresponding script from
 the live descriptor-built tree, including operation arguments and global controls,
 without dispatching. The same scripts are available through `completions(Shell)`.
+
+See the [command-line guide](https://github.com/thirtytwobits/clapham/blob/main/docs/cli.md)
+and [0.1.0 guarantees](https://github.com/thirtytwobits/clapham/blob/main/docs/contract.md)
+for the application-facing contract and corresponding tests.

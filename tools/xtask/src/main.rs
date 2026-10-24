@@ -2,6 +2,7 @@
 
 mod api;
 mod boundaries;
+mod docs;
 mod release;
 mod schemas;
 
@@ -30,6 +31,7 @@ fn dispatch() -> Result<()> {
     {
         ["check"] => check(&root),
         ["boundaries"] => boundaries::check(&root),
+        ["docs"] => docs::check(&root),
         ["api"] => api::check(&root, false),
         ["api", "--update"] => api::check(&root, true),
         ["schemas"] => schemas::run(&root, false),
@@ -40,10 +42,10 @@ fn dispatch() -> Result<()> {
             release::check(&root, Some(tag), Some(Path::new(path)))
         }
         ["help"] | ["--help"] | ["-h"] | [] => {
-            println!("cargo xtask <check|boundaries|api [--update]|schemas [--check]|release-check [<tag> [--notes <path>]]>");
+            println!("cargo xtask <check|boundaries|docs|api [--update]|schemas [--check]|release-check [<tag> [--notes <path>]]>");
             Ok(())
         }
-        _ => Err("usage: cargo xtask <check|boundaries|api [--update]|schemas [--check]|release-check [<tag> [--notes <path>]]>".into()),
+        _ => Err("usage: cargo xtask <check|boundaries|docs|api [--update]|schemas [--check]|release-check [<tag> [--notes <path>]]>".into()),
     }
 }
 
@@ -77,6 +79,7 @@ fn capture(command: &mut Command) -> Result<String> {
 
 fn check(root: &Path) -> Result<()> {
     boundaries::check(root)?;
+    docs::check(root)?;
     schemas::run(root, true)?;
     release::check(root, None, None)?;
     run(&mut cargo(root, &["fmt", "--all", "--", "--check"]))?;

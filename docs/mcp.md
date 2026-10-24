@@ -5,9 +5,75 @@ features select transports; both are enabled by default. Core and CLI keep Rust 
 
 ## Server
 
-The [server contract](../crates/clapham-mcp-server/README.md) covers selected tools, query
-resources, principal-bound discovery, unchanged refusals, previews and per-request HTTP
-authentication. The conformance gate checks its generated MCP wire record.
+The application supplies a composed set, selection, bounds and authenticated principal.
+`Server` exposes stdio or supplied async streams; `HttpServer` is a service mounted by the
+application, which owns its listener, TLS and shutdown. See [composing](composing.md) for
+the worked application and [the release contract](contract.md#c10-front-ends-preserve-the-call-boundary)
+for test evidence. The [server API guide](../crates/clapham-mcp-server/README.md) specifies
+resource-template restrictions, encoded budgets and transport failure details.
+
+### Descriptor and outcome mapping
+
+| Clapham value | MCP representation |
+|---|---|
+| Complete operation name, title, description | Tool name, title, description; names are not rewritten |
+| Input / optional output schema | `inputSchema` / `outputSchema`; boolean output schemas become equivalent objects |
+| Effect, idempotence, open-world hint | Tool annotations; administrative class also appears on tool `_meta` |
+| Structured result, including JSON null | `structuredContent`; absence remains absence |
+| Ordered content and tool-error flag | MCP `content` blocks and `isError` |
+| Typed refusal | `isError: true`, unchanged refusal as structured content, message as text |
+| Query resource template | Resource discovery and `resources/read` through the ordinary runner |
+| Streaming records | Discarded in 0.1.0; only the terminal result is returned |
+
+Tool calls use `ComposedSet::call`, including selection, input, gate, preview and locality
+checks. Protocol faults are JSON-RPC errors, distinct from domain refusals. A resource read
+returns JSON text (`application/json`): ordinary results keep their shape; content/error/
+absent-result outcomes use the complete `Outcome`. Query refusals retain their code in the
+JSON resource contents. Indefinite streams require cancellation; MCP does not relay records.
+
+### Metadata and discovery
+
+| Key | Location and meaning |
+|---|---|
+| `io.github.thirtytwobits.clapham/effect` | Tool `_meta`; `administrative` preserves the effect class |
+| `io.github.thirtytwobits.clapham/preview` | Request `_meta`; boolean `true` requests preview |
+| `io.modelcontextprotocol/protocolVersion` | Request `_meta`; `2026-07-28` |
+| `io.modelcontextprotocol/clientCapabilities` | Request `_meta`; client capability data |
+| `io.modelcontextprotocol/clientInfo` | Request `_meta`; client identity data, not authentication |
+
+The server publishes `PREVIEW_META_KEY` and `REQUEST_META_KEYS`. Non-boolean preview metadata
+is a protocol error. Discovery lists only selected, gate-allowed operations for the caller;
+denied and pending names disappear. Its internal named describe calls still require gate
+admission for `clapham.describe`, even when the describe tool itself is not exposed.
+Lists are private, immediately stale (`ttlMs: 0`) and paginated under shared bounds.
+The gate must be safe to query repeatedly without beginning an approval workflow.
+
+### Authentication and transport ownership
+
+A stdio connection keeps its launcher-supplied principal. HTTP passes each request's opaque
+Authorization credential to the application's `Authenticator`. Only an explicit mapping
+admits a principal, including a missing credential if the host deliberately maps it.
+An unmapped credential receives HTTP 401 before body consumption, gate or handler.
+Authorization values are excluded from credential debug output. No scheme is assumed;
+the host supplies any authentication challenge. Request arguments and MCP metadata cannot
+replace the authenticated principal. Concurrent requests retain their separate identities.
+
+HTTP is stateless: there is no session ID or initialise handshake. `MCP-Protocol-Version`,
+`Mcp-Method` and, for named requests, `Mcp-Name` must match the body. Host and Origin policy
+runs before authentication. Defaults permit loopback hosts, reject present browser Origins and permit
+non-browser requests without Origin; the host can configure both allow-lists. HTTP GET and
+DELETE receive 405. The service accounts for full request/reply bodies and shared active/
+waiting slots; disconnection cancels admitted work with the core's evidence rules.
+Core defaults still refuse daemon-local operations until the host composes in daemon mode.
+
+### Published wire record
+
+[`mcp-protocol.json`](../crates/clapham-conformance/records/mcp-protocol.json) records the
+neutral lists contribution's protocol versions, metadata keys, tools and resource templates.
+`cargo test -p clapham-conformance --test mcp_protocol` compares canonical bytes and refuses
+stale output. An intended update is generated with `CLAPHAM_WRITE_RECORDS=1`; the normal
+repository gate removes that variable and cannot silently rewrite the record. This is a
+checked fixture surface, not a promise that every application exposes the lists operations.
 
 ## Client
 
@@ -135,8 +201,10 @@ limit is reached. Credentials and response diagnostic data are excluded from ada
 The moved client tests cover bounded discovery, duplicate names, aliases, binding revisions,
 stale notifications and refreshes, unsupported interactions, cancellation, uncertain effects,
 JSON/SSE responses and disabled replay. Fixtures use explicit acknowledgements and holds;
-deadline tests advance paused runtime time after a scripted request has entered, rather than
-waiting for elapsed wall time. The conformance suite binds this workspace's server over both transports and calls `remote.lists.get` through
+deadline fixtures use paused runtime time after a scripted request has entered. Once scripted
+work is idle, the runtime advances to the production deadline without elapsed wall time.
+The conformance suite binds this workspace's server over both
+transports and calls `remote.lists.get` through
 `ComposedSet::call`, checking the local result, a remote `list_not_found` tool error and
 agent refusal for an administrative round trip. Response interpretation follows request IDs,
 so tool-result extension fields cannot be mistaken for catalogue records.

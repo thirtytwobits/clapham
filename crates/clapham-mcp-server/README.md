@@ -1,5 +1,9 @@
 # clapham-mcp-server
 
+Requires Rust 1.88. The `stdio` and `http` transport features are enabled by default and can
+be selected independently. [`Server`] and `HttpServer` share the core call boundary; the
+host supplies identity, transport ownership and any workspace lock.
+
 `Server` exposes a composed set as MCP 2026-07-28 tools and resources, using rmcp 3.6.0.
 The application supplies the principal when constructing the server; a stdio connection
 keeps that identity for its lifetime. Request arguments and metadata cannot replace it.
@@ -8,6 +12,7 @@ keeps that identity for its lifetime. Request arguments and metadata cannot repl
 use clapham::{ComposedSet, Principal};
 use clapham_mcp_server::Server;
 
+# #[cfg(feature = "stdio")]
 # async fn example(set: ComposedSet, principal: Principal) -> Result<(), Box<dyn std::error::Error>> {
 let server = Server::new(set, principal)?.select(["clapham.version"])?;
 // The application owns the Tokio runtime and any workspace lock.
@@ -79,11 +84,13 @@ Exhausting transport limits closes the connection.
 
 The `stdio` feature provides `serve_stdio` and `serve_io` (the same transport over supplied
 async streams). Consumers using another transport can use the `rmcp::ServerHandler`
-implementation and must enforce their transport bounds. The `http` feature provides [`HttpServer`], a Tower service using rmcp's stateless Streamable
+implementation and must enforce their transport bounds. The `http` feature provides `HttpServer`, a Tower service using rmcp's stateless Streamable
 HTTP server transport. It accepts POST requests without an initialise handshake, supplies
 JSON replies, and never creates a session. The application owns the listener, TLS and shutdown.
 
 ```rust
+# #[cfg(feature = "http")]
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
 use clapham::{Bounds, Principal, PrincipalKind, compose};
 use clapham_mcp_server::{Credential, HttpServer};
 
@@ -95,11 +102,14 @@ let server = HttpServer::new(set, |credential: &Credential| {
     }
 })?;
 // Mount `server` as a Tower service at the application's MCP endpoint.
-# Ok::<(), Box<dyn std::error::Error>>(())
+# Ok(())
+# }
+# #[cfg(not(feature = "http"))]
+# fn main() {}
 ```
 
-The application supplies [`Authenticator`], which receives the complete Authorization value
-as an opaque [`Credential`]. A missing field is a default credential; only the authenticator
+The application supplies `Authenticator`, which receives the complete Authorization value
+as an opaque `Credential`. A missing field is a default credential; only the authenticator
 may explicitly map it to a principal. Credential debug output reports presence without printing
 the value. Duplicate or malformed Authorization fields receive HTTP 400. An unmapped credential
 receives HTTP 401 with a `not_authenticated` refusal carrying `not_dispatched` evidence,
@@ -146,3 +156,7 @@ CLAPHAM_WRITE_RECORDS=1 cargo test -p clapham-conformance --test mcp_protocol
 
 The boundary gate permits rmcp server features only in this crate, checking defaults, direct
 features and feature forwarding on normal, development, build and target-specific dependencies.
+
+See the [MCP mapping and authentication guide](https://github.com/thirtytwobits/clapham/blob/main/docs/mcp.md)
+and [0.1.0 guarantees](https://github.com/thirtytwobits/clapham/blob/main/docs/contract.md)
+for the application-facing contract and corresponding tests.

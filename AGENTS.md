@@ -24,6 +24,8 @@ a generated snapshot by hand. Published schemas and the wire-form record must be
 by a gate, and that gate must refuse stale output when those artefacts are introduced.
 
 A refusal code is carried unchanged. A contribution's declared refusal set is a contract.
+`docs/contract.md` records release guarantees and their test evidence. A change to a guarantee
+updates that document and its corresponding test in the same pull request.
 
 ## Deterministic tests
 

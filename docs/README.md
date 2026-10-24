@@ -1,5 +1,14 @@
 # Workspace guide
 
+Start with [the 0.1.0 contract](contract.md) for guarantees and test evidence, then
+[composing an application](composing.md) for a contribution-to-`main` walkthrough.
+The [CLI](cli.md), [MCP](mcp.md) and [conformance](conformance.md) guides describe each front
+end and how a piece checks its contribution. [Using a release](using-a-release.md) covers
+consumer manifests; the [release procedure](../RELEASING.md) covers maintainers.
+
+Detailed references: [composition and revisions](composition.md),
+[selections and calls](calls.md), and [describe and version](catalogue.md).
+
 | Member | Responsibility | Permitted workspace dependencies |
 |---|---|---|
 | `clapham` | Descriptors, refusals, principals, composition, selection, gates and calls | None |
