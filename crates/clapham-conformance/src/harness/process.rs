@@ -67,7 +67,7 @@ pub struct ProcessFrontEnd {
 }
 impl ProcessFrontEnd {
     /// Use `serve --stdio --as KIND:ID` or `serve --http 127.0.0.1:0` for server modes.
-    /// HTTP credentials are `Bearer <principal.id>`; the host authenticator maps them explicitly.
+    /// HTTP credentials are `Bearer KIND:ID`; the host authenticator maps them explicitly.
     pub fn new(kind: ProcessKind, process: Process) -> Self {
         Self { kind, process }
     }
@@ -103,6 +103,8 @@ impl FrontEnd for ProcessFrontEnd {
                         )
                         .await?;
                     let catalogue = names(&catalogue["structuredContent"])?;
+                    let tools = host.tools(&case.principal, &fixture.bounds).await?;
+                    check_tools(&catalogue, &tools)?;
                     let result = host
                         .request(
                             "tools/call",
@@ -121,7 +123,7 @@ impl FrontEnd for ProcessFrontEnd {
                     config.bounds = fixture.bounds.clone();
                     let connection = if let Some(endpoint) = &host.endpoint {
                         let mut options = McpHttpOptions::new(endpoint);
-                        options.bearer_token = Some(case.principal.id.clone());
+                        options.bearer_token = Some(principal(&case.principal));
                         McpConnection::http(options, config).await
                     } else {
                         let reader = host
@@ -245,6 +247,7 @@ struct Host {
     input: Option<ChildStdin>,
     output: Option<BufReader<ChildStdout>>,
     endpoint: Option<String>,
+    client: Option<reqwest::Client>,
     id: u64,
 }
 impl Host {
@@ -278,6 +281,17 @@ impl Host {
             input,
             output,
             endpoint: None,
+            client: if http {
+                Some(
+                    reqwest::Client::builder()
+                        .redirect(reqwest::redirect::Policy::none())
+                        .retry(reqwest::retry::never())
+                        .build()
+                        .map_err(|e| Failure::new(e.to_string()))?,
+                )
+            } else {
+                None
+            },
             id: 0,
         };
         if http {
@@ -298,6 +312,28 @@ impl Host {
         }
         Ok(host)
     }
+    async fn tools(&mut self, caller: &Principal, bounds: &Bounds) -> Result<Vec<String>, Failure> {
+        let mut tools = Vec::new();
+        let mut cursor = None;
+        let mut seen = BTreeSet::new();
+        for _ in 0..bounds.pages {
+            let page = self
+                .request("tools/list", json!({"cursor":cursor}), caller)
+                .await?;
+            tools.extend(names(&page["tools"])?);
+            if tools.len() > bounds.tools {
+                return Err(Failure::new("tools/list exceeds fixture bounds"));
+            }
+            match page.get("nextCursor") {
+                None | Some(Value::Null) => return Ok(tools),
+                Some(Value::String(next)) if seen.insert(next.clone()) => {
+                    cursor = Some(next.clone());
+                }
+                _ => return Err(Failure::new("invalid or repeated tools/list cursor")),
+            }
+        }
+        Err(Failure::new("tools/list exceeds fixture page bounds"))
+    }
     async fn request(
         &mut self,
         method: &str,
@@ -309,14 +345,12 @@ impl Host {
         self.id += 1;
         let request = json!({"jsonrpc":"2.0","id":self.id,"method":method,"params":params});
         let response: Value = if let Some(endpoint) = &self.endpoint {
-            let client = reqwest::Client::builder()
-                .redirect(reqwest::redirect::Policy::none())
-                .retry(reqwest::retry::never())
-                .build()
-                .map_err(|e| Failure::new(e.to_string()))?;
-            let mut send = client
+            let mut send = self
+                .client
+                .as_ref()
+                .unwrap()
                 .post(endpoint)
-                .bearer_auth(&caller.id)
+                .bearer_auth(principal(caller))
                 .header("mcp-protocol-version", "2026-07-28")
                 .header("mcp-method", method)
                 .header("accept", "application/json, text/event-stream");
@@ -339,11 +373,22 @@ impl Host {
                 .ok_or_else(|| Failure::new("missing host stdin"))?;
             input.write_all(format!("{request}\n").as_bytes()).await?;
             input.flush().await?;
-            let mut line = String::new();
-            self.output.as_mut().unwrap().read_line(&mut line).await?;
-            serde_json::from_str(&line)?
+            loop {
+                let mut line = String::new();
+                if self.output.as_mut().unwrap().read_line(&mut line).await? == 0 {
+                    return Err(Failure::new("MCP host closed before its response"));
+                }
+                let message: Value = serde_json::from_str(&line)?;
+                if !notification(&message) {
+                    break message;
+                }
+            }
         };
-        if response["id"] != self.id || response.get("error").is_some() {
+        if response["jsonrpc"] != "2.0"
+            || response["id"] != self.id
+            || response.get("method").is_some()
+            || response.get("error").is_some()
+        {
             return Err(Failure::new(format!("unexpected MCP response: {response}")));
         }
         response
@@ -361,13 +406,37 @@ impl Host {
             output.read_to_end(&mut extra).await?;
         }
         let status = self.process.wait().await?;
-        if !status.success() || extra.iter().any(|byte| !byte.is_ascii_whitespace()) {
+        let mut extra_result = false;
+        for line in extra.split(|byte| *byte == b'\n') {
+            if line.iter().all(u8::is_ascii_whitespace) {
+                continue;
+            }
+            extra_result |= !notification(&serde_json::from_slice(line)?);
+        }
+        if !status.success() || extra_result {
             return Err(Failure::new(
                 "host returned an extra result or unsuccessful exit",
             ));
         }
         Ok(())
     }
+}
+fn notification(message: &Value) -> bool {
+    message["jsonrpc"] == "2.0"
+        && message.get("method").is_some_and(Value::is_string)
+        && message.get("id").is_none()
+        && message.get("result").is_none()
+        && message.get("error").is_none()
+        && message.get("params").is_none_or(Value::is_object)
+}
+fn check_tools(catalogue: &[String], tools: &[String]) -> Result<(), Failure> {
+    let unique = tools.iter().collect::<BTreeSet<_>>();
+    if unique.len() != tools.len() || unique != catalogue.iter().collect::<BTreeSet<_>>() {
+        return Err(Failure::new(
+            "tools/list catalogue differs from clapham.describe",
+        ));
+    }
+    Ok(())
 }
 fn mcp_outcome(value: Value) -> Result<Outcome, Failure> {
     if !value["content"].is_array() || value.get("isError").is_some_and(|flag| !flag.is_boolean()) {

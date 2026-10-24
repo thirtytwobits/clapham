@@ -22,7 +22,8 @@ The [MCP server](../crates/clapham-mcp-server/README.md) exposes selected tools 
 over stdio and stateless Streamable HTTP, with principal-bound discovery, previews,
 unchanged refusals and per-request authentication. Its conformance tests check the generated
 MCP wire record. The [MCP client](mcp.md#client) binds remote tools as daemon contributions,
-with shared bounds, pinned definitions, stale checks and explicit dispatch evidence. The [lists example](../examples/lists/README.md) assembles the CLI and both MCP servers.
+with shared bounds, pinned definitions, stale checks and explicit dispatch evidence. The
+[lists example](../examples/lists/README.md) assembles the CLI and both MCP servers.
 The reusable `run` harness launches it through every front end and checks results, refusals,
 gate visibility and ordered records; downstream contributions supply fresh fixture factories
 and finite cases to the same library.

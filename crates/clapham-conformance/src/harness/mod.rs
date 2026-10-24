@@ -27,7 +27,7 @@ pub struct Case {
     pub operation: String,
     /// Input supplied unchanged through every front end.
     pub input: Value,
-    /// The caller authenticated by each host adapter.
+    /// The caller authenticated by each host adapter, preserving both kind and identity.
     pub principal: Principal,
 }
 impl Case {
@@ -341,10 +341,11 @@ fn compare(
                     && !expected.is_error
                     && expected.evidence == clapham::Evidence::Completed
                 {
-                    expected
-                        .result
-                        .clone()
-                        .unwrap_or(serde_json::to_value(expected)?)
+                    // Mirror clapham-cli's output::result_data representation.
+                    match &expected.result {
+                        Some(result) => result.clone(),
+                        None => serde_json::to_value(expected)?,
+                    }
                 } else {
                     serde_json::to_value(expected)?
                 };
@@ -412,6 +413,7 @@ pub async fn run(
             fixture.bounds.clone(),
             ComposeOptions {
                 gate: gate.clone(),
+                execution: ExecutionMode::Daemon,
                 ..Default::default()
             },
         );

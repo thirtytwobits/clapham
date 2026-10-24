@@ -29,7 +29,8 @@ object flags, whole-object JSON from arguments and stdin, descriptor help,
 principal overrides, admission and validation before dispatch. Process tests use
 the `clapham-cli-fixture` binary to verify output, exit codes, effect safeguards,
 completions and a deadline signalled after a write is explicitly held. Terminal
-status is supplied by the fixture for deterministic human-mode checks. The reusable harness now drives all front ends against fresh copies of the same fixture.
+status is supplied by the fixture for deterministic human-mode checks. The reusable harness
+drives all front ends against fresh copies of the same fixture.
 
 The MCP tests drive a real child process over stdin/stdout and deterministic duplex streams.
 They cover effect annotations, principal filtering, unchanged refusals, preview isolation,
@@ -58,7 +59,9 @@ stdin, including a Unicode JSON case larger than Windows' argument limit. HTTP r
 is an explicit bound-address line, and stdin EOF shuts servers down without timed polling.
 
 Every operation has a case, and a fully denied principal is checked for refusal and omission
-from describe. The selective agent denial for `items.tick` is checked too. A hidden tool
+from describe. The raw MCP drivers also compare the complete paginated `tools/list` catalogue.
+The selective agent denial for `items.tick` is checked too, alongside a human with the same
+identity, proving HTTP preserves the principal's kind. A hidden tool
 cannot be bound by the client, so that front end must refuse as `mcp_selection`; admitted
 operation refusals retain code, category and retryability through all adapters. Finite export
 checks records before exactly one result on the two front ends that carry records. The

@@ -14,7 +14,8 @@ fn main() -> ExitCode {
         .build()
         .unwrap();
     let outcome = runtime.block_on(run());
-    // A cancelled console-stdin read must not hold runtime shutdown open after Ctrl-C.
+    // Servers finish their work before returning. Abandon any cancelled console-stdin
+    // read so it cannot hold runtime shutdown open after Ctrl-C or normal completion.
     runtime.shutdown_background();
     match outcome {
         Ok(code) => ExitCode::from(code),
@@ -80,10 +81,9 @@ async fn run() -> Result<u8, Box<dyn Error>> {
             // The bound address is the readiness handshake. No polling or guessed port is needed.
             println!("{}", json!({"address":listener.local_addr()?.to_string()}));
             std::io::stdout().flush()?;
-            axum::serve(listener,app).with_graceful_shutdown(async {
-                let mut stdin = tokio::io::stdin(); let mut byte = [0];
-                tokio::select! { _ = stdin.read(&mut byte) => {}, _ = tokio::signal::ctrl_c() => {} }
-            }).await?;
+            axum::serve(listener, app)
+                .with_graceful_shutdown(shutdown())
+                .await?;
         }
         _ => {
             return Err(
@@ -92,6 +92,14 @@ async fn run() -> Result<u8, Box<dyn Error>> {
         }
     }
     Ok(0)
+}
+async fn shutdown() {
+    let mut stdin = tokio::io::stdin();
+    let mut byte = [0];
+    tokio::select! {
+        _ = stdin.read(&mut byte) => {},
+        _ = tokio::signal::ctrl_c() => {},
+    }
 }
 fn principal(identity: &str) -> Result<Principal, Box<dyn Error>> {
     let (kind, id) = identity.split_once(':').ok_or("expected KIND:ID")?;
@@ -109,9 +117,10 @@ fn principal(identity: &str) -> Result<Principal, Box<dyn Error>> {
 }
 fn authenticate(credential: &Credential) -> Option<Principal> {
     let (id, kind) = match credential.authorization()? {
-        "Bearer human" => ("human", PrincipalKind::Human),
-        "Bearer agent" => ("agent", PrincipalKind::Agent),
-        "Bearer denied" => ("denied", PrincipalKind::Agent),
+        "Bearer human:human" => ("human", PrincipalKind::Human),
+        "Bearer agent:agent" => ("agent", PrincipalKind::Agent),
+        "Bearer human:agent" => ("agent", PrincipalKind::Human),
+        "Bearer agent:denied" => ("denied", PrincipalKind::Agent),
         _ => return None,
     };
     Some(Principal::new(id, kind))

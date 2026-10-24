@@ -25,10 +25,12 @@ cargo run -p clapham-lists -- serve --http 127.0.0.1:8080
 
 Stdio takes the principal from launch configuration and reserves stdout for MCP. HTTP serves
 `/mcp` and prints one JSON readiness line with its bound address. Its scripted authenticator
-maps `Bearer human`, `Bearer agent` and `Bearer denied` to their fixed fixture principals;
+maps `Bearer human:human`, `Bearer agent:agent`, `Bearer human:agent` and
+`Bearer agent:denied` to their fixed fixture principals;
 unrecognised credentials refuse. This authenticator is restricted to a loopback listener.
-The application owns the listener and shutdown: stdin closure or input, or Ctrl-C, ends the
-HTTP server. Port zero chooses an ephemeral port for the harness without guessing or retries.
+The application owns the listener and shutdown: stdin closure or Ctrl-C ends the HTTP server.
+Any input byte also ends it, including a newline typed into the terminal.
+Port zero chooses an ephemeral port for the harness without guessing or retries.
 
 `main` shows composition, the shared gate, CLI dispatch, transport selection and per-request
 authentication. Replace the in-memory fixture and scripted credentials with the application's
@@ -40,5 +42,6 @@ cargo test -p clapham-lists --test conformance
 
 The reusable harness launches this actual binary through all six front ends, checking results,
 unchanged refusals and retryability, category exit codes, gate visibility and ordered records.
+It checks both MCP discovery surfaces and distinguishes `human:agent` from `agent:agent`.
 It runs in the workspace gates and the Rust 1.88 CI lane. See the
 [conformance crate guide](../../crates/clapham-conformance/README.md) for downstream usage.
