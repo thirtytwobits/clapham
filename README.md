@@ -105,6 +105,7 @@ Daemon routing, durable approval coordination and transactional effects are outs
 
 | Document | Purpose |
 |---|---|
+| [API reference](https://thirtytwobits.github.io/clapham/) | Versioned Rust API documentation for all five library crates |
 | [0.1.0 contract](docs/contract.md) | Guarantees and their corresponding tests; updated with contract changes |
 | [Composing an application](docs/composing.md) | Contributions, sets, selections and the application's `main` |
 | [Command line](docs/cli.md) | Descriptor mapping, binding, output and safeguards; syntax comes from `--help` |

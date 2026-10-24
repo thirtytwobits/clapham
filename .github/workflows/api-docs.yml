@@ -1,0 +1,68 @@
+name: API documentation
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/api-docs.yml', '.github/scripts/build-api-docs.sh']
+  pull_request:
+    paths: ['.github/workflows/api-docs.yml', '.github/scripts/build-api-docs.sh']
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: api-docs-${{ github.event_name == 'pull_request' && github.event.number || 'publish' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      # v7.0.1; release and Node 24 runtime verified 2026-10-23.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # v6.0.0; release and Node 24 runtime verified 2026-10-23.
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d
+        if: github.event_name != 'pull_request'
+      - run: rustup toolchain install 1.99.0 --profile minimal
+      - name: List published releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq '.[] | select(.draft == false) | .tag_name' > "$RUNNER_TEMP/api-docs-tags"
+      - name: Build versioned API references
+        run: bash .github/scripts/build-api-docs.sh "$RUNNER_TEMP/api-site" "$RUNNER_TEMP/api-docs-tags"
+      # v5.0.0; composite action pins upload-artifact v7.0.0 (Node 24), verified 2026-10-23.
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
+        with:
+          path: ${{ runner.temp }}/api-site
+
+  deploy:
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.event_name == 'release')
+    needs: build
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # v5.0.1; release and Node 24 runtime verified 2026-10-23.
+      - uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346
+        id: deployment
