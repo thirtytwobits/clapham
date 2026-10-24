@@ -1,0 +1,66 @@
+name: Draft release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    uses: ./.github/workflows/ci.yml
+
+  draft:
+    needs: gate
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      # v7.0.1; release tag and action.yml checked 2026-10-24; Node 24.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require a tag on main
+        run: |
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::The tagged commit must belong to main."
+            exit 1
+          fi
+      - run: rustup toolchain install 1.99.0 --profile minimal
+      - name: Validate release and extract its changelog notes
+        run: cargo xtask release-check "$RELEASE_TAG" --notes "$RUNNER_TEMP/clapham-release-notes.md"
+      - name: Refuse to modify a published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq '.[] | select(.tag_name == env.RELEASE_TAG and .draft == false) | .id' \
+            > "$RUNNER_TEMP/published-release-ids"
+          if test -s "$RUNNER_TEMP/published-release-ids"; then
+            echo "::error::This tag already has a published release; refusing to modify it."
+            exit 1
+          fi
+      # v3.0.3; annotated tag peeled to this commit and action.yml checked
+      # 2026-10-24; Node 24. Publication remains a manual step.
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: ${{ runner.temp }}/clapham-release-notes.md
+          draft: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: false
+          generate_release_notes: false

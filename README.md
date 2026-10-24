@@ -105,6 +105,12 @@ launched by the same harness.
 and the plan for the first release. See [CONTRIBUTING.md](CONTRIBUTING.md) for the gate commands
 and [the workspace guide](docs/README.md) for the crate boundaries.
 
+[Release metadata](release.json), the [changelog](CHANGELOG.md) and the
+[release procedure](RELEASING.md) prepare the first release candidate, `0.1.0-rc.1`.
+The tag workflow runs all gates and leaves a draft for manual publication. See
+[using a release](docs/using-a-release.md) for dependencies by tag and local patches,
+and [the security policy](SECURITY.md) for private vulnerability reporting.
+
 ## Licence
 
 MIT. See [`LICENSE`](LICENSE).

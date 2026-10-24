@@ -53,7 +53,7 @@ avoiding ownership cycles through the built-in operation.
 
 ```json
 {
-  "clapham": "0.1.0",
+  "clapham": "0.1.0-rc.1",
   "application": { "name": "lists", "version": "1.2.3" }
 }
 ```

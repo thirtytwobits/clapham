@@ -41,7 +41,12 @@ refused in every workspace member.
 CI runs `check` and `boundaries` on Ubuntu 26.04 and Windows 2025 with Rust 1.99.0. Separate
 lanes check and test the core and CLI on Rust 1.85.0, the MCP and conformance tests and transport
 feature combinations on Rust 1.88.0, and API snapshots on both runners with
-nightly-2025-08-02 and cargo-public-api 0.50.2. The only workflow action is
-`actions/checkout`, pinned to the v7.0.1 commit; its
-release's `action.yml` declares the Node 24 runtime (verified when adding the workflow).
+nightly-2025-08-02 and cargo-public-api 0.50.2. CI uses `actions/checkout` pinned to v7.0.1.
+The tag workflow reuses all CI lanes, validates release metadata and drafts releases using
+`softprops/action-gh-release` pinned to v3.0.3. Both actions declare Node 24 in their tagged
+`action.yml`; [the release procedure](../RELEASING.md) records the verified commits.
 Rust commands themselves use Cargo and rustup.
+
+See [using a release](using-a-release.md) for Git-tag dependencies, conformance dev-dependencies
+and local Cargo patches. Release metadata, inventories and changelog notes are checked by
+`cargo xtask release-check`, also included in `check`.
