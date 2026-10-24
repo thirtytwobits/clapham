@@ -31,6 +31,7 @@ struct Crate {
 
 #[derive(Debug, Deserialize)]
 struct Metadata {
+    workspace_root: PathBuf,
     workspace_members: Vec<String>,
     packages: Vec<Package>,
 }
@@ -65,7 +66,7 @@ pub(crate) fn check(root: &Path, tag: Option<&str>, notes_path: Option<&Path>) -
             "--all-features",
         ],
     ))?)?;
-    validate(root, &release, &metadata, tag)?;
+    validate(&release, &metadata, tag)?;
     for name in release.crates.keys() {
         let inventory = capture(&mut cargo(
             root,
@@ -107,7 +108,10 @@ pub(crate) fn check(root: &Path, tag: Option<&str>, notes_path: Option<&Path>) -
     Ok(())
 }
 
-fn validate(root: &Path, release: &Release, metadata: &Metadata, tag: Option<&str>) -> Result<()> {
+fn validate(release: &Release, metadata: &Metadata, tag: Option<&str>) -> Result<()> {
+    // Keep Cargo's paths in one representation. canonicalize() adds the Windows
+    // verbatim prefix (\\?\), while cargo metadata uses ordinary drive paths.
+    let root = &metadata.workspace_root;
     if release.schema_version != 1 {
         return Err("unsupported release.json schema_version".into());
     }
@@ -282,7 +286,7 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    fn fixture() -> (Release, Metadata, PathBuf) {
+    fn fixture() -> (Release, Metadata) {
         let root = PathBuf::from("/release-fixture");
         let release = serde_json::from_value(json!({
             "schema_version":1,"version":"0.1.0-rc.1","repository":"https://github.com/example/library",
@@ -290,7 +294,7 @@ mod tests {
             "crates":{"clapham":{"path":"crates/clapham","files":[]}}
         })).unwrap();
         let metadata = serde_json::from_value(json!({
-            "workspace_members":["core","tool"],"packages":[
+            "workspace_root":root,"workspace_members":["core","tool"],"packages":[
                 {"id":"core","name":"clapham","version":"0.1.0-rc.1","repository":"https://github.com/example/library",
                  "license":"MIT","manifest_path":root.join("crates/clapham/Cargo.toml"),"dependencies":[]},
                 {"id":"tool","name":"xtask","version":"0.1.0-rc.1","repository":"https://github.com/example/library",
@@ -298,16 +302,16 @@ mod tests {
                  "dependencies":[{"name":"clapham","req":"^0.1.0-rc.1"}]}
             ]
         })).unwrap();
-        (release, metadata, root)
+        (release, metadata)
     }
 
     #[test]
     fn tag_must_exactly_name_the_workspace_version_including_prerelease() {
-        let (release, metadata, root) = fixture();
-        assert!(validate(&root, &release, &metadata, Some("v0.1.0-rc.1")).is_ok());
-        assert!(validate(&root, &release, &metadata, None).is_ok());
+        let (release, metadata) = fixture();
+        assert!(validate(&release, &metadata, Some("v0.1.0-rc.1")).is_ok());
+        assert!(validate(&release, &metadata, None).is_ok());
         for tag in ["v0.1.0", "v0.1.0-rc.2", "0.1.0-rc.1", "v0.2.0", ""] {
-            let error = validate(&root, &release, &metadata, Some(tag)).unwrap_err();
+            let error = validate(&release, &metadata, Some(tag)).unwrap_err();
             assert!(
                 error.to_string().contains("tag must be v0.1.0-rc.1"),
                 "{error}"
@@ -325,7 +329,7 @@ mod tests {
             "path",
             "missing",
         ] {
-            let (mut release, mut metadata, root) = fixture();
+            let (mut release, mut metadata) = fixture();
             match field {
                 "version" => metadata.packages[1].version = "0.1.0".into(),
                 "repository" => metadata.packages[0].repository = None,
@@ -337,11 +341,36 @@ mod tests {
                 }
                 _ => unreachable!(),
             }
-            assert!(
-                validate(&root, &release, &metadata, None).is_err(),
-                "{field}"
-            );
+            assert!(validate(&release, &metadata, None).is_err(), "{field}");
         }
+    }
+
+    #[test]
+    fn cargo_paths_are_compared_with_cargos_workspace_root() {
+        // Exercise real Cargo metadata, including Windows drive paths. The gate's
+        // canonical filesystem root can have a different prefix from these paths.
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .canonicalize()
+            .unwrap();
+        let release: Release =
+            serde_json::from_str(&fs::read_to_string(root.join("release.json")).unwrap()).unwrap();
+        let metadata: Metadata = serde_json::from_str(
+            &capture(&mut cargo(
+                &root,
+                &[
+                    "metadata",
+                    "--locked",
+                    "--format-version",
+                    "1",
+                    "--no-deps",
+                    "--all-features",
+                ],
+            ))
+            .unwrap(),
+        )
+        .unwrap();
+        validate(&release, &metadata, None).unwrap();
     }
 
     #[test]
