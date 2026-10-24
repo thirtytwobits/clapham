@@ -10,6 +10,6 @@ impact and any proposed mitigation. Avoid including credentials or private appli
 Maintainers will assess the report and coordinate a fix and disclosure through the private
 advisory. No response deadline is promised.
 
-Clapham is preparing its initial release candidate. Security fixes target the latest release
-and `main`; earlier prereleases are superseded. Upgrade to the current fixed tag when one is
-available. `release.json` records the security contact alongside each release's metadata.
+Security fixes target the latest stable release and `main`; earlier prereleases are superseded.
+Upgrade to the current fixed tag when one is available. `release.json` records the security
+contact alongside each release's metadata.

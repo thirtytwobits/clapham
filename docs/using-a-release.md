@@ -1,18 +1,17 @@
 # Using a release
 
 Clapham releases are Git tags on `main`. Choose an existing tag from the repository's
-[releases](https://github.com/thirtytwobits/clapham/releases); examples use `v0.1.0-rc.1`, which
-is the initial candidate being prepared. The tag must exist before that example can be
-fetched. The release workflow creates a draft for manual publication; its temporary RC
-smoke-test tag may be deleted. Choose a published tag for a consumer dependency.
+[releases](https://github.com/thirtytwobits/clapham/releases); examples use `v0.1.0`, the first
+stable release. The tag must exist before these examples can be fetched. The release workflow
+creates a draft for manual publication. Choose a published tag for a consumer dependency.
 
 ## Depend on a crate by tag
 
 ```toml
 [dependencies]
-clapham = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0-rc.1" }
-clapham-cli = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0-rc.1" }
-clapham-mcp-client = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0-rc.1", default-features = false, features = ["stdio"] }
+clapham = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0" }
+clapham-cli = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0" }
+clapham-mcp-client = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0", default-features = false, features = ["stdio"] }
 ```
 
 Use the same repository URL and tag for every Clapham crate. Commit the consumer's
@@ -24,7 +23,7 @@ crates and conformance library require Rust 1.88. MCP transport features are `st
 
 ```toml
 [dev-dependencies]
-clapham-conformance = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0-rc.1" }
+clapham-conformance = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0" }
 tokio = { version = "1", features = ["macros", "rt"] }
 serde_json = "1"
 ```
