@@ -42,9 +42,9 @@ Results use `Outcome`, ordered content and `Evidence`; adapter errors map to bou
 `Refusal` codes. A tool-reported `isError` remains an outcome. Dropping an invocation requests
 cancellation, and uncertain effects are never replayed automatically.
 
-See the [client contract](https://github.com/thirtytwobits/clapham/blob/main/docs/mcp.md#client)
+See the [client contract](https://github.com/thirtytwobits/clapham/blob/v0.1.0/docs/mcp.md#client)
 for refusal mappings and transport limits, and the
-[0.1.0 guarantees](https://github.com/thirtytwobits/clapham/blob/main/docs/contract.md)
+[0.1.0 guarantees](https://github.com/thirtytwobits/clapham/blob/v0.1.0/docs/contract.md)
 for the application-facing contract and corresponding tests.
 
 The crate's `NOTICE` and `LICENSE` retain copyright and licence terms; repository provenance

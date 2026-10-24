@@ -131,6 +131,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-See the [0.1.0 contract](https://github.com/thirtytwobits/clapham/blob/main/docs/contract.md),
-[application guide](https://github.com/thirtytwobits/clapham/blob/main/docs/composing.md) and
-[call reference](https://github.com/thirtytwobits/clapham/blob/main/docs/calls.md).
+See the [0.1.0 contract](https://github.com/thirtytwobits/clapham/blob/v0.1.0/docs/contract.md),
+[application guide](https://github.com/thirtytwobits/clapham/blob/v0.1.0/docs/composing.md) and
+[call reference](https://github.com/thirtytwobits/clapham/blob/v0.1.0/docs/calls.md).

@@ -185,6 +185,6 @@ in flight reports `cancelled` with uncertain evidence through the core runner.
 Streams propagate sink refusals unchanged; `record_delivery_failed` is declared
 as unavailable, and other undeclared sink codes exercise the normal refusal policy.
 
-See the [harness guide](https://github.com/thirtytwobits/clapham/blob/main/docs/conformance.md)
-and [0.1.0 guarantees](https://github.com/thirtytwobits/clapham/blob/main/docs/contract.md)
+See the [harness guide](https://github.com/thirtytwobits/clapham/blob/v0.1.0/docs/conformance.md)
+and [0.1.0 guarantees](https://github.com/thirtytwobits/clapham/blob/v0.1.0/docs/contract.md)
 for the application-facing contract and corresponding tests.

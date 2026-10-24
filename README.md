@@ -90,9 +90,9 @@ when a hidden remote tool cannot be bound.
 
 ## Status
 
-The 0.1.0 implementation is prepared as `0.1.0-rc.1`; a release tag has not yet been published.
-It contains the core contract and call runner, descriptor-derived workspace CLI, MCP server
-and client over stdio and Streamable HTTP, and the reusable six-front-end conformance harness.
+Clapham 0.1.0 is the first stable release. It contains the core contract and call runner,
+descriptor-derived workspace CLI, MCP server and client over stdio and Streamable HTTP,
+and the reusable six-front-end conformance harness.
 Schemas, the MCP wire record and public API snapshots are checked by repository gates.
 The [lists application](examples/lists/README.md) is the worked example and process fixture.
 
@@ -118,16 +118,16 @@ Daemon routing, durable approval coordination and transactional effects are outs
 ## Depending on it
 
 Consumers take crates from the same published Git tag and commit their `Cargo.lock`.
-The example below names the candidate being prepared; it can be fetched only after that
-tag exists. Choose an available tag from [releases](https://github.com/thirtytwobits/clapham/releases).
+The example below uses `v0.1.0`. Choose a published tag from
+[releases](https://github.com/thirtytwobits/clapham/releases).
 
 ```toml
 [dependencies]
-clapham = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0-rc.1" }
-clapham-cli = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0-rc.1" }
+clapham = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0" }
+clapham-cli = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0" }
 
 [dev-dependencies]
-clapham-conformance = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0-rc.1" }
+clapham-conformance = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0" }
 ```
 
 `clapham` and `clapham-cli` require Rust 1.85. The MCP crates and conformance library require
