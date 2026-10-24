@@ -166,6 +166,6 @@ output alongside the core schemas.
 the live descriptor-built tree, including operation arguments and global controls,
 without dispatching. The same scripts are available through `completions(Shell)`.
 
-See the [command-line guide](https://github.com/thirtytwobits/clapham/blob/v0.1.0/docs/cli.md)
-and [0.1.0 guarantees](https://github.com/thirtytwobits/clapham/blob/v0.1.0/docs/contract.md)
+See the [command-line guide](https://github.com/thirtytwobits/clapham/blob/v0.1.1/docs/cli.md)
+and [0.1.0 guarantees](https://github.com/thirtytwobits/clapham/blob/v0.1.1/docs/contract.md)
 for the application-facing contract and corresponding tests.

@@ -272,23 +272,25 @@ fn release_notes(changelog: &str, version: &str) -> Result<String> {
             lines.push(line);
         }
     }
-    let body = lines.join("\n");
-    let breaking_has_text = lines
+    if found != 1 {
+        return Err(
+            format!("CHANGELOG.md needs exactly one {heading} section, found {found}").into(),
+        );
+    }
+    let Some(breaking) = lines.iter().position(|line| *line == "### Breaking") else {
+        return Err(format!("CHANGELOG.md {heading} needs a ### Breaking subsection").into());
+    };
+    if !lines[breaking + 1..]
         .iter()
-        .position(|line| *line == "### Breaking")
-        .is_some_and(|index| {
-            lines[index + 1..]
-                .iter()
-                .take_while(|line| !line.starts_with("### "))
-                .any(|line| !line.trim().is_empty())
-        });
-    if found != 1 || body.trim().is_empty() || !breaking_has_text {
+        .take_while(|line| !line.starts_with("### "))
+        .any(|line| !line.trim().is_empty())
+    {
         return Err(format!(
-            "CHANGELOG.md needs exactly one non-empty {heading} section with ### Breaking"
+            "CHANGELOG.md {heading} ### Breaking is empty; record the contract changes or state that there are none"
         )
         .into());
     }
-    Ok(format!("{}\n", body.trim()))
+    Ok(format!("{}\n", lines.join("\n").trim()))
 }
 
 #[cfg(test)]
@@ -428,13 +430,23 @@ mod tests {
             release_notes(&changelog.replace('\n', "\r\n"), "0.1.0-rc.1").unwrap(),
             expected
         );
-        for invalid in [
-            changelog.replace("### Breaking", "### Added"),
-            "## [0.1.0-rc.1]\n### Breaking\n\n### Added\nNew.\n".into(),
-            changelog.to_owned() + "## [0.1.0-rc.1]\nDuplicate\n",
-            "## [0.1.0-rc.2]\nOther\n".into(),
+        for (invalid, reason) in [
+            (
+                changelog.replace("### Breaking", "### Added"),
+                "needs a ### Breaking",
+            ),
+            (
+                "## [0.1.0-rc.1]\n### Breaking\n\n### Added\nNew.\n".into(),
+                "### Breaking is empty",
+            ),
+            (
+                changelog.to_owned() + "## [0.1.0-rc.1]\nDuplicate\n",
+                "found 2",
+            ),
+            ("## [0.1.0-rc.2]\nOther\n".into(), "found 0"),
         ] {
-            assert!(release_notes(&invalid, "0.1.0-rc.1").is_err());
+            let error = release_notes(&invalid, "0.1.0-rc.1").unwrap_err();
+            assert!(error.to_string().contains(reason), "{error}");
         }
     }
 

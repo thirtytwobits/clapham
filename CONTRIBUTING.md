@@ -80,5 +80,5 @@ wire record's canonical bytes. An inherited writing flag cannot silently update 
 
 Use `cargo xtask release-check <tag> --notes <path>` to validate a proposed release tag and
 extract its changelog section. Update `release.json` when a crate intentionally adds or
-removes a shipped file. See [RELEASING.md](RELEASING.md) for versioning, drafts and the
-temporary RC smoke check, and [SECURITY.md](SECURITY.md) for private reporting.
+removes a shipped file. See [RELEASING.md](RELEASING.md) for the release procedure
+and [SECURITY.md](SECURITY.md) for private reporting.
