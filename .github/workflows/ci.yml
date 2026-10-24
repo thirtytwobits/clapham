@@ -54,7 +54,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup toolchain install 1.88.0 --profile minimal
-      - run: cargo +1.88.0 test --locked -p clapham-mcp-server -p clapham-mcp-client -p clapham-conformance --all-features
+      - run: cargo +1.88.0 test --locked -p clapham-mcp-server -p clapham-mcp-client -p clapham-conformance -p clapham-lists --all-features
       - run: cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features
       - run: cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features stdio
       - run: cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features http

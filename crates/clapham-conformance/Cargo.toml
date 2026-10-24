@@ -20,6 +20,12 @@ path = "tests/support/mcp_fixture.rs"
 test = false
 doc = false
 
+[[bin]]
+name = "clapham-harness-fixture"
+path = "tests/support/harness_fixture.rs"
+test = false
+doc = false
+
 [dependencies]
 clapham.workspace = true
 clapham-cli.workspace = true
@@ -28,10 +34,11 @@ clapham-mcp-client.workspace = true
 futures-channel = "0.3"
 futures-executor = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["std", "async-await"] }
+reqwest = { version = "0.12.28", default-features = false, features = ["json"] }
 schemars = "1.2.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1", features = ["rt", "macros", "io-util"] }
+tokio = { version = "1", features = ["rt", "macros", "io-util", "process"] }
 
 [dev-dependencies]
 axum = "0.8.6"

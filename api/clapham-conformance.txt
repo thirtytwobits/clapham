@@ -61,9 +61,288 @@ pub fn clapham_conformance::ChangeKind::__clone_box(&self, _: dyn_clone::sealed:
 impl<T> outref::AsOut<T> for clapham_conformance::ChangeKind where T: core::marker::Copy
 pub fn clapham_conformance::ChangeKind::as_out(&mut self) -> outref::Out<'_, T>
 impl<T> serde_core::de::DeserializeOwned for clapham_conformance::ChangeKind where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::ChangeKind where T: ?core::marker::Sized
+pub fn clapham_conformance::ChangeKind::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::ChangeKind::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::ChangeKind
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::ChangeKind
 impl<T> typenum::type_operators::Same for clapham_conformance::ChangeKind
 pub type clapham_conformance::ChangeKind::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::ChangeKind where T: ?core::marker::Sized
+pub enum clapham_conformance::Frame
+pub clapham_conformance::Frame::CliResult(serde_json::value::Value)
+pub clapham_conformance::Frame::Outcome(clapham::call::Outcome)
+pub clapham_conformance::Frame::Record(serde_json::value::Value)
+pub clapham_conformance::Frame::Refusal(clapham::refusal::Refusal)
+impl core::clone::Clone for clapham_conformance::Frame
+pub fn clapham_conformance::Frame::clone(&self) -> clapham_conformance::Frame
+impl core::cmp::PartialEq for clapham_conformance::Frame
+pub fn clapham_conformance::Frame::eq(&self, other: &clapham_conformance::Frame) -> bool
+impl core::fmt::Debug for clapham_conformance::Frame
+pub fn clapham_conformance::Frame::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for clapham_conformance::Frame
+impl core::marker::Freeze for clapham_conformance::Frame
+impl core::marker::Send for clapham_conformance::Frame
+impl core::marker::Sync for clapham_conformance::Frame
+impl core::marker::Unpin for clapham_conformance::Frame
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Frame
+impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::Frame
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Frame where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::Frame where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_conformance::Frame where U: core::convert::From<T>
+pub fn clapham_conformance::Frame::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_conformance::Frame where U: core::convert::Into<T>
+pub type clapham_conformance::Frame::Error = core::convert::Infallible
+pub fn clapham_conformance::Frame::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_conformance::Frame where U: core::convert::TryFrom<T>
+pub type clapham_conformance::Frame::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_conformance::Frame::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_conformance::Frame where T: core::clone::Clone
+pub type clapham_conformance::Frame::Owned = T
+pub fn clapham_conformance::Frame::clone_into(&self, target: &mut T)
+pub fn clapham_conformance::Frame::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_conformance::Frame where T: 'static + ?core::marker::Sized
+pub fn clapham_conformance::Frame::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_conformance::Frame where T: ?core::marker::Sized
+pub fn clapham_conformance::Frame::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_conformance::Frame where T: ?core::marker::Sized
+pub fn clapham_conformance::Frame::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_conformance::Frame where T: core::clone::Clone
+pub unsafe fn clapham_conformance::Frame::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_conformance::Frame
+pub fn clapham_conformance::Frame::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_conformance::Frame where T: core::clone::Clone
+pub fn clapham_conformance::Frame::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::Frame where T: ?core::marker::Sized
+pub fn clapham_conformance::Frame::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::Frame::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::Frame
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Frame
+impl<T> typenum::type_operators::Same for clapham_conformance::Frame
+pub type clapham_conformance::Frame::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Frame where T: ?core::marker::Sized
+pub enum clapham_conformance::ProcessKind
+pub clapham_conformance::ProcessKind::BoundHttp
+pub clapham_conformance::ProcessKind::BoundStdio
+pub clapham_conformance::ProcessKind::CommandLine
+pub clapham_conformance::ProcessKind::McpHttp
+pub clapham_conformance::ProcessKind::McpStdio
+impl core::clone::Clone for clapham_conformance::ProcessKind
+pub fn clapham_conformance::ProcessKind::clone(&self) -> clapham_conformance::ProcessKind
+impl core::cmp::Eq for clapham_conformance::ProcessKind
+impl core::cmp::PartialEq for clapham_conformance::ProcessKind
+pub fn clapham_conformance::ProcessKind::eq(&self, other: &clapham_conformance::ProcessKind) -> bool
+impl core::fmt::Debug for clapham_conformance::ProcessKind
+pub fn clapham_conformance::ProcessKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for clapham_conformance::ProcessKind
+impl core::marker::StructuralPartialEq for clapham_conformance::ProcessKind
+impl core::marker::Freeze for clapham_conformance::ProcessKind
+impl core::marker::Send for clapham_conformance::ProcessKind
+impl core::marker::Sync for clapham_conformance::ProcessKind
+impl core::marker::Unpin for clapham_conformance::ProcessKind
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::ProcessKind
+impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::ProcessKind
+impl<Q, K> equivalent::Equivalent<K> for clapham_conformance::ProcessKind where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham_conformance::ProcessKind::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::ProcessKind where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::ProcessKind where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_conformance::ProcessKind where U: core::convert::From<T>
+pub fn clapham_conformance::ProcessKind::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_conformance::ProcessKind where U: core::convert::Into<T>
+pub type clapham_conformance::ProcessKind::Error = core::convert::Infallible
+pub fn clapham_conformance::ProcessKind::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_conformance::ProcessKind where U: core::convert::TryFrom<T>
+pub type clapham_conformance::ProcessKind::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_conformance::ProcessKind::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_conformance::ProcessKind where T: core::clone::Clone
+pub type clapham_conformance::ProcessKind::Owned = T
+pub fn clapham_conformance::ProcessKind::clone_into(&self, target: &mut T)
+pub fn clapham_conformance::ProcessKind::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_conformance::ProcessKind where T: 'static + ?core::marker::Sized
+pub fn clapham_conformance::ProcessKind::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_conformance::ProcessKind where T: ?core::marker::Sized
+pub fn clapham_conformance::ProcessKind::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_conformance::ProcessKind where T: ?core::marker::Sized
+pub fn clapham_conformance::ProcessKind::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_conformance::ProcessKind where T: core::clone::Clone
+pub unsafe fn clapham_conformance::ProcessKind::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_conformance::ProcessKind
+pub fn clapham_conformance::ProcessKind::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_conformance::ProcessKind where T: core::clone::Clone
+pub fn clapham_conformance::ProcessKind::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> outref::AsOut<T> for clapham_conformance::ProcessKind where T: core::marker::Copy
+pub fn clapham_conformance::ProcessKind::as_out(&mut self) -> outref::Out<'_, T>
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::ProcessKind where T: ?core::marker::Sized
+pub fn clapham_conformance::ProcessKind::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::ProcessKind::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::ProcessKind
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::ProcessKind
+impl<T> typenum::type_operators::Same for clapham_conformance::ProcessKind
+pub type clapham_conformance::ProcessKind::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::ProcessKind where T: ?core::marker::Sized
+pub struct clapham_conformance::Case
+pub clapham_conformance::Case::input: serde_json::value::Value
+pub clapham_conformance::Case::operation: alloc::string::String
+pub clapham_conformance::Case::principal: clapham::principal::Principal
+impl clapham_conformance::Case
+pub fn clapham_conformance::Case::new(operation: impl core::convert::Into<alloc::string::String>, input: serde_json::value::Value) -> Self
+impl core::clone::Clone for clapham_conformance::Case
+pub fn clapham_conformance::Case::clone(&self) -> clapham_conformance::Case
+impl core::fmt::Debug for clapham_conformance::Case
+pub fn clapham_conformance::Case::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for clapham_conformance::Case
+impl core::marker::Send for clapham_conformance::Case
+impl core::marker::Sync for clapham_conformance::Case
+impl core::marker::Unpin for clapham_conformance::Case
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Case
+impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::Case
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Case where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::Case where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_conformance::Case where U: core::convert::From<T>
+pub fn clapham_conformance::Case::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_conformance::Case where U: core::convert::Into<T>
+pub type clapham_conformance::Case::Error = core::convert::Infallible
+pub fn clapham_conformance::Case::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_conformance::Case where U: core::convert::TryFrom<T>
+pub type clapham_conformance::Case::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_conformance::Case::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_conformance::Case where T: core::clone::Clone
+pub type clapham_conformance::Case::Owned = T
+pub fn clapham_conformance::Case::clone_into(&self, target: &mut T)
+pub fn clapham_conformance::Case::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_conformance::Case where T: 'static + ?core::marker::Sized
+pub fn clapham_conformance::Case::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_conformance::Case where T: ?core::marker::Sized
+pub fn clapham_conformance::Case::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_conformance::Case where T: ?core::marker::Sized
+pub fn clapham_conformance::Case::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_conformance::Case where T: core::clone::Clone
+pub unsafe fn clapham_conformance::Case::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_conformance::Case
+pub fn clapham_conformance::Case::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_conformance::Case where T: core::clone::Clone
+pub fn clapham_conformance::Case::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::Case where T: ?core::marker::Sized
+pub fn clapham_conformance::Case::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::Case::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::Case
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Case
+impl<T> typenum::type_operators::Same for clapham_conformance::Case
+pub type clapham_conformance::Case::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Case where T: ?core::marker::Sized
+pub struct clapham_conformance::Failure(_)
+impl clapham_conformance::Failure
+pub fn clapham_conformance::Failure::new(message: impl core::convert::Into<alloc::string::String>) -> Self
+impl core::clone::Clone for clapham_conformance::Failure
+pub fn clapham_conformance::Failure::clone(&self) -> clapham_conformance::Failure
+impl core::cmp::Eq for clapham_conformance::Failure
+impl core::cmp::PartialEq for clapham_conformance::Failure
+pub fn clapham_conformance::Failure::eq(&self, other: &clapham_conformance::Failure) -> bool
+impl core::convert::From<serde_json::error::Error> for clapham_conformance::Failure
+pub fn clapham_conformance::Failure::from(error: serde_json::error::Error) -> Self
+impl core::convert::From<std::io::error::Error> for clapham_conformance::Failure
+pub fn clapham_conformance::Failure::from(error: std::io::error::Error) -> Self
+impl core::error::Error for clapham_conformance::Failure
+impl core::fmt::Debug for clapham_conformance::Failure
+pub fn clapham_conformance::Failure::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::fmt::Display for clapham_conformance::Failure
+pub fn clapham_conformance::Failure::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for clapham_conformance::Failure
+impl core::marker::Freeze for clapham_conformance::Failure
+impl core::marker::Send for clapham_conformance::Failure
+impl core::marker::Sync for clapham_conformance::Failure
+impl core::marker::Unpin for clapham_conformance::Failure
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Failure
+impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::Failure
+impl<Q, K> equivalent::Equivalent<K> for clapham_conformance::Failure where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham_conformance::Failure::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Failure where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::Failure where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_conformance::Failure where U: core::convert::From<T>
+pub fn clapham_conformance::Failure::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_conformance::Failure where U: core::convert::Into<T>
+pub type clapham_conformance::Failure::Error = core::convert::Infallible
+pub fn clapham_conformance::Failure::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_conformance::Failure where U: core::convert::TryFrom<T>
+pub type clapham_conformance::Failure::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_conformance::Failure::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_conformance::Failure where T: core::clone::Clone
+pub type clapham_conformance::Failure::Owned = T
+pub fn clapham_conformance::Failure::clone_into(&self, target: &mut T)
+pub fn clapham_conformance::Failure::to_owned(&self) -> T
+impl<T> alloc::string::ToString for clapham_conformance::Failure where T: core::fmt::Display + ?core::marker::Sized
+pub fn clapham_conformance::Failure::to_string(&self) -> alloc::string::String
+impl<T> core::any::Any for clapham_conformance::Failure where T: 'static + ?core::marker::Sized
+pub fn clapham_conformance::Failure::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_conformance::Failure where T: ?core::marker::Sized
+pub fn clapham_conformance::Failure::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_conformance::Failure where T: ?core::marker::Sized
+pub fn clapham_conformance::Failure::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_conformance::Failure where T: core::clone::Clone
+pub unsafe fn clapham_conformance::Failure::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_conformance::Failure
+pub fn clapham_conformance::Failure::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_conformance::Failure where T: core::clone::Clone
+pub fn clapham_conformance::Failure::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::Failure where T: ?core::marker::Sized
+pub fn clapham_conformance::Failure::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::Failure::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::Failure
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Failure
+impl<T> typenum::type_operators::Same for clapham_conformance::Failure
+pub type clapham_conformance::Failure::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Failure where T: ?core::marker::Sized
+pub struct clapham_conformance::Fixture
+pub clapham_conformance::Fixture::bounds: clapham::bounds::Bounds
+pub clapham_conformance::Fixture::cases: alloc::vec::Vec<clapham_conformance::Case>
+pub clapham_conformance::Fixture::denied_principal: clapham::principal::Principal
+impl clapham_conformance::Fixture
+pub fn clapham_conformance::Fixture::contributions(&self) -> alloc::vec::Vec<clapham::composition::Contribution>
+pub fn clapham_conformance::Fixture::new(factory: impl core::ops::function::Fn() -> alloc::vec::Vec<clapham::composition::Contribution> + core::marker::Send + core::marker::Sync + 'static, cases: alloc::vec::Vec<clapham_conformance::Case>) -> Self
+impl core::clone::Clone for clapham_conformance::Fixture
+pub fn clapham_conformance::Fixture::clone(&self) -> clapham_conformance::Fixture
+impl core::fmt::Debug for clapham_conformance::Fixture
+pub fn clapham_conformance::Fixture::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for clapham_conformance::Fixture
+impl core::marker::Send for clapham_conformance::Fixture
+impl core::marker::Sync for clapham_conformance::Fixture
+impl core::marker::Unpin for clapham_conformance::Fixture
+impl !core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Fixture
+impl !core::panic::unwind_safe::UnwindSafe for clapham_conformance::Fixture
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Fixture where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::Fixture where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_conformance::Fixture where U: core::convert::From<T>
+pub fn clapham_conformance::Fixture::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_conformance::Fixture where U: core::convert::Into<T>
+pub type clapham_conformance::Fixture::Error = core::convert::Infallible
+pub fn clapham_conformance::Fixture::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_conformance::Fixture where U: core::convert::TryFrom<T>
+pub type clapham_conformance::Fixture::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_conformance::Fixture::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_conformance::Fixture where T: core::clone::Clone
+pub type clapham_conformance::Fixture::Owned = T
+pub fn clapham_conformance::Fixture::clone_into(&self, target: &mut T)
+pub fn clapham_conformance::Fixture::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_conformance::Fixture where T: 'static + ?core::marker::Sized
+pub fn clapham_conformance::Fixture::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_conformance::Fixture where T: ?core::marker::Sized
+pub fn clapham_conformance::Fixture::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_conformance::Fixture where T: ?core::marker::Sized
+pub fn clapham_conformance::Fixture::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_conformance::Fixture where T: core::clone::Clone
+pub unsafe fn clapham_conformance::Fixture::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_conformance::Fixture
+pub fn clapham_conformance::Fixture::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_conformance::Fixture where T: core::clone::Clone
+pub fn clapham_conformance::Fixture::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::Fixture where T: ?core::marker::Sized
+pub fn clapham_conformance::Fixture::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::Fixture::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::Fixture
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Fixture
+impl<T> typenum::type_operators::Same for clapham_conformance::Fixture
+pub type clapham_conformance::Fixture::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Fixture where T: ?core::marker::Sized
 pub struct clapham_conformance::HeldCall
 impl clapham_conformance::HeldCall
 pub async fn clapham_conformance::HeldCall::entered(&mut self) -> bool
@@ -94,9 +373,66 @@ impl<T> core::borrow::BorrowMut<T> for clapham_conformance::HeldCall where T: ?c
 pub fn clapham_conformance::HeldCall::borrow_mut(&mut self) -> &mut T
 impl<T> core::convert::From<T> for clapham_conformance::HeldCall
 pub fn clapham_conformance::HeldCall::from(t: T) -> T
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::HeldCall where T: ?core::marker::Sized
+pub fn clapham_conformance::HeldCall::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::HeldCall::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::HeldCall
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::HeldCall
 impl<T> typenum::type_operators::Same for clapham_conformance::HeldCall
 pub type clapham_conformance::HeldCall::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::HeldCall where T: ?core::marker::Sized
+pub struct clapham_conformance::InProcess
+impl clapham_conformance::FrontEnd for clapham_conformance::InProcess
+pub fn clapham_conformance::InProcess::carries_records(&self) -> bool
+pub fn clapham_conformance::InProcess::name(&self) -> &str
+pub fn clapham_conformance::InProcess::observe<'a>(&'a self, fixture: &'a clapham_conformance::Fixture, gate: alloc::sync::Arc<dyn clapham::gate::Gate>, case: &'a clapham_conformance::Case) -> clapham_conformance::ObservationFuture<'a>
+impl core::clone::Clone for clapham_conformance::InProcess
+pub fn clapham_conformance::InProcess::clone(&self) -> clapham_conformance::InProcess
+impl core::fmt::Debug for clapham_conformance::InProcess
+pub fn clapham_conformance::InProcess::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for clapham_conformance::InProcess
+impl core::marker::Freeze for clapham_conformance::InProcess
+impl core::marker::Send for clapham_conformance::InProcess
+impl core::marker::Sync for clapham_conformance::InProcess
+impl core::marker::Unpin for clapham_conformance::InProcess
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::InProcess
+impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::InProcess
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::InProcess where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::InProcess where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_conformance::InProcess where U: core::convert::From<T>
+pub fn clapham_conformance::InProcess::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_conformance::InProcess where U: core::convert::Into<T>
+pub type clapham_conformance::InProcess::Error = core::convert::Infallible
+pub fn clapham_conformance::InProcess::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_conformance::InProcess where U: core::convert::TryFrom<T>
+pub type clapham_conformance::InProcess::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_conformance::InProcess::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_conformance::InProcess where T: core::clone::Clone
+pub type clapham_conformance::InProcess::Owned = T
+pub fn clapham_conformance::InProcess::clone_into(&self, target: &mut T)
+pub fn clapham_conformance::InProcess::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_conformance::InProcess where T: 'static + ?core::marker::Sized
+pub fn clapham_conformance::InProcess::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_conformance::InProcess where T: ?core::marker::Sized
+pub fn clapham_conformance::InProcess::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_conformance::InProcess where T: ?core::marker::Sized
+pub fn clapham_conformance::InProcess::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_conformance::InProcess where T: core::clone::Clone
+pub unsafe fn clapham_conformance::InProcess::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_conformance::InProcess
+pub fn clapham_conformance::InProcess::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_conformance::InProcess where T: core::clone::Clone
+pub fn clapham_conformance::InProcess::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> outref::AsOut<T> for clapham_conformance::InProcess where T: core::marker::Copy
+pub fn clapham_conformance::InProcess::as_out(&mut self) -> outref::Out<'_, T>
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::InProcess where T: ?core::marker::Sized
+pub fn clapham_conformance::InProcess::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::InProcess::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::InProcess
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::InProcess
+impl<T> typenum::type_operators::Same for clapham_conformance::InProcess
+pub type clapham_conformance::InProcess::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::InProcess where T: ?core::marker::Sized
 pub struct clapham_conformance::Item
 pub clapham_conformance::Item::id: alloc::string::String
 pub clapham_conformance::Item::text: alloc::string::String
@@ -153,6 +489,11 @@ pub fn clapham_conformance::Item::from(t: T) -> T
 impl<T> dyn_clone::DynClone for clapham_conformance::Item where T: core::clone::Clone
 pub fn clapham_conformance::Item::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
 impl<T> serde_core::de::DeserializeOwned for clapham_conformance::Item where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::Item where T: ?core::marker::Sized
+pub fn clapham_conformance::Item::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::Item::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::Item
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Item
 impl<T> typenum::type_operators::Same for clapham_conformance::Item
 pub type clapham_conformance::Item::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Item where T: ?core::marker::Sized
@@ -213,6 +554,11 @@ pub fn clapham_conformance::List::from(t: T) -> T
 impl<T> dyn_clone::DynClone for clapham_conformance::List where T: core::clone::Clone
 pub fn clapham_conformance::List::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
 impl<T> serde_core::de::DeserializeOwned for clapham_conformance::List where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::List where T: ?core::marker::Sized
+pub fn clapham_conformance::List::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::List::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::List
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::List
 impl<T> typenum::type_operators::Same for clapham_conformance::List
 pub type clapham_conformance::List::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::List where T: ?core::marker::Sized
@@ -271,6 +617,11 @@ pub fn clapham_conformance::ListChange::from(t: T) -> T
 impl<T> dyn_clone::DynClone for clapham_conformance::ListChange where T: core::clone::Clone
 pub fn clapham_conformance::ListChange::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
 impl<T> serde_core::de::DeserializeOwned for clapham_conformance::ListChange where T: for<'de> serde_core::de::Deserialize<'de>
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::ListChange where T: ?core::marker::Sized
+pub fn clapham_conformance::ListChange::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::ListChange::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::ListChange
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::ListChange
 impl<T> typenum::type_operators::Same for clapham_conformance::ListChange
 pub type clapham_conformance::ListChange::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::ListChange where T: ?core::marker::Sized
@@ -318,6 +669,11 @@ impl<T> dyn_clone::DynClone for clapham_conformance::ListsGate where T: core::cl
 pub fn clapham_conformance::ListsGate::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
 impl<T> outref::AsOut<T> for clapham_conformance::ListsGate where T: core::marker::Copy
 pub fn clapham_conformance::ListsGate::as_out(&mut self) -> outref::Out<'_, T>
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::ListsGate where T: ?core::marker::Sized
+pub fn clapham_conformance::ListsGate::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::ListsGate::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::ListsGate
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::ListsGate
 impl<T> typenum::type_operators::Same for clapham_conformance::ListsGate
 pub type clapham_conformance::ListsGate::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::ListsGate where T: ?core::marker::Sized
@@ -370,6 +726,238 @@ impl<T> core::convert::From<T> for clapham_conformance::ListsHandle
 pub fn clapham_conformance::ListsHandle::from(t: T) -> T
 impl<T> dyn_clone::DynClone for clapham_conformance::ListsHandle where T: core::clone::Clone
 pub fn clapham_conformance::ListsHandle::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::ListsHandle where T: ?core::marker::Sized
+pub fn clapham_conformance::ListsHandle::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::ListsHandle::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::ListsHandle
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::ListsHandle
 impl<T> typenum::type_operators::Same for clapham_conformance::ListsHandle
 pub type clapham_conformance::ListsHandle::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::ListsHandle where T: ?core::marker::Sized
+pub struct clapham_conformance::Observation
+pub clapham_conformance::Observation::catalogue: alloc::vec::Vec<alloc::string::String>
+pub clapham_conformance::Observation::exit_code: core::option::Option<i32>
+pub clapham_conformance::Observation::frames: alloc::vec::Vec<clapham_conformance::Frame>
+impl core::clone::Clone for clapham_conformance::Observation
+pub fn clapham_conformance::Observation::clone(&self) -> clapham_conformance::Observation
+impl core::cmp::PartialEq for clapham_conformance::Observation
+pub fn clapham_conformance::Observation::eq(&self, other: &clapham_conformance::Observation) -> bool
+impl core::fmt::Debug for clapham_conformance::Observation
+pub fn clapham_conformance::Observation::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for clapham_conformance::Observation
+impl core::marker::Freeze for clapham_conformance::Observation
+impl core::marker::Send for clapham_conformance::Observation
+impl core::marker::Sync for clapham_conformance::Observation
+impl core::marker::Unpin for clapham_conformance::Observation
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Observation
+impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::Observation
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Observation where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::Observation where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_conformance::Observation where U: core::convert::From<T>
+pub fn clapham_conformance::Observation::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_conformance::Observation where U: core::convert::Into<T>
+pub type clapham_conformance::Observation::Error = core::convert::Infallible
+pub fn clapham_conformance::Observation::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_conformance::Observation where U: core::convert::TryFrom<T>
+pub type clapham_conformance::Observation::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_conformance::Observation::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_conformance::Observation where T: core::clone::Clone
+pub type clapham_conformance::Observation::Owned = T
+pub fn clapham_conformance::Observation::clone_into(&self, target: &mut T)
+pub fn clapham_conformance::Observation::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_conformance::Observation where T: 'static + ?core::marker::Sized
+pub fn clapham_conformance::Observation::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_conformance::Observation where T: ?core::marker::Sized
+pub fn clapham_conformance::Observation::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_conformance::Observation where T: ?core::marker::Sized
+pub fn clapham_conformance::Observation::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_conformance::Observation where T: core::clone::Clone
+pub unsafe fn clapham_conformance::Observation::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_conformance::Observation
+pub fn clapham_conformance::Observation::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_conformance::Observation where T: core::clone::Clone
+pub fn clapham_conformance::Observation::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::Observation where T: ?core::marker::Sized
+pub fn clapham_conformance::Observation::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::Observation::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::Observation
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Observation
+impl<T> typenum::type_operators::Same for clapham_conformance::Observation
+pub type clapham_conformance::Observation::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Observation where T: ?core::marker::Sized
+pub struct clapham_conformance::Process
+pub clapham_conformance::Process::args: alloc::vec::Vec<std::ffi::os_str::OsString>
+pub clapham_conformance::Process::env: alloc::collections::btree::map::BTreeMap<std::ffi::os_str::OsString, std::ffi::os_str::OsString>
+pub clapham_conformance::Process::program: std::path::PathBuf
+impl clapham_conformance::Process
+pub fn clapham_conformance::Process::new(program: impl core::convert::Into<std::path::PathBuf>) -> Self
+impl core::clone::Clone for clapham_conformance::Process
+pub fn clapham_conformance::Process::clone(&self) -> clapham_conformance::Process
+impl core::fmt::Debug for clapham_conformance::Process
+pub fn clapham_conformance::Process::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for clapham_conformance::Process
+impl core::marker::Send for clapham_conformance::Process
+impl core::marker::Sync for clapham_conformance::Process
+impl core::marker::Unpin for clapham_conformance::Process
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Process
+impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::Process
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Process where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::Process where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_conformance::Process where U: core::convert::From<T>
+pub fn clapham_conformance::Process::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_conformance::Process where U: core::convert::Into<T>
+pub type clapham_conformance::Process::Error = core::convert::Infallible
+pub fn clapham_conformance::Process::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_conformance::Process where U: core::convert::TryFrom<T>
+pub type clapham_conformance::Process::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_conformance::Process::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_conformance::Process where T: core::clone::Clone
+pub type clapham_conformance::Process::Owned = T
+pub fn clapham_conformance::Process::clone_into(&self, target: &mut T)
+pub fn clapham_conformance::Process::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_conformance::Process where T: 'static + ?core::marker::Sized
+pub fn clapham_conformance::Process::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_conformance::Process where T: ?core::marker::Sized
+pub fn clapham_conformance::Process::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_conformance::Process where T: ?core::marker::Sized
+pub fn clapham_conformance::Process::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_conformance::Process where T: core::clone::Clone
+pub unsafe fn clapham_conformance::Process::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_conformance::Process
+pub fn clapham_conformance::Process::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_conformance::Process where T: core::clone::Clone
+pub fn clapham_conformance::Process::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::Process where T: ?core::marker::Sized
+pub fn clapham_conformance::Process::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::Process::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::Process
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Process
+impl<T> typenum::type_operators::Same for clapham_conformance::Process
+pub type clapham_conformance::Process::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Process where T: ?core::marker::Sized
+pub struct clapham_conformance::ProcessFrontEnd
+impl clapham_conformance::ProcessFrontEnd
+pub fn clapham_conformance::ProcessFrontEnd::new(kind: clapham_conformance::ProcessKind, process: clapham_conformance::Process) -> Self
+impl clapham_conformance::FrontEnd for clapham_conformance::ProcessFrontEnd
+pub fn clapham_conformance::ProcessFrontEnd::binds_tools(&self) -> bool
+pub fn clapham_conformance::ProcessFrontEnd::carries_records(&self) -> bool
+pub fn clapham_conformance::ProcessFrontEnd::name(&self) -> &str
+pub fn clapham_conformance::ProcessFrontEnd::observe<'a>(&'a self, fixture: &'a clapham_conformance::Fixture, _gate: alloc::sync::Arc<dyn clapham::gate::Gate>, case: &'a clapham_conformance::Case) -> clapham_conformance::ObservationFuture<'a>
+impl core::clone::Clone for clapham_conformance::ProcessFrontEnd
+pub fn clapham_conformance::ProcessFrontEnd::clone(&self) -> clapham_conformance::ProcessFrontEnd
+impl core::fmt::Debug for clapham_conformance::ProcessFrontEnd
+pub fn clapham_conformance::ProcessFrontEnd::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for clapham_conformance::ProcessFrontEnd
+impl core::marker::Send for clapham_conformance::ProcessFrontEnd
+impl core::marker::Sync for clapham_conformance::ProcessFrontEnd
+impl core::marker::Unpin for clapham_conformance::ProcessFrontEnd
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::ProcessFrontEnd
+impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::ProcessFrontEnd
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::ProcessFrontEnd where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::ProcessFrontEnd where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_conformance::ProcessFrontEnd where U: core::convert::From<T>
+pub fn clapham_conformance::ProcessFrontEnd::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_conformance::ProcessFrontEnd where U: core::convert::Into<T>
+pub type clapham_conformance::ProcessFrontEnd::Error = core::convert::Infallible
+pub fn clapham_conformance::ProcessFrontEnd::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_conformance::ProcessFrontEnd where U: core::convert::TryFrom<T>
+pub type clapham_conformance::ProcessFrontEnd::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_conformance::ProcessFrontEnd::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_conformance::ProcessFrontEnd where T: core::clone::Clone
+pub type clapham_conformance::ProcessFrontEnd::Owned = T
+pub fn clapham_conformance::ProcessFrontEnd::clone_into(&self, target: &mut T)
+pub fn clapham_conformance::ProcessFrontEnd::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_conformance::ProcessFrontEnd where T: 'static + ?core::marker::Sized
+pub fn clapham_conformance::ProcessFrontEnd::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_conformance::ProcessFrontEnd where T: ?core::marker::Sized
+pub fn clapham_conformance::ProcessFrontEnd::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_conformance::ProcessFrontEnd where T: ?core::marker::Sized
+pub fn clapham_conformance::ProcessFrontEnd::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_conformance::ProcessFrontEnd where T: core::clone::Clone
+pub unsafe fn clapham_conformance::ProcessFrontEnd::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_conformance::ProcessFrontEnd
+pub fn clapham_conformance::ProcessFrontEnd::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_conformance::ProcessFrontEnd where T: core::clone::Clone
+pub fn clapham_conformance::ProcessFrontEnd::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::ProcessFrontEnd where T: ?core::marker::Sized
+pub fn clapham_conformance::ProcessFrontEnd::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::ProcessFrontEnd::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::ProcessFrontEnd
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::ProcessFrontEnd
+impl<T> typenum::type_operators::Same for clapham_conformance::ProcessFrontEnd
+pub type clapham_conformance::ProcessFrontEnd::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::ProcessFrontEnd where T: ?core::marker::Sized
+pub struct clapham_conformance::Report
+pub clapham_conformance::Report::calls: usize
+pub clapham_conformance::Report::cases: usize
+pub clapham_conformance::Report::front_ends: usize
+pub clapham_conformance::Report::gate_checks: usize
+pub clapham_conformance::Report::namespace_checks: usize
+impl core::clone::Clone for clapham_conformance::Report
+pub fn clapham_conformance::Report::clone(&self) -> clapham_conformance::Report
+impl core::cmp::Eq for clapham_conformance::Report
+impl core::cmp::PartialEq for clapham_conformance::Report
+pub fn clapham_conformance::Report::eq(&self, other: &clapham_conformance::Report) -> bool
+impl core::fmt::Debug for clapham_conformance::Report
+pub fn clapham_conformance::Report::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::StructuralPartialEq for clapham_conformance::Report
+impl core::marker::Freeze for clapham_conformance::Report
+impl core::marker::Send for clapham_conformance::Report
+impl core::marker::Sync for clapham_conformance::Report
+impl core::marker::Unpin for clapham_conformance::Report
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Report
+impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::Report
+impl<Q, K> equivalent::Equivalent<K> for clapham_conformance::Report where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
+pub fn clapham_conformance::Report::equivalent(&self, key: &K) -> bool
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Report where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::Report where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_conformance::Report where U: core::convert::From<T>
+pub fn clapham_conformance::Report::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_conformance::Report where U: core::convert::Into<T>
+pub type clapham_conformance::Report::Error = core::convert::Infallible
+pub fn clapham_conformance::Report::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_conformance::Report where U: core::convert::TryFrom<T>
+pub type clapham_conformance::Report::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_conformance::Report::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_conformance::Report where T: core::clone::Clone
+pub type clapham_conformance::Report::Owned = T
+pub fn clapham_conformance::Report::clone_into(&self, target: &mut T)
+pub fn clapham_conformance::Report::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_conformance::Report where T: 'static + ?core::marker::Sized
+pub fn clapham_conformance::Report::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_conformance::Report where T: ?core::marker::Sized
+pub fn clapham_conformance::Report::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_conformance::Report where T: ?core::marker::Sized
+pub fn clapham_conformance::Report::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_conformance::Report where T: core::clone::Clone
+pub unsafe fn clapham_conformance::Report::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_conformance::Report
+pub fn clapham_conformance::Report::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_conformance::Report where T: core::clone::Clone
+pub fn clapham_conformance::Report::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_conformance::Report where T: ?core::marker::Sized
+pub fn clapham_conformance::Report::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_conformance::Report::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_conformance::Report
+impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Report
+impl<T> typenum::type_operators::Same for clapham_conformance::Report
+pub type clapham_conformance::Report::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Report where T: ?core::marker::Sized
+pub trait clapham_conformance::FrontEnd: core::marker::Send + core::marker::Sync
+pub fn clapham_conformance::FrontEnd::binds_tools(&self) -> bool
+pub fn clapham_conformance::FrontEnd::carries_records(&self) -> bool
+pub fn clapham_conformance::FrontEnd::name(&self) -> &str
+pub fn clapham_conformance::FrontEnd::observe<'a>(&'a self, fixture: &'a clapham_conformance::Fixture, gate: alloc::sync::Arc<dyn clapham::gate::Gate>, case: &'a clapham_conformance::Case) -> clapham_conformance::ObservationFuture<'a>
+impl clapham_conformance::FrontEnd for clapham_conformance::InProcess
+pub fn clapham_conformance::InProcess::carries_records(&self) -> bool
+pub fn clapham_conformance::InProcess::name(&self) -> &str
+pub fn clapham_conformance::InProcess::observe<'a>(&'a self, fixture: &'a clapham_conformance::Fixture, gate: alloc::sync::Arc<dyn clapham::gate::Gate>, case: &'a clapham_conformance::Case) -> clapham_conformance::ObservationFuture<'a>
+impl clapham_conformance::FrontEnd for clapham_conformance::ProcessFrontEnd
+pub fn clapham_conformance::ProcessFrontEnd::binds_tools(&self) -> bool
+pub fn clapham_conformance::ProcessFrontEnd::carries_records(&self) -> bool
+pub fn clapham_conformance::ProcessFrontEnd::name(&self) -> &str
+pub fn clapham_conformance::ProcessFrontEnd::observe<'a>(&'a self, fixture: &'a clapham_conformance::Fixture, _gate: alloc::sync::Arc<dyn clapham::gate::Gate>, case: &'a clapham_conformance::Case) -> clapham_conformance::ObservationFuture<'a>
+pub fn clapham_conformance::lists_fixture() -> clapham_conformance::Fixture
+pub fn clapham_conformance::lists_gate() -> alloc::sync::Arc<dyn clapham::gate::Gate>
+pub async fn clapham_conformance::run(fixture: &clapham_conformance::Fixture, gate: alloc::sync::Arc<dyn clapham::gate::Gate>, front_ends: alloc::vec::Vec<alloc::boxed::Box<dyn clapham_conformance::FrontEnd>>) -> core::result::Result<clapham_conformance::Report, clapham_conformance::Failure>
+pub type clapham_conformance::ObservationFuture<'a> = core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::result::Result<clapham_conformance::Observation, clapham_conformance::Failure>> + core::marker::Send + 'a)>>

@@ -35,7 +35,7 @@ Check the minimum supported Rust versions with the committed lockfile:
 cargo +1.85.0 check --locked -p clapham -p clapham-cli
 cargo +1.85.0 test --locked -p clapham -p clapham-cli
 cargo +1.85.0 test --locked -p clapham --features serde_json/preserve_order revision_
-cargo +1.88.0 test --locked -p clapham-mcp-server -p clapham-mcp-client -p clapham-conformance --all-features
+cargo +1.88.0 test --locked -p clapham-mcp-server -p clapham-mcp-client -p clapham-conformance -p clapham-lists --all-features
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features stdio
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features http
@@ -48,8 +48,8 @@ with `cargo xtask schemas`. Review and commit changes to `crates/*/schemas/*.jso
 
 The MCP crates reserve `stdio` and `http` features for their transports. The neutral
 conformance contribution and CLI are implemented, including process output and safeguards.
-The MCP front ends and the example follow in their own implementation issues. The MCP
-wire-form generator follows with the server implementation.
+The reusable conformance harness and the lists executable cover the CLI, both MCP servers
+and the client bound to both servers. The Rust 1.88 lane includes this complete process matrix.
 
 See [the workspace guide](docs/README.md) for the crate boundaries and CI lanes.
 

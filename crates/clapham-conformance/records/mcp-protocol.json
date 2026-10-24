@@ -560,6 +560,20 @@
       }
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Report a scripted temporary failure without dispatching an effect.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object"
+      },
+      "name": "lists.busy"
+    },
+    {
       "_meta": {
         "io.github.thirtytwobits.clapham/effect": "administrative"
       },
