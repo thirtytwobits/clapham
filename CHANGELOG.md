@@ -2,6 +2,17 @@
 
 One section per release. Contract changes belong under `### Breaking`.
 
+## [0.1.1]
+
+### Breaking
+
+Documentation changes only.
+
+### Documentation
+
+[API reference for 0.1.1](https://thirtytwobits.github.io/clapham/v0.1.1/) covers all five library
+crates with all features enabled.
+
 ## [0.1.0]
 
 ### Breaking

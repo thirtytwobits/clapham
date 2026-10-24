@@ -157,6 +157,6 @@ CLAPHAM_WRITE_RECORDS=1 cargo test -p clapham-conformance --test mcp_protocol
 The boundary gate permits rmcp server features only in this crate, checking defaults, direct
 features and feature forwarding on normal, development, build and target-specific dependencies.
 
-See the [MCP mapping and authentication guide](https://github.com/thirtytwobits/clapham/blob/v0.1.0/docs/mcp.md)
-and [0.1.0 guarantees](https://github.com/thirtytwobits/clapham/blob/v0.1.0/docs/contract.md)
+See the [MCP mapping and authentication guide](https://github.com/thirtytwobits/clapham/blob/v0.1.1/docs/mcp.md)
+and [0.1.0 guarantees](https://github.com/thirtytwobits/clapham/blob/v0.1.1/docs/contract.md)
 for the application-facing contract and corresponding tests.
