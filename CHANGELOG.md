@@ -35,3 +35,8 @@ commit, paths and adaptations.
 The command line runs workspace operations in-process; daemon routing is deferred.
 MCP returns final results and discards streaming records in 0.1.0. Applications own workspace
 locks, persistence, transactions, authentication, approval coordination and shutdown.
+
+### Documentation
+
+[API reference for 0.1.0](https://thirtytwobits.github.io/clapham/v0.1.0/) covers all five library
+crates with all features enabled.

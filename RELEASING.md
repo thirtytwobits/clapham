@@ -70,6 +70,16 @@ Dependabot proposes later action updates; recheck their release and runtime when
 
 ## Verify and record a published release
 
+Publishing a release triggers the **API documentation** workflow. It builds all five library
+references from every published release tag with the committed lockfile and Rust 1.99.0,
+then deploys them to [GitHub Pages](https://thirtytwobits.github.io/clapham/). Drafts are excluded.
+Each version has its own path, such as `/clapham/v0.1.0/`, so older release links keep their
+matching API. Include that version's API link in its changelog section and release notes.
+Verify the deployed version index and crate pages after publication. To rebuild the site,
+dispatch **API documentation** on `main`; pull requests build the site without deploying it.
+Pages uses the GitHub Actions publishing source. Its `github-pages` environment permits
+deployments from `main` and `v*` tags.
+
 Create a fresh consumer workspace outside the repository and check the published Git tag:
 
 ```console
