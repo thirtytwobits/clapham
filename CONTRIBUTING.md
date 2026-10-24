@@ -14,6 +14,10 @@ cargo xtask release-check
 `check` runs dependency, crate-file and generated-schema checks, formatting, Clippy with
 warnings denied, tests and documentation with warnings denied, for default features and
 all features. It also validates release metadata, the changelog and Cargo package inventories.
+Inventories follow Cargo's file selection, including non-ignored untracked files under a
+crate: an unexpected local file can therefore fail `check`. Source archives are supported;
+only Cargo's generated `.cargo_vcs_info.json` may be absent outside a Git work tree.
+Tests and support fixtures are shipped so tagged consumers can reproduce conformance checks.
 `boundaries` checks each declared dependency, including aliases, development and build
 dependencies, optional dependencies and dependencies for other targets. No command needs
 Node or another build system.

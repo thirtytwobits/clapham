@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -30,7 +34,11 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Require a tag on main
-        run: git merge-base --is-ancestor HEAD origin/main
+        run: |
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::The tagged commit must belong to main."
+            exit 1
+          fi
       - run: rustup toolchain install 1.99.0 --profile minimal
       - name: Validate release and extract its changelog notes
         run: cargo xtask release-check "$RELEASE_TAG" --notes "$RUNNER_TEMP/clapham-release-notes.md"
@@ -39,9 +47,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-            --jq '.[] | select(.tag_name == env.RELEASE_TAG) | .draft' > "$RUNNER_TEMP/is-draft"
-          if test -s "$RUNNER_TEMP/is-draft"; then
-            test "$(cat "$RUNNER_TEMP/is-draft")" = true
+            --jq '.[] | select(.tag_name == env.RELEASE_TAG and .draft == false) | .id' \
+            > "$RUNNER_TEMP/published-release-ids"
+          if test -s "$RUNNER_TEMP/published-release-ids"; then
+            echo "::error::This tag already has a published release; refusing to modify it."
+            exit 1
           fi
       # v3.0.3; annotated tag peeled to this commit and action.yml checked
       # 2026-10-24; Node 24. Publication remains a manual step.

@@ -7,16 +7,20 @@ licence, security contact and exact Cargo package inventories for the five libra
 Tools and the example keep the same version but are not distributed library crates.
 
 1. Prepare a pull request updating `[workspace.package].version`, every workspace dependency
-   version in `Cargo.toml`, `Cargo.lock` and `release.json`. Keep prerelease suffixes identical;
-   `v0.1.0-rc.1` requires version `0.1.0-rc.1`, not `0.1.0`.
+   version in `Cargo.toml` and `release.json`. Regenerate `Cargo.lock` with `cargo update -w`.
+   Keep prerelease suffixes identical: `v0.1.0-rc.1` requires version `0.1.0-rc.1`, not `0.1.0`.
 2. Add the version's `## [VERSION]` section to `CHANGELOG.md`. Put contract changes under
    `### Breaking`, or explicitly record that there are none. The draft notes are the section
    body alone, without adjacent versions or the changelog preamble.
+   Lines beginning with `## ` are reserved for release sections; do not use those lines
+   inside fenced examples, since the extractor is line-oriented.
 3. Review each crate's shipped files using
    `cargo package --locked --list --allow-dirty -p CRATE`. Update its exact `files` inventory
    in `release.json` for intended additions or removals, including Cargo's generated files.
    `--allow-dirty` lets the read-only check run while preparing the pull request. It neither
    packages an archive nor permits a dirty release checkout.
+   Cargo's generated `.cargo_vcs_info.json` is optional when checking a source archive.
+   Tests and support fixtures remain in the inventory so tagged consumers can run them.
 4. Preserve `LICENSE`, `NOTICE` and the extraction records in `provenance.json`. The latter
    already records the MCP client extraction for issue #13. Confirm private vulnerability
    reporting is enabled in the repository's security settings and the contact is correct.
@@ -70,7 +74,16 @@ guard. Do not run this cleanup procedure against a published release.
 2. Generate the expected notes locally using `release-check ... --notes`, then compare them
    with the draft's body. Confirm its tag, target commit, `isDraft: true` and
    `isPrerelease: true`. Do not publish the smoke-test draft.
-3. Delete the temporary draft, then its remote and local tag:
+3. Rerun the successful **Draft release** workflow once. List releases through the API
+   (including drafts), and confirm the same release ID is updated with the same notes and
+   there is still exactly one release for the tag. This checks draft lookup and rerun behaviour:
+
+```console
+gh api --paginate repos/thirtytwobits/clapham/releases \
+  --jq '.[] | select(.tag_name == "v0.1.0-rc.1") | {id, tag_name, draft, prerelease, body}'
+```
+
+4. Delete the temporary draft, then its remote and local tag:
 
 ```console
 gh release view v0.1.0-rc.1 --json tagName,isDraft,isPrerelease,body,targetCommitish

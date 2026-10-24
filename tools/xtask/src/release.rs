@@ -109,9 +109,6 @@ pub(crate) fn check(root: &Path, tag: Option<&str>, notes_path: Option<&Path>) -
 }
 
 fn validate(release: &Release, metadata: &Metadata, tag: Option<&str>) -> Result<()> {
-    // Keep Cargo's paths in one representation. canonicalize() adds the Windows
-    // verbatim prefix (\\?\), while cargo metadata uses ordinary drive paths.
-    let root = &metadata.workspace_root;
     if release.schema_version != 1 {
         return Err("unsupported release.json schema_version".into());
     }
@@ -119,8 +116,8 @@ fn validate(release: &Release, metadata: &Metadata, tag: Option<&str>) -> Result
         return Err("release version, repository and licence must not be empty".into());
     }
     let expected_tag = format!("v{}", release.version);
-    if tag.is_some_and(|tag| tag != expected_tag) {
-        return Err(format!("tag must be {expected_tag}, got {}", tag.unwrap()).into());
+    if let Some(tag) = tag.filter(|tag| *tag != expected_tag) {
+        return Err(format!("tag must be {expected_tag}, got {tag}").into());
     }
     if !release.repository.starts_with("https://github.com/")
         || release.security_contact != format!("{}/security/advisories/new", release.repository)
@@ -140,6 +137,7 @@ fn validate(release: &Release, metadata: &Metadata, tag: Option<&str>) -> Result
         .map(|package| package.name.as_str())
         .collect();
     let mut libraries = BTreeSet::new();
+    let root = &metadata.workspace_root;
     for package in members {
         if package.version != release.version
             || package.repository.as_deref() != Some(&release.repository)
@@ -162,6 +160,8 @@ fn validate(release: &Release, metadata: &Metadata, tag: Option<&str>) -> Result
                 .into());
             }
         }
+        // Keep Cargo's paths in one representation. canonicalize() adds the Windows
+        // verbatim prefix (\\?\), while cargo metadata uses ordinary drive paths.
         if package.manifest_path.starts_with(root.join("crates")) {
             libraries.insert(package.name.clone());
             let record = release
@@ -184,12 +184,20 @@ fn validate(release: &Release, metadata: &Metadata, tag: Option<&str>) -> Result
 }
 
 fn check_files(name: &str, recorded: &[String], inventory: &str) -> Result<()> {
-    let recorded_set: BTreeSet<_> = recorded.iter().cloned().collect();
+    let mut recorded_set: BTreeSet<_> = recorded.iter().cloned().collect();
+    if recorded_set.len() != recorded.len() {
+        return Err(format!("{name}: release.json contains duplicate package paths").into());
+    }
     let actual: BTreeSet<_> = inventory
         .lines()
         .map(|line| line.replace('\\', "/"))
         .collect();
-    if recorded_set.len() != recorded.len() || recorded_set != actual {
+    // Cargo generates this only in a Git work tree. Source archives contain the
+    // same crate files but cannot supply this generated VCS record.
+    if !actual.contains(".cargo_vcs_info.json") {
+        recorded_set.remove(".cargo_vcs_info.json");
+    }
+    if recorded_set != actual {
         let added: Vec<_> = actual.difference(&recorded_set).collect();
         let removed: Vec<_> = recorded_set.difference(&actual).collect();
         return Err(format!("{name}: package inventory differs from release.json; added {added:?}, removed {removed:?}; review cargo package --locked --list --allow-dirty -p {name}").into());
@@ -244,6 +252,8 @@ fn check_provenance(root: &Path, provenance: &Value) -> Result<()> {
     Ok(())
 }
 
+/// Changelog lines beginning with `## ` are reserved for release sections, including
+/// inside fenced examples. This is a section extractor, not a Markdown parser.
 fn release_notes(changelog: &str, version: &str) -> Result<String> {
     let heading = format!("## [{version}]");
     let mut found = 0;
@@ -393,6 +403,20 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    fn source_archives_may_omit_only_cargos_generated_vcs_record() {
+        let archive = "Cargo.lock\nCargo.toml\nLICENSE\nNOTICE\nREADME.md\nsrc/lib.rs\n";
+        let checkout = format!(".cargo_vcs_info.json\n{archive}");
+        let recorded: Vec<_> = checkout.lines().map(str::to_owned).collect();
+        assert!(check_files("clapham", &recorded, &checkout).is_ok());
+        assert!(check_files("clapham", &recorded, archive).is_ok());
+        for missing in ["Cargo.lock\n", "NOTICE\n", "src/lib.rs\n"] {
+            assert!(check_files("clapham", &recorded, &archive.replace(missing, "")).is_err());
+        }
+        let unrecorded: Vec<_> = archive.lines().map(str::to_owned).collect();
+        assert!(check_files("clapham", &unrecorded, &checkout).is_err());
     }
 
     #[test]
