@@ -68,75 +68,18 @@ Actions are pinned to the current releases verified on 2026-10-24: `actions/chec
 (`efb35369e0ad2afab669f228072c1b0d510eae64`). Each tagged `action.yml` declares Node 24.
 Dependabot proposes later action updates; recheck their release and runtime when updating.
 
-## Temporary release-candidate smoke check
+## Verify and record a published release
 
-Run this acceptance check once the release-machinery pull request is on `main`. Its workflow
-and RC manifests must be in the tagged commit; an unmerged branch cannot satisfy the `main`
-guard. Complete it before merging the stable-version pull request, while `main` still names
-`0.1.0-rc.1`. Do not run this cleanup procedure against a published release.
-
-1. Confirm `v0.1.0-rc.1` and its release do not already exist. Create and push the annotated
-   tag from a clean, updated `main`:
+Create a fresh consumer workspace outside the repository and check the published Git tag:
 
 ```console
-cargo xtask release-check v0.1.0-rc.1
-git tag -a v0.1.0-rc.1 -m 'Clapham 0.1.0-rc.1'
-git push origin v0.1.0-rc.1
-```
-
-   Watch the **Draft release** workflow through completion.
-2. Generate the expected notes locally using `release-check ... --notes`, then compare them
-   with the draft's body. Confirm its tag, target commit, `isDraft: true` and
-   `isPrerelease: true`. Do not publish the smoke-test draft.
-3. Rerun the successful **Draft release** workflow once. List releases through the API
-   (including drafts), and confirm the same release ID is updated with the same notes and
-   there is still exactly one release for the tag. This checks draft lookup and rerun behaviour:
-
-```console
-gh api --paginate repos/thirtytwobits/clapham/releases \
-  --jq '.[] | select(.tag_name == "v0.1.0-rc.1") | {id, tag_name, draft, prerelease, body}'
-```
-
-4. Delete the temporary draft, then its remote and local tag:
-
-```console
-gh release view v0.1.0-rc.1 --json tagName,isDraft,isPrerelease,body,targetCommitish
-gh release delete v0.1.0-rc.1 --yes
-git push origin --delete v0.1.0-rc.1
-git tag -d v0.1.0-rc.1
-```
-
-Confirm the release and remote tag are absent afterwards. Record the workflow URL and result
-in the release-machinery pull request. Prepare the eventual stable version through a new
-version/changelog pull request; this smoke check does not publish a release.
-
-## First stable release follow-through
-
-The 0.1.0 preparation pull request does not publish a release or finish issue #17. Before
-merging it, finish the RC smoke check above and confirm implementation issues #3–#16 are
-closed. After merging, require green `main` CI on both runners, including API and
-minimum-version lanes. Review the five `api/*.txt` snapshots, `crates/*/schemas/*.json` and
-`crates/clapham-conformance/records/mcp-protocol.json` as the surface 0.1.0 commits to.
-
-Create `v0.1.0` using the clean-checkout commands above. When its workflow succeeds, confirm
-the draft's commit, stable version (`isPrerelease: false`) and notes against the output of
-`cargo xtask release-check v0.1.0 --notes /tmp/clapham-release-notes.md`, then publish it.
-Check the real published tag from a fresh consumer workspace:
-
-```console
-cargo new --lib /tmp/clapham-0.1.0-consumer
-cd /tmp/clapham-0.1.0-consumer
+cargo new --lib /tmp/clapham-release-consumer
+cd /tmp/clapham-release-consumer
 cargo add clapham --git https://github.com/thirtytwobits/clapham --tag v0.1.0
 cargo check
 ```
 
-Confirm the dependency resolves to the published commit. Only then record completion of
-step 1 in [London issue #2](https://github.com/thirtytwobits/london/issues/2), with the release
-and consumer-check evidence. Record the two settled questions: Clapham owns `Principal`
-(`id`, `kind`), converted at a consuming piece's seam; `DefaultGate` admits the descriptor's
-principal kinds, whose defaults exclude agents from administrative and destructive operations
-until the application admits them. Close Clapham issues #17 and #2 after this follow-through.
-
-After recording completion, remove the temporary RC smoke-check and first stable release
-sections from this guide. Retain consumer verification and release-record updates in the
-general release procedure so later releases have a version-neutral checklist.
+Use the published version in place of the example tag. Confirm Cargo resolves the dependency
+to the released commit and retain the consumer's `Cargo.lock` as evidence. Record the release
+URL, tag, commit, successful workflow and consumer result in the release issue and any
+coordinating project issue. Close the release issue after publication and verification.
