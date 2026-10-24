@@ -22,6 +22,7 @@ commit, paths and adaptations.
   covering all six front ends, refusals, discovery, gate visibility and ordered records.
 - Generated schemas, wire record and public API snapshots, with Cargo repository gates.
 - The 0.1.0 contract with named test evidence, a compiling application walkthrough, and
-  command-line, MCP and conformance usage guides.
+  command-line, MCP and conformance usage guides. Documentation gates check evidence
+  references and keep the walkthrough's Rust example aligned with the core README doctest.
 - Release metadata and package inventories, private security reporting and a gated workflow
   that creates draft releases from tags on `main`.

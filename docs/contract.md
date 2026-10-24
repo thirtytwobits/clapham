@@ -4,6 +4,8 @@ This is the release contract for Clapham 0.1.0, currently prepared as `0.1.0-rc.
 A change to a guarantee below must update this document and its corresponding test in the
 same pull request. The linked tests are executable evidence; the detailed guides explain
 configuration and usage. The [release metadata](../release.json) records the crate versions.
+`cargo xtask docs` checks that evidence names exist in their linked Rust files; reviewers
+still verify that those tests establish each guarantee.
 
 Clapham is five Rust libraries. A contribution owns descriptors and handlers; the application
 composes contributions, supplies policy and exposes a selection through the call runner,

@@ -9,6 +9,9 @@ Tools and the example keep the same version but are not distributed library crat
 1. Prepare a pull request updating `[workspace.package].version`, every workspace dependency
    version in `Cargo.toml` and `release.json`. Regenerate `Cargo.lock` with `cargo update -w`.
    Keep prerelease suffixes identical: `v0.1.0-rc.1` requires version `0.1.0-rc.1`, not `0.1.0`.
+   Pin each crate README's absolute repository documentation links to that release tag
+   (`/blob/v<VERSION>/docs/...`) so packaged API docs retain the matching contract.
+   Development links may use `/blob/main/` until a release is prepared.
 2. Add the version's `## [VERSION]` section to `CHANGELOG.md`. Put contract changes under
    `### Breaking`, or explicitly record that there are none. The draft notes are the section
    body alone, without adjacent versions or the changelog preamble.

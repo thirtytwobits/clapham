@@ -21,8 +21,9 @@ The top-level `describe` and `completions` names are reserved; a contribution un
 refuses CLI construction as `cli_configuration`. Required positionals must precede
 optional ones. Boolean properties take explicit `true` or `false` values;
 presence-only switches are not generated.
-Property spelling is retained: the lists fixture's `list_id` becomes `--list_id`, not
-`--list-id`. Use the generated operation help to inspect the exact names.
+Property spelling is retained in the flag's base name: `list_id` becomes `--list_id`.
+JSON-valued properties (objects, arrays and complex schemas) add `-json`; the fixture's
+`list` object becomes `--list-json`. Use the generated operation help for the exact names.
 
 Command syntax, malformed JSON and flag type-conversion errors return `usage`
 (exit 2). Validation of the complete bound input retains the core's
