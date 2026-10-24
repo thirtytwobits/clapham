@@ -5,6 +5,8 @@ does not publish to crates.io. All workspace members and internal dependency req
 share the version in the root manifest. `release.json` records the version, repository,
 licence, security contact and exact Cargo package inventories for the five library crates.
 Tools and the example keep the same version but are not distributed library crates.
+Preparing or merging a release pull request does not create a remote tag. The tag becomes
+fetchable when pushed; the workflow then creates a draft for separate manual publication.
 
 1. Prepare a pull request updating `[workspace.package].version`, every workspace dependency
    version in `Cargo.toml` and `release.json`. Regenerate `Cargo.lock` with `cargo update -w`.
@@ -134,3 +136,7 @@ and consumer-check evidence. Record the two settled questions: Clapham owns `Pri
 (`id`, `kind`), converted at a consuming piece's seam; `DefaultGate` admits the descriptor's
 principal kinds, whose defaults exclude agents from administrative and destructive operations
 until the application admits them. Close Clapham issues #17 and #2 after this follow-through.
+
+After recording completion, remove the temporary RC smoke-check and first stable release
+sections from this guide. Retain consumer verification and release-record updates in the
+general release procedure so later releases have a version-neutral checklist.

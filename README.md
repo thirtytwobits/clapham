@@ -90,10 +90,9 @@ when a hidden remote tool cannot be bound.
 
 ## Status
 
-The 0.1.0 implementation is ready for release. The `v0.1.0` tag becomes available after
-the release pull request is merged and the tag workflow completes.
-It contains the core contract and call runner, descriptor-derived workspace CLI, MCP server
-and client over stdio and Streamable HTTP, and the reusable six-front-end conformance harness.
+Clapham 0.1.0 is the first stable release. It contains the core contract and call runner,
+descriptor-derived workspace CLI, MCP server and client over stdio and Streamable HTTP,
+and the reusable six-front-end conformance harness.
 Schemas, the MCP wire record and public API snapshots are checked by repository gates.
 The [lists application](examples/lists/README.md) is the worked example and process fixture.
 
@@ -119,8 +118,8 @@ Daemon routing, durable approval coordination and transactional effects are outs
 ## Depending on it
 
 Consumers take crates from the same published Git tag and commit their `Cargo.lock`.
-The example below names the stable release being prepared; it can be fetched only after that
-tag exists. Choose an available tag from [releases](https://github.com/thirtytwobits/clapham/releases).
+The example below uses `v0.1.0`. Choose a published tag from
+[releases](https://github.com/thirtytwobits/clapham/releases).
 
 ```toml
 [dependencies]

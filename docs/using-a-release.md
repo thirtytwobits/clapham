@@ -2,8 +2,8 @@
 
 Clapham releases are Git tags on `main`. Choose an existing tag from the repository's
 [releases](https://github.com/thirtytwobits/clapham/releases); examples use `v0.1.0`, the first
-stable release. The tag must exist before these examples can be fetched. The release workflow
-creates a draft for manual publication. Choose a published tag for a consumer dependency.
+stable release. Choose a published tag for a consumer dependency. See the
+[release procedure](../RELEASING.md) for tagging and publication.
 
 ## Depend on a crate by tag
 
