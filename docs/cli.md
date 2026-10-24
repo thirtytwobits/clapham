@@ -1,4 +1,11 @@
-# CLI command tree and input
+# The 0.1.0 command line
+
+The [contract](contract.md#c10-front-ends-preserve-the-call-boundary) defines the call boundary.
+Build the reference binary with `cargo build -p clapham-lists`, or prefix an invocation below
+with `cargo run -p clapham-lists --` instead of `lists`. Use `lists --help` and
+`lists lists get --help` for the generated flags and syntax; this guide explains their meaning.
+
+## Descriptor and input mapping
 
 `clapham-cli` builds a clap command tree from a composed set. The application holds
 workspace exclusivity before composing and handing that set to `Cli::new`. Its
@@ -14,6 +21,8 @@ The top-level `describe` and `completions` names are reserved; a contribution un
 refuses CLI construction as `cli_configuration`. Required positionals must precede
 optional ones. Boolean properties take explicit `true` or `false` values;
 presence-only switches are not generated.
+Property spelling is retained: the lists fixture's `list_id` becomes `--list_id`, not
+`--list-id`. Use the generated operation help to inspect the exact names.
 
 Command syntax, malformed JSON and flag type-conversion errors return `usage`
 (exit 2). Validation of the complete bound input retains the core's
@@ -27,19 +36,19 @@ The [crate guide](../crates/clapham-cli/README.md) describes argument types,
 JSON input, help and the in-process API. Over the neutral contribution:
 
 ```console
-lists-app lists get tasks
-lists-app lists create --json '{"list":{"id":"tasks","name":"Tasks"}}'
-lists-app lists create --list-json '{"id":"tasks","name":"Tasks"}'
-lists-app lists get --json -
-lists-app --as agent:bot lists compact --yes
-lists-app lists create --list-json '{"id":"preview","name":"Preview"}' --dry-run
-lists-app lists delete --id tasks --yes
-lists-app lists export --id tasks --format ndjson
-lists-app completions zsh
+lists lists get tasks
+lists lists create --json '{"list":{"id":"tasks","name":"Tasks"}}'
+lists lists create --list-json '{"id":"tasks","name":"Tasks"}'
+lists lists get --json -
+lists --as agent:bot lists compact --yes
+lists lists create --list-json '{"id":"preview","name":"Preview"}' --dry-run
+lists lists delete --id tasks --yes
+lists lists export --id tasks --format ndjson
+lists completions zsh
 ```
 
-These illustrate invocations of a host's tree; the example binary is implemented
-separately. The agent's compact call refuses as `not_admitted` before changing anything.
+These invoke the [reference lists application](../examples/lists/README.md). Each process
+starts from fresh fixture state. The agent's compact call refuses as `not_admitted` before changing anything.
 Daemon-local operations refuse as `no_daemon`, including if the host accidentally
 supplies a daemon-mode set. Workspace locks remain the application's responsibility.
 
@@ -49,6 +58,8 @@ locality and the shared call runner. The conformance tests additionally drive th
 real lists-and-items contribution through `Cli::run_from`. Tests use in-memory
 arguments/readers and explicit cancellation, without clocks or retries.
 
+## Output and refusals
+
 `run` and `execute_from` add process output and return the exit code to the host.
 Pipes use version-one `{v, kind, data}` JSON frames; terminals default to human
 tables or fields. Explicit JSON is pretty on a terminal, while streaming JSON
@@ -57,6 +68,13 @@ output unchanged. `with_renderer`
 registers an operation's human presentation. Refusals always use one unchanged
 JSON line on stderr and the category's code. The published frame schema is
 `crates/clapham-cli/schemas/envelope.schema.json`, generated and checked by xtask.
+
+Ordinary results use their JSON value as `data`. Content, an error flag, absent structured
+output or non-default evidence instead puts the complete `Outcome` in `data`. Tool-reported
+error outcomes still exit 0; typed refusals use their category code. A preview is only as
+non-mutating as the application handler implements it.
+
+## Safeguards and cancellation
 
 Administrative and destructive effects require `--yes`. Parsing checks confirmation
 and preview support before reading stdin, validating input or checking admission.
@@ -75,6 +93,8 @@ separate timeout refusal code. A call-local signal isolates timeouts and deliver
 failures from the host's signal, while host cancellation still reaches the call.
 The host may replace the deadline future with `with_deadline` to integrate its
 runtime or explicit test signals.
+
+## Executable evidence
 
 The process fixture seeds lists and items, runs the real CLI and records its final
 state for assertions. Process tests check every category's exit code, one-line

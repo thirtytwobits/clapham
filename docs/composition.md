@@ -1,5 +1,8 @@
 # Composition
 
+This is the detailed composition reference. Start with [composing an application](composing.md)
+for the worked example and [the 0.1.0 contract](contract.md) for guarantees and test evidence.
+
 Contributors claim one namespace with `Contribution::new(namespace)` and add
 descriptors and handlers with `.operation(descriptor, handler)`. A handler can
 implement the object-safe `Handler` trait or be an asynchronous closure. Its boxed
@@ -35,8 +38,8 @@ Schemas compile once with local references enabled. Composition refuses referenc
 that would require external retrieval. Schema sizes count compact serialised UTF-8
 bytes, separately for input and output. The catalogue limit counts the compact JSON
 array of descriptors, including separators. It is charged before retaining each
-operation's validators. `Bounds` also carries the connection budgets the MCP front
-ends will share, including the combined 64 MiB buffering limit. The catalogue byte
+operation's validators. `Bounds` also carries the connection budgets shared by the MCP front
+ends, including the combined 64 MiB buffering limit. The catalogue byte
 limit starts at 2, enough for the empty array `[]` on the wire. Composition must fit
 the two built-in descriptors as well as the application's descriptors. Their input
 and output schemas also consume the per-schema bound; `tools` must fit at least two
@@ -49,13 +52,13 @@ for composition, which reports the specific catalogue, schema or operation limit
 Outputs may be any JSON shape. MCP 2026-07-28 explicitly permits arrays and scalar
 structured results; see its [tool result specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/server/tools.mdx#structured-content).
 The core also accepts boolean JSON Schemas. MCP's `outputSchema` field uses an object
-representation, so the adapter should encode `true` as `{}` and `false` as
+representation, so the server encodes `true` as `{}` and `false` as
 `{"not": {}}` at that seam rather than restrict the core's result shapes.
 
 An explicit empty `principals` list admits nobody and must not regain effect defaults.
-Positional bindings are CLI metadata. Validation of supported bindings belongs to CLI
-command-tree construction (issue #9) and must account for schema references and
-composition rather than assume every property appears in the root `properties` map.
+Positional bindings are CLI metadata. CLI command-tree construction validates supported
+bindings, accounting for schema references and composition rather than assuming every
+property appears in the root `properties` map.
 
 `revision()` is `sha256:` followed by a lowercase hexadecimal SHA-256 digest. Its
 preimage is the UTF-8 prefix `clapham.composed-set.v1` followed by a zero byte, then
@@ -83,7 +86,7 @@ dispatch use `Refusal::not_dispatched`. Cancelling a handler in flight yields `u
 a returned remote refusal or outcome keeps its explicit evidence. Completion does
 not claim atomic effects or durable publication. When cancellation and completion are
 both ready at a poll, cancellation takes precedence and yields uncertain evidence.
-The refusal schema now requires evidence, so a caller
+The refusal schema requires evidence, so a caller
 cannot silently treat omitted evidence as proof that nothing ran.
 
 Records flow through the supplied asynchronous sink, whose acknowledgement supplies

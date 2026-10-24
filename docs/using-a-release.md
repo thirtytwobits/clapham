@@ -2,8 +2,9 @@
 
 Clapham releases are Git tags on `main`. Choose an existing tag from the repository's
 [releases](https://github.com/thirtytwobits/clapham/releases); examples use `v0.1.0-rc.1`, which
-is the initial candidate being prepared. The release machinery must merge and the tag must
-exist before that example can be fetched. Draft releases have not been published for use.
+is the initial candidate being prepared. The tag must exist before that example can be
+fetched. The release workflow creates a draft for manual publication; its temporary RC
+smoke-test tag may be deleted. Choose a published tag for a consumer dependency.
 
 ## Depend on a crate by tag
 

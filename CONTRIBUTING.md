@@ -3,6 +3,12 @@
 Read [AGENTS.md](AGENTS.md) before changing the repository. Cargo selects the gate
 compiler from `rust-toolchain.toml`.
 
+[The release contract](docs/contract.md) links each guarantee to named tests. Update the
+guarantee and its test together when behaviour changes. Start with
+[composing an application](docs/composing.md) for the worked example. Each crate's README is
+included as its crate-level API documentation; its Rust examples run as doctests. Public
+items require documentation, and the gate builds API docs with warnings denied.
+
 ```console
 cargo xtask check
 cargo xtask boundaries

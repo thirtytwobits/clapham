@@ -1,6 +1,9 @@
 # clapham-conformance
 
 Reusable front-end conformance checks and a neutral lists-and-items contribution.
+Requires Rust 1.88. Use this as a dev-dependency beside the application under test.
+[`Fixture`], [`FrontEnd`] and [`run`] supply the reusable boundary; [`ListsHandle`] supplies
+the neutral state fixture.
 
 ## Run a contribution through the harness
 
@@ -181,3 +184,7 @@ state and queue sizes; connection budgets belong to the front ends. Cancellation
 in flight reports `cancelled` with uncertain evidence through the core runner.
 Streams propagate sink refusals unchanged; `record_delivery_failed` is declared
 as unavailable, and other undeclared sink codes exercise the normal refusal policy.
+
+See the [harness guide](https://github.com/thirtytwobits/clapham/blob/main/docs/conformance.md)
+and [0.1.0 guarantees](https://github.com/thirtytwobits/clapham/blob/main/docs/contract.md)
+for the application-facing contract and corresponding tests.

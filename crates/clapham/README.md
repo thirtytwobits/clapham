@@ -1,7 +1,10 @@
 # clapham
 
 The contract for operations, descriptors, refusals, principals, composition, selection,
-gates and calls.
+gates and calls. Requires Rust 1.85.
+
+Start with [`Operation`] and [`Contribution`], compose a set, then use
+[`ComposedSet::call`] with a [`Selection`] and host-supplied [`Gate`].
 
 `Operation` is the serialisable descriptor. Its name uses 1 to 128 ASCII letters,
 digits, `_`, `-` and `.`, and splits at the first dot. `description` is required;
@@ -88,3 +91,46 @@ and [refusal.schema.json](schemas/refusal.schema.json), alongside the describe r
 [catalogue.schema.json](schemas/catalogue.schema.json). Generate them with
 `cargo xtask schemas`; `cargo xtask schemas --check` refuses stale output and runs
 inside `cargo xtask check`.
+
+## Quickstart
+
+A complete contribution-to-call example, also used in the application guide:
+
+```rust
+use clapham::{
+    Bounds, Call, Cancellation, Contribution, Operation, Outcome, Principal, PrincipalKind,
+    RecordSink, compose,
+};
+use serde_json::json;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let descriptor: Operation = serde_json::from_value(json!({
+        "name": "lists.count",
+        "description": "Count the lists in this workspace.",
+        "input": {"type": "object", "additionalProperties": false},
+        "output": {"type": "integer", "minimum": 0},
+        "effect": "query", "locality": "workspace",
+        "idempotent": true, "open_world": false
+    }))?;
+    let contribution = Contribution::new("lists").operation(descriptor, |_: Call| async {
+        Ok(Outcome::new(json!(2)))
+    });
+    let set = compose([contribution], Bounds::default())?;
+    let selection = set.select(["lists.count", "clapham.describe"])?;
+    let result = futures_executor::block_on(set.call(
+        &selection,
+        Principal::new("operator", PrincipalKind::Human),
+        "lists.count",
+        json!({}),
+        RecordSink::default(),
+        Cancellation::new(),
+        false,
+    ))?;
+    assert_eq!(result.result, Some(json!(2)));
+    Ok(())
+}
+```
+
+See the [0.1.0 contract](https://github.com/thirtytwobits/clapham/blob/main/docs/contract.md),
+[application guide](https://github.com/thirtytwobits/clapham/blob/main/docs/composing.md) and
+[call reference](https://github.com/thirtytwobits/clapham/blob/main/docs/calls.md).

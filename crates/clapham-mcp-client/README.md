@@ -8,6 +8,9 @@ Create an `McpConfig` with the connection's namespace and a non-secret credentia
 revision. Set its shared `clapham::Bounds` and operation deadline as needed. The host approves
 the endpoint and credentials or creates the process streams and handles process shutdown.
 
+Start with [`McpConnection`], discover a [`McpCatalogue`], then bind a
+[`McpToolBinding`] and compose its contribution in a daemon-mode host.
+
 Discover, select and compose:
 
 ```no_run
@@ -38,6 +41,9 @@ Results use `Outcome`, ordered content and `Evidence`; adapter errors map to bou
 `Refusal` codes. A tool-reported `isError` remains an outcome. Dropping an invocation requests
 cancellation, and uncertain effects are never replayed automatically.
 
-See `docs/mcp.md` in the repository for the complete client contract, refusal mapping and
-transport limits. The crate's `NOTICE` and `LICENSE` retain copyright and licence terms;
+The client guide describes the refusal mapping and transport limits. The crate's `NOTICE` and `LICENSE` retain copyright and licence terms;
 repository provenance records the extraction source and paths.
+
+See the [complete client contract](https://github.com/thirtytwobits/clapham/blob/main/docs/mcp.md#client)
+and [0.1.0 guarantees](https://github.com/thirtytwobits/clapham/blob/main/docs/contract.md)
+for the application-facing contract and corresponding tests.

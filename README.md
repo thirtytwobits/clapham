@@ -6,7 +6,7 @@ and MCP client from them. It is a piece of the
 
 ## Operations
 
-An operation is a named action with a JSON Schema for its input and one for its result. Each
+An operation is a named action with a JSON Schema for its input and an optional result schema. Each
 London piece supplies its operations under its own namespace, such as
 `clerkenwell.document.edit`, `walthamstow.workspace.upgrade` or `battersea.run.cancel`, and the
 application adds its own.
@@ -33,7 +33,8 @@ stops composition with its own error code.
 
 **Runs every call.** Clapham validates the input against its schema, asks the application's gate
 whether the caller's principal may run the operation, runs the operation as that principal, passes
-its records to the caller as they arrive, and validates the result against its schema. The gate
+its records to the caller as they arrive, and validates successful structured output against its
+schema. The gate
 answers allow, deny or pending; by default it admits the principal kinds the descriptor names.
 
 **Refuses precisely.** A refusal carries the code of the piece that refused, unchanged, such as
@@ -53,8 +54,9 @@ declares for it. Each front end acts on the category:
 | `internal` | 70 | a fault, including a refusal code the descriptor omits |
 
 **Builds the command line.** One subcommand per operation, built at run time from the registry.
-Flags come from the input schema and `--help` from the descriptor. Output is JSON on a terminal
-and NDJSON in a pipe, and a refusal ends the process with its category's exit code. The effect
+Flags come from the input schema and `--help` from the descriptor. Output defaults to human
+fields or tables on a terminal and NDJSON envelopes in a pipe. A refusal ends the process
+with its category's exit code. The effect
 sets the safeguards:
 
 | Effect | Command line | MCP annotations |
@@ -64,8 +66,9 @@ sets the safeguards:
 | `administrative` | asks for `--yes` | `destructiveHint: false`; the class in `_meta` |
 | `destructive` | asks for `--yes` | `destructiveHint: true` |
 
-The command line runs workspace operations in its own process under the workspace lock, and
-reaches the running daemon over MCP for the rest.
+The application owns the workspace lock. The 0.1.0 command line runs workspace operations in
+its own process and refuses daemon-local operations as `no_daemon`. Daemon discovery and
+CLI-to-daemon routing are not implemented in this release.
 
 **Serves MCP.** Each operation is a tool, named as the operation is, with annotations from its
 effect; a query with a resource template is also a resource. The server speaks stdio and
@@ -81,35 +84,56 @@ principal its launch configuration names. Every operation runs as its caller's p
 Clerkenwell decides what that principal may change.
 
 **Proves its front ends.** A conformance suite, over a contribution of lists and items, runs the
-same calls through each front end and checks each one returns the same result, carries refusals
-unchanged and enforces the gate.
+same calls through each front end and checks results, admitted-operation refusals, gate
+visibility and ordered records where carried. The contract documents the native refusal
+when a hidden remote tool cannot be bound.
 
 ## Status
 
-The Cargo workspace, repository gates, core contract, composition and call runner are in place,
-with published operation, refusal and catalogue schemas. Every set includes `clapham.describe`
-for the caller's admitted catalogue and `clapham.version` for library and application identity.
-Calls enforce selection, admission, preview support, locality and the declared refusal contract.
-The neutral lists-and-items contribution exercises the core call contract with scripted
-concurrency. The CLI builds its command tree, help and input binding from those descriptors,
-and runs calls in-process with confirmations, previews, deadlines, output formatting
-and generated shell completions. The MCP server exposes selected tools and query resources
-on stdio and stateless Streamable HTTP, with per-request HTTP authentication, principal-bound
-discovery, effect annotations, previews and unchanged refusals. The checked-in MCP wire record
-guards that surface. The MCP client binds discovered tools as daemon contributions with bounded
-transports, pinned revisions, stale checks and explicit dispatch evidence. The reusable
-conformance harness compares fresh fixtures through every front end.
-The [lists example](examples/lists/README.md) assembles the CLI and both MCP servers and is
-launched by the same harness.
-[thirtytwobits/london#2](https://github.com/thirtytwobits/london/issues/2) holds the design
-and the plan for the first release. See [CONTRIBUTING.md](CONTRIBUTING.md) for the gate commands
-and [the workspace guide](docs/README.md) for the crate boundaries.
+The 0.1.0 implementation is prepared as `0.1.0-rc.1`; a release tag has not yet been published.
+It contains the core contract and call runner, descriptor-derived workspace CLI, MCP server
+and client over stdio and Streamable HTTP, and the reusable six-front-end conformance harness.
+Schemas, the MCP wire record and public API snapshots are checked by repository gates.
+The [lists application](examples/lists/README.md) is the worked example and process fixture.
 
-[Release metadata](release.json), the [changelog](CHANGELOG.md) and the
-[release procedure](RELEASING.md) prepare the first release candidate, `0.1.0-rc.1`.
-The tag workflow runs all gates and leaves a draft for manual publication. See
-[using a release](docs/using-a-release.md) for dependencies by tag and local patches,
-and [the security policy](SECURITY.md) for private vulnerability reporting.
+Applications supply workspace ownership, authentication, policy, persistence and shutdown.
+Daemon routing, durable approval coordination and transactional effects are outside 0.1.0.
+[Release metadata](release.json), the [changelog](CHANGELOG.md) and
+[release procedure](RELEASING.md) describe tagging and manually publishing the gated draft.
+
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| [0.1.0 contract](docs/contract.md) | Guarantees and their corresponding tests; updated with contract changes |
+| [Composing an application](docs/composing.md) | Contributions, sets, selections and the application's `main` |
+| [Command line](docs/cli.md) | Descriptor mapping, binding, output and safeguards; syntax comes from `--help` |
+| [MCP](docs/mcp.md) | Server mapping/authentication and the extracted client contract |
+| [Conformance](docs/conformance.md) | Run a contribution through the reusable harness |
+| [Using a release](docs/using-a-release.md) | Dependencies by tag, conformance dev-dependencies and local patches |
+| [Workspace guide](docs/README.md) | Crate boundaries, detailed references and validation |
+| [Contributing](CONTRIBUTING.md) | Cargo gates, minimum-version checks and generated artefacts |
+| [Security](SECURITY.md) | Private vulnerability reporting |
+
+## Depending on it
+
+Consumers take crates from the same published Git tag and commit their `Cargo.lock`.
+The example below names the candidate being prepared; it can be fetched only after that
+tag exists. Choose an available tag from [releases](https://github.com/thirtytwobits/clapham/releases).
+
+```toml
+[dependencies]
+clapham = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0-rc.1" }
+clapham-cli = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0-rc.1" }
+
+[dev-dependencies]
+clapham-conformance = { git = "https://github.com/thirtytwobits/clapham", tag = "v0.1.0-rc.1" }
+```
+
+`clapham` and `clapham-cli` require Rust 1.85. The MCP crates and conformance library require
+Rust 1.88. Both MCP transport features, `stdio` and `http`, are enabled by default and can
+be selected independently. Repository gates use Rust 1.99.0; consumers do not need the gate
+toolchain. See [using a release](docs/using-a-release.md) for the complete setup.
 
 ## Licence
 

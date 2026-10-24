@@ -34,7 +34,7 @@ pub struct Invocation {
     pub yes: bool,
     /// Whether to run a preview rather than commit a change.
     pub preview: bool,
-    /// The call deadline, starting at dispatch; zero cancels before dispatch.
+    /// The call budget, starting after confirmation; zero cancels before dispatch.
     pub timeout: Option<Duration>,
     /// Output selection for the process-facing runner.
     pub output: OutputOptions,
