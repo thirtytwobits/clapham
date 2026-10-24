@@ -179,14 +179,15 @@ def remote_tag_commit(tag: str) -> str | None:
 
 def tag(arguments: argparse.Namespace) -> None:
     """On main after merging: validate the release and push its annotated tag, which drafts a release."""
-    record = release_record()
-    new = record["version"]
-    name = f"v{new}"
     if run("git", "branch", "--show-current", capture=True) != "main":
         raise Refusal("switch to main first")
     require_clean()
     run("git", "pull", "--ff-only", "origin", "main")
     require_clean()
+    # Read the version only after the pull brings in the merged release pull request.
+    record = release_record()
+    new = record["version"]
+    name = f"v{new}"
     if run("git", "tag", "--list", name, capture=True) or remote_tag_commit(name):
         raise Refusal(f"{name} already exists; rerun its workflow instead of moving the tag")
     slug = repository_slug(record["repository"])
