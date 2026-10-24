@@ -8,11 +8,12 @@ cargo xtask check
 cargo xtask boundaries
 cargo xtask api
 cargo xtask schemas --check
+cargo xtask release-check
 ```
 
 `check` runs dependency, crate-file and generated-schema checks, formatting, Clippy with
 warnings denied, tests and documentation with warnings denied, for default features and
-all features.
+all features. It also validates release metadata, the changelog and Cargo package inventories.
 `boundaries` checks each declared dependency, including aliases, development and build
 dependencies, optional dependencies and dependencies for other targets. No command needs
 Node or another build system.
@@ -60,3 +61,8 @@ changed surface. After reviewing an intended change, run
 
 `cargo xtask check` clears `CLAPHAM_WRITE_RECORDS` for child Cargo commands and compares the
 wire record's canonical bytes. An inherited writing flag cannot silently update a stale record.
+
+Use `cargo xtask release-check <tag> --notes <path>` to validate a proposed release tag and
+extract its changelog section. Update `release.json` when a crate intentionally adds or
+removes a shipped file. See [RELEASING.md](RELEASING.md) for versioning, drafts and the
+temporary RC smoke check, and [SECURITY.md](SECURITY.md) for private reporting.

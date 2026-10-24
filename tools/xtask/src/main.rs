@@ -2,6 +2,7 @@
 
 mod api;
 mod boundaries;
+mod release;
 mod schemas;
 
 use std::error::Error;
@@ -33,11 +34,16 @@ fn dispatch() -> Result<()> {
         ["api", "--update"] => api::check(&root, true),
         ["schemas"] => schemas::run(&root, false),
         ["schemas", "--check"] => schemas::run(&root, true),
+        ["release-check"] => release::check(&root, None, None),
+        ["release-check", tag] => release::check(&root, Some(tag), None),
+        ["release-check", tag, "--notes", path] => {
+            release::check(&root, Some(tag), Some(Path::new(path)))
+        }
         ["help"] | ["--help"] | ["-h"] | [] => {
-            println!("cargo xtask <check|boundaries|api [--update]|schemas [--check]>");
+            println!("cargo xtask <check|boundaries|api [--update]|schemas [--check]|release-check [<tag> [--notes <path>]]>");
             Ok(())
         }
-        _ => Err("usage: cargo xtask <check|boundaries|api [--update]|schemas [--check]>".into()),
+        _ => Err("usage: cargo xtask <check|boundaries|api [--update]|schemas [--check]|release-check [<tag> [--notes <path>]]>".into()),
     }
 }
 
@@ -72,6 +78,7 @@ fn capture(command: &mut Command) -> Result<String> {
 fn check(root: &Path) -> Result<()> {
     boundaries::check(root)?;
     schemas::run(root, true)?;
+    release::check(root, None, None)?;
     run(&mut cargo(root, &["fmt", "--all", "--", "--check"]))?;
     for features in [None, Some("--all-features")] {
         let mut clippy = cargo(

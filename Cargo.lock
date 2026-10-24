@@ -268,7 +268,7 @@ checksum = "1c133bc6a41be0d194c306b5506d15e6feeea7b1d6604bd3f8310dfb2ca96486"
 
 [[package]]
 name = "clapham"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 dependencies = [
  "futures-channel",
  "futures-executor",
@@ -283,7 +283,7 @@ dependencies = [
 
 [[package]]
 name = "clapham-cli"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 dependencies = [
  "clap",
  "clap_complete",
@@ -299,7 +299,7 @@ dependencies = [
 
 [[package]]
 name = "clapham-conformance"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 dependencies = [
  "axum",
  "bytes",
@@ -324,7 +324,7 @@ dependencies = [
 
 [[package]]
 name = "clapham-lists"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 dependencies = [
  "axum",
  "clapham",
@@ -337,7 +337,7 @@ dependencies = [
 
 [[package]]
 name = "clapham-mcp-client"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 dependencies = [
  "axum",
  "clapham",
@@ -357,7 +357,7 @@ dependencies = [
 
 [[package]]
 name = "clapham-mcp-server"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 dependencies = [
  "bytes",
  "clapham",
@@ -2326,7 +2326,7 @@ checksum = "3ad82d2a33cdc9674dc7465672f271e096168fcdbe0f799d9e6db8c5892679dc"
 
 [[package]]
 name = "xtask"
-version = "0.1.0"
+version = "0.1.0-rc.1"
 dependencies = [
  "clapham",
  "clapham-cli",
