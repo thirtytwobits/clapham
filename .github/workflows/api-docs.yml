@@ -3,9 +3,9 @@ name: API documentation
 on:
   push:
     branches: [main]
-    paths: ['.github/workflows/api-docs.yml', '.github/scripts/build-api-docs.sh']
+    paths: ['.github/workflows/api-docs.yml', '.github/scripts/build_api_docs.py']
   pull_request:
-    paths: ['.github/workflows/api-docs.yml', '.github/scripts/build-api-docs.sh']
+    paths: ['.github/workflows/api-docs.yml', '.github/scripts/build_api_docs.py']
   release:
     types: [published]
   workflow_dispatch:
@@ -45,7 +45,7 @@ jobs:
           gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
             --jq '.[] | select(.draft == false) | .tag_name' > "$RUNNER_TEMP/api-docs-tags"
       - name: Build versioned API references
-        run: bash .github/scripts/build-api-docs.sh "$RUNNER_TEMP/api-site" "$RUNNER_TEMP/api-docs-tags"
+        run: python3 .github/scripts/build_api_docs.py "$RUNNER_TEMP/api-site" "$RUNNER_TEMP/api-docs-tags"
       # v5.0.0; composite action pins upload-artifact v7.0.0 (Node 24), verified 2026-10-23.
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
         with:
