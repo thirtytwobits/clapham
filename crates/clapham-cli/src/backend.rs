@@ -78,10 +78,12 @@ const PREVIEW_META_KEY: &str = "io.github.thirtytwobits.clapham/preview";
 
 /// The daemon's MCP server, reached through Clapham's MCP client.
 ///
-/// The catalogue is `clapham.describe`. A call is `tools/call`, with the operation's input as
-/// its arguments and preview in request `_meta`. Records arrive under the records extension
-/// and are acknowledged after the sink accepts each one. A refusal is the tool result's
-/// structured refusal. Cancelling a call closes its response stream.
+/// The catalogue comes from the daemon's catalogue extension, which answers from
+/// `clapham.describe` whether or not the daemon's selection exposes it. A call is
+/// `tools/call`, with the operation's input as its arguments and preview in request `_meta`.
+/// Records arrive under the records extension and are acknowledged after the sink accepts
+/// each one. A refusal is the tool result's structured refusal. Cancelling a call closes its
+/// response stream.
 #[derive(Clone)]
 pub struct McpBackend {
     connection: McpConnection,
@@ -145,20 +147,10 @@ fn refused(outcome: Outcome) -> Result<Outcome, Refusal> {
 impl Backend for McpBackend {
     fn catalogue(&self) -> BackendFuture<'_, Vec<Operation>> {
         Box::pin(async move {
-            let outcome = self
-                .connection
-                .call_tool(
-                    "clapham.describe",
-                    Map::new(),
-                    Map::new(),
-                    RecordSink::default(),
-                )
+            self.connection
+                .operations()
                 .await
-                .and_then(refused)?;
-            let catalogue = outcome
-                .result
-                .ok_or_else(|| crate::configuration("clapham.describe returned no catalogue"))?;
-            serde_json::from_value(catalogue).map_err(|e| crate::configuration(e.to_string()))
+                .map_err(|error| error.refusal(Evidence::NotDispatched))
         })
     }
     fn call(

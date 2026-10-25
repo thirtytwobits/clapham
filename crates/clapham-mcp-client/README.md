@@ -46,7 +46,8 @@ A remote tool that streams under the records extension passes each record to the
 acknowledges it after the sink accepts it. An acknowledgement the client cannot confirm cancels
 the call with uncertain evidence.
 
-`McpConnection::call_tool` calls a remote tool by name outside any binding and has no deadline:
+`McpConnection::operations` reads a Clapham server's admitted descriptors through its catalogue
+extension. `McpConnection::call_tool` calls a remote tool by name outside any binding and has no deadline:
 its caller bounds it, and dropping the call cancels it. `McpConfig::operator` sizes a connection
 for an operator, such as the CLI against its daemon. A credential the server does not accept
 refuses the connection as `mcp_unauthenticated`.

@@ -117,6 +117,7 @@
         "src/connection.rs",
         "src/http.rs",
         "src/lib.rs",
+        "src/operations.rs",
         "src/records.rs",
         "src/stdio.rs",
         "src/wire.rs",

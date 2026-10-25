@@ -87,12 +87,19 @@ fn set() -> (ComposedSet, Hold) {
     (configuration.compose(Bounds::default()).unwrap(), hold)
 }
 
-/// A daemon serving `set` over Streamable HTTP, and a backend holding the operator's token.
-async fn over_http(set: ComposedSet) -> (McpBackend, tokio::task::JoinHandle<()>) {
-    let server = HttpServer::new(set, |credential: &Credential| {
+fn http_server(set: ComposedSet) -> HttpServer {
+    HttpServer::new(set, |credential: &Credential| {
         (credential.authorization() == Some("Bearer operator")).then(operator)
     })
-    .unwrap();
+    .unwrap()
+}
+
+/// A daemon serving `set` over Streamable HTTP, and a backend holding the operator's token.
+async fn over_http(set: ComposedSet) -> (McpBackend, tokio::task::JoinHandle<()>) {
+    serve_http(http_server(set)).await
+}
+
+async fn serve_http(server: HttpServer) -> (McpBackend, tokio::task::JoinHandle<()>) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let endpoint = format!("http://{}/mcp", listener.local_addr().unwrap());
     let task = tokio::spawn(async move {
@@ -103,16 +110,14 @@ async fn over_http(set: ComposedSet) -> (McpBackend, tokio::task::JoinHandle<()>
 
 /// A daemon serving `set` over a private stdio connection bound to the operator.
 async fn over_stdio(set: ComposedSet) -> (McpBackend, tokio::task::JoinHandle<()>) {
+    serve_stdio(Server::new(set, operator()).unwrap()).await
+}
+
+async fn serve_stdio(server: Server) -> (McpBackend, tokio::task::JoinHandle<()>) {
     let (client, daemon) = tokio::io::duplex(64 * 1024);
     let (read, write) = tokio::io::split(daemon);
     let task = tokio::spawn(async move {
-        let _ = Server::new(set, operator())
-            .unwrap()
-            .serve_io(read, write)
-            .await
-            .unwrap()
-            .waiting()
-            .await;
+        let _ = server.serve_io(read, write).await.unwrap().waiting().await;
     });
     let (read, write) = tokio::io::split(client);
     (McpBackend::stdio(read, write).await.unwrap(), task)
@@ -172,6 +177,44 @@ async fn the_cli_receives_the_outcome_the_operation_returned_over_http_and_stdio
     let (backend, task) = over_stdio(set.clone()).await;
     keeps_outcomes(backend, &set).await;
     drop(task);
+}
+
+async fn discovers_the_selection(backend: McpBackend) {
+    let names: Vec<_> = backend
+        .catalogue()
+        .await
+        .unwrap()
+        .into_iter()
+        .map(|operation| operation.name.to_string())
+        .collect();
+    assert_eq!(names, ["items.null"]);
+    let cli = clapham_cli::Cli::connect("items", backend, Bounds::default())
+        .await
+        .unwrap();
+    let outcome = cli
+        .call(
+            Invocation::new("items.null", json!({})),
+            RecordSink::default(),
+            Cancellation::new(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(outcome.result, Some(Value::Null));
+}
+
+#[tokio::test]
+async fn the_cli_discovers_a_selection_that_does_not_expose_describe() {
+    let (set, _) = set();
+    let server = http_server(set.clone()).select(["items.null"]).unwrap();
+    let (backend, task) = serve_http(server).await;
+    discovers_the_selection(backend).await;
+    task.abort();
+    let server = Server::new(set, operator())
+        .unwrap()
+        .select(["items.null"])
+        .unwrap();
+    let (backend, _task) = serve_stdio(server).await;
+    discovers_the_selection(backend).await;
 }
 
 #[tokio::test]

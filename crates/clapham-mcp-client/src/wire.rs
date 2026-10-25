@@ -45,6 +45,7 @@ mod responses {
     #[derive(Clone, Copy)]
     enum Kind {
         Catalogue,
+        Operations,
         Call,
     }
 
@@ -82,6 +83,11 @@ mod responses {
                 let kind = match &request.request {
                     ClientRequest::ListToolsRequest(_) => Some(Kind::Catalogue),
                     ClientRequest::CallToolRequest(_) => Some(Kind::Call),
+                    ClientRequest::CustomRequest(custom)
+                        if custom.method == crate::operations::CATALOGUE_EXTENSION =>
+                    {
+                        Some(Kind::Operations)
+                    }
                     _ => None,
                 };
                 if let Some(kind) = kind {
@@ -125,6 +131,10 @@ mod responses {
                     // One representation across stdio, HTTP JSON and SSE. This prevents the
                     // SDK's untagged union from discarding malformed records or unknown fields.
                     *result = serde_json::json!({"claphamCatalogue": result.take()});
+                }
+                Some(Kind::Operations) => {
+                    // As above, for a Clapham server's operation catalogue.
+                    *result = serde_json::json!({"claphamOperations": result.take()});
                 }
                 Some(Kind::Call) => {
                     // Interpret a call by its request, before the SDK's untagged result union

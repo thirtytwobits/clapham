@@ -170,6 +170,8 @@ pub fn clapham_mcp_client::McpConnection::server_id(&self) -> &str
 impl clapham_mcp_client::McpConnection
 pub async fn clapham_mcp_client::McpConnection::http(options: clapham_mcp_client::McpHttpOptions, config: clapham_mcp_client::McpConfig) -> core::result::Result<Self, clapham_mcp_client::McpError>
 impl clapham_mcp_client::McpConnection
+pub async fn clapham_mcp_client::McpConnection::operations(&self) -> core::result::Result<alloc::vec::Vec<clapham::operation::Operation>, clapham_mcp_client::McpError>
+impl clapham_mcp_client::McpConnection
 pub async fn clapham_mcp_client::McpConnection::stdio<R, W>(reader: R, writer: W, shutdown: tokio_util::sync::cancellation_token::CancellationToken, config: clapham_mcp_client::McpConfig) -> core::result::Result<Self, clapham_mcp_client::McpError> where R: tokio::io::async_read::AsyncRead + core::marker::Unpin + core::marker::Send + 'static, W: tokio::io::async_write::AsyncWrite + core::marker::Unpin + core::marker::Send + 'static
 impl core::clone::Clone for clapham_mcp_client::McpConnection
 pub fn clapham_mcp_client::McpConnection::clone(&self) -> clapham_mcp_client::McpConnection

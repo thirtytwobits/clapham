@@ -218,7 +218,9 @@ Evidence: [built-in tests](../crates/clapham/tests/builtins.rs),
 ## C10: Adapters preserve the call boundary
 
 The server-backed CLI derives commands and input binding from admitted descriptors. Against a
-daemon it is Clapham's MCP client, over Streamable HTTP or stdio: it sends operation arguments
+daemon it is Clapham's MCP client, over Streamable HTTP or stdio: it reads the admitted
+catalogue through the catalogue extension, whether or not the daemon's selection exposes
+`clapham.describe`, and sends operation arguments
 as `tools/call` arguments and a dry run as preview metadata, not authority claims, and
 cancelling closes the call's response stream. A credential the daemon does not accept refuses
 as `mcp_unauthenticated`. Whole-object JSON and property arguments cannot be mixed.
@@ -235,6 +237,7 @@ Evidence: [CLI tests](../crates/clapham-cli/tests/tree.rs),
 [execution tests](../crates/clapham-cli/tests/execution.rs),
 `confirmations_and_dry_runs_are_checked_before_stdin_is_read`;
 [CLI over MCP](../crates/clapham-conformance/tests/cli_mcp.rs),
+`the_cli_discovers_a_selection_that_does_not_expose_describe`,
 `a_cli_dry_run_reaches_the_daemon_as_preview_metadata`,
 `cancelling_a_cli_call_drops_the_daemons_handler_over_http` and
 `cancelling_a_cli_call_drops_the_daemons_handler_over_stdio`;
@@ -242,6 +245,7 @@ Evidence: [CLI tests](../crates/clapham-cli/tests/tree.rs),
 `unmapped_credentials_are_refused_before_body_or_gate_or_handler` and
 `concurrent_requests_keep_their_own_authenticated_auths`;
 [MCP tests](../crates/clapham-conformance/tests/mcp.rs),
+`the_catalogue_extension_lists_the_selection_without_exposing_describe` and
 `oversized_refusal_closes_instead_of_changing_its_code`.
 
 ## C11: Remote bindings fence definitions and effects

@@ -5,6 +5,7 @@ mod call;
 mod connection;
 #[cfg(feature = "http")]
 mod http;
+mod operations;
 mod records;
 #[cfg(feature = "stdio")]
 mod stdio;

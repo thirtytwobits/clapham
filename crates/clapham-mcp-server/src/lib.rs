@@ -38,6 +38,11 @@ pub const EFFECT_META_KEY: &str = "io.github.thirtytwobits.clapham/effect";
 /// Request metadata key selecting a dry run.
 pub const PREVIEW_META_KEY: &str = "io.github.thirtytwobits.clapham/preview";
 
+/// The catalogue extension. A request of the same name, with an optional `cursor`, returns
+/// `{operations, nextCursor?}`: one page of the descriptors admitted to the caller from the
+/// server's selection, read through `clapham.describe` whether or not the selection exposes it.
+pub const CATALOGUE_EXTENSION: &str = "io.github.thirtytwobits.clapham/catalogue";
+
 /// Published protocol, client identity, preview and records metadata keys used by the server.
 /// The conformance wire record takes its request-key contract from this list.
 pub const REQUEST_META_KEYS: &[&str] = &[
@@ -332,7 +337,7 @@ impl ServerHandler for Server {
             .enable_tools()
             .enable_resources()
             .build();
-        capabilities.extensions = Some(records_extension());
+        capabilities.extensions = Some(clapham_extensions());
         ServerConfig::new(capabilities)
             .with_protocol_version(ProtocolVersion::V_2026_07_28)
             .with_server_info(Implementation::new("clapham", env!("CARGO_PKG_VERSION")))
@@ -345,7 +350,7 @@ impl ServerHandler for Server {
     async fn discover(&self, _: RequestContext<RoleServer>) -> Result<DiscoverResult, ErrorData> {
         let operations = self.catalogue(|_| true).await?;
         let mut capabilities = ServerCapabilities::default();
-        capabilities.extensions = Some(records_extension());
+        capabilities.extensions = Some(clapham_extensions());
         if !operations.is_empty() {
             capabilities.tools = self.get_info().capabilities.tools;
         }
@@ -451,9 +456,30 @@ impl ServerHandler for Server {
     async fn on_custom_request(
         &self,
         request: CustomRequest,
-        _: RequestContext<RoleServer>,
+        context: RequestContext<RoleServer>,
     ) -> Result<CustomResult, ErrorData> {
-        records::acknowledge(&self.deliveries, &self.auth, request)
+        if request.method != CATALOGUE_EXTENSION {
+            return records::acknowledge(&self.deliveries, &self.auth, request);
+        }
+        #[derive(serde::Deserialize)]
+        struct Page {
+            #[serde(default)]
+            cursor: Option<String>,
+        }
+        let Ok(page) = request
+            .params_as::<Page>()
+            .map(|page| page.unwrap_or(Page { cursor: None }))
+        else {
+            return Err(ErrorData::invalid_params("invalid catalogue request", None));
+        };
+        let operations = self.catalogue(|_| true).await?;
+        let request = PaginatedRequestParams::default().with_cursor(page.cursor);
+        let (operations, cursor) = self.page("operations", &operations, Some(request), &context)?;
+        let mut result = json!({"operations":operations});
+        if let Some(cursor) = cursor {
+            result["nextCursor"] = json!(cursor);
+        }
+        Ok(CustomResult::new(result))
     }
 
     async fn list_resource_templates(
@@ -581,8 +607,11 @@ impl ServerHandler for Server {
     }
 }
 
-fn records_extension() -> ExtensionCapabilities {
-    ExtensionCapabilities::from([(RECORDS_EXTENSION.to_owned(), JsonObject::new())])
+fn clapham_extensions() -> ExtensionCapabilities {
+    ExtensionCapabilities::from([
+        (CATALOGUE_EXTENSION.to_owned(), JsonObject::new()),
+        (RECORDS_EXTENSION.to_owned(), JsonObject::new()),
+    ])
 }
 
 fn configuration(message: impl Into<String>) -> Refusal {

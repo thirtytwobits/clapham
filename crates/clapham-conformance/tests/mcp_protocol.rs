@@ -7,7 +7,9 @@ use std::{fs, path::PathBuf, sync::Arc};
 
 use clapham::{Bounds, ComposeOptions};
 use clapham_conformance::{ListsGate, ListsHandle};
-use clapham_mcp_server::{ACKNOWLEDGE_REQUEST, HttpServer, RECORDS_EXTENSION, REQUEST_META_KEYS};
+use clapham_mcp_server::{
+    ACKNOWLEDGE_REQUEST, CATALOGUE_EXTENSION, HttpServer, RECORDS_EXTENSION, REQUEST_META_KEYS,
+};
 use http_body_util::BodyExt;
 use serde_json::{Value, json};
 
@@ -98,10 +100,13 @@ async fn mcp_protocol_record_is_current() {
     )
     .await;
     let result_meta_keys: Vec<&String> = described["_meta"].as_object().unwrap().keys().collect();
+    let catalogue = support::result(&server, CATALOGUE_EXTENSION, json!({}), "Bearer human").await;
+    let catalogue_keys: Vec<&String> = catalogue.as_object().unwrap().keys().collect();
     let record = json!({
         "protocolVersions":discovery["supportedVersions"],
         "extensions":discovery["capabilities"]["extensions"],
         "records":records(&server).await,
+        "catalogue":{"method":CATALOGUE_EXTENSION,"params":["cursor"],"result":catalogue_keys},
         "tools":tools["tools"],
         "resourceTemplates":resources["resourceTemplates"],
         "requestMetaKeys":REQUEST_META_KEYS,

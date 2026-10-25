@@ -63,8 +63,12 @@ a record that arrives while the call holds another is counted.
 
 ## CLI daemon mode
 
-The CLI's daemon mode is Clapham's MCP client. `McpBackend` reads the catalogue from
-`clapham.describe` and calls each operation as `tools/call`, with its input as arguments and
+The CLI's daemon mode is Clapham's MCP client. `McpBackend` reads the catalogue through the
+catalogue extension, `io.github.thirtytwobits.clapham/catalogue`, which the server declares in
+`server/discover`. A request of that name, with an optional `cursor`, returns
+`{operations, nextCursor?}`: one page of the descriptors admitted to the caller from the
+server's selection, bounded as `tools/list` is and read through `clapham.describe` whether or
+not the selection exposes it. `McpBackend` calls each operation as `tools/call`, with its input as arguments and
 `--dry-run` as `io.github.thirtytwobits.clapham/preview` in request `_meta`. Records arrive under
 the records extension and print as NDJSON, each acknowledged after the output sink accepts it.
 A tool result that carries a structured refusal is that refusal. Cancelling closes the call's

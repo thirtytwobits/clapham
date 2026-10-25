@@ -1,5 +1,15 @@
 {
+  "catalogue": {
+    "method": "io.github.thirtytwobits.clapham/catalogue",
+    "params": [
+      "cursor"
+    ],
+    "result": [
+      "operations"
+    ]
+  },
   "extensions": {
+    "io.github.thirtytwobits.clapham/catalogue": {},
     "io.github.thirtytwobits.clapham/records": {}
   },
   "protocolVersions": [
