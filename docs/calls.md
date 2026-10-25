@@ -15,6 +15,7 @@ cancellation is not-dispatched because the operation handler has not run.
 
 Declared refusals retain their code; descriptor categories determine CLI exit codes.
 Undeclared handler refusals become `undeclared_refusal`, with original details and evidence.
+A record-sink refusal the handler returns is carried unchanged without declaration.
 Typed conversion failures are dispatcher errors and retain `invalid_input` or `invalid_result`.
 
 Evidence records dispatch knowledge: `not_dispatched`, `completed`, `uncertain`. A completed

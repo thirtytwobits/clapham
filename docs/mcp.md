@@ -49,9 +49,8 @@ under the extension identifier in its `_meta`.
   evidence.
 - The record sink refuses a notification over `bounds.message_bytes` with `result_too_large`
   and an unacknowledged record with `record_delivery_failed`, both with uncertain evidence. A
-  handler returns the refusal as any other: an operation that does not declare the code reports
-  `undeclared_refusal` carrying it. Closing the response stream, or `notifications/cancelled`
-  over stdio, cancels the call.
+  handler that returns the refusal carries it to the caller unchanged, without declaring it.
+  Closing the response stream, or `notifications/cancelled` over stdio, cancels the call.
 - A client that does not declare the extension, or sends no token, receives the final result
   alone.
 

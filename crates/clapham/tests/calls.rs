@@ -418,6 +418,68 @@ fn undeclared_handler_refusals_preserve_the_original_including_reserved_looking_
     }
 }
 
+fn refusing_sink() -> (RecordSink, Refusal) {
+    let refusal = Refusal::new("output_failed", Category::Unavailable, "The output closed.")
+        .with_evidence(Evidence::Uncertain);
+    let returned = refusal.clone();
+    let sink = RecordSink::new(move |_| {
+        let refusal = returned.clone();
+        async move { Err(refusal) }
+    });
+    (sink, refusal)
+}
+
+fn streaming(handler: impl Handler + 'static) -> ComposedSet {
+    let mut operation = descriptor("lists.watch", Effect::Query);
+    operation.streams = true;
+    one(operation, handler)
+}
+
+fn watch(set: &ComposedSet, sink: RecordSink) -> CallResult {
+    block_on(set.call(
+        &set.all(),
+        auth(&["lists:read"][..]),
+        "lists.watch",
+        input(),
+        sink,
+        Cancellation::new(),
+        false,
+    ))
+}
+
+#[test]
+fn a_returned_sink_refusal_is_carried_unchanged_without_declaration() {
+    let (sink, expected) = refusing_sink();
+    let set = streaming(|call: Call| async move {
+        call.records.send(json!({ "item": 1 })).await?;
+        Ok(Outcome::new(call.input))
+    });
+    assert_eq!(watch(&set, sink).unwrap_err(), expected);
+}
+
+#[test]
+fn a_handler_refusal_other_than_the_sinks_still_requires_declaration() {
+    for reuses_code in [true, false] {
+        let (sink, original) = refusing_sink();
+        let set = streaming(move |call: Call| async move {
+            let refused = call.records.send(json!({ "item": 1 })).await.unwrap_err();
+            let code = if reuses_code {
+                refused.code
+            } else {
+                "list_fault".into()
+            };
+            // The handler's own refusal, even one reusing the sink's code.
+            Err(Refusal::new(code, Category::Conflict, "The list changed."))
+        });
+        let refusal = watch(&set, sink).unwrap_err();
+        assert_eq!(refusal.code, "undeclared_refusal", "{refusal:?}");
+        assert_ne!(
+            refusal.details,
+            Some(serde_json::to_value(&original).unwrap())
+        );
+    }
+}
+
 #[test]
 fn tool_reported_errors_remain_outcomes_with_their_own_result_shape() {
     let set = one(descriptor("lists.get", Effect::Query), |_| async {

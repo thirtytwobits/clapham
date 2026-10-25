@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
 
@@ -195,18 +195,40 @@ impl ComposedSet {
                 }
             }
         }
+        // The host's sink refusals are not the operation's to declare. Remember the last
+        // so a handler that returns it passes it to the caller unchanged.
+        let refused = Arc::new(Mutex::new(None));
+        let records = {
+            let refused = refused.clone();
+            RecordSink::new(move |record| {
+                let (sink, refused) = (sink.clone(), refused.clone());
+                async move {
+                    let delivered = sink.send(record).await;
+                    if let Err(refusal) = &delivered {
+                        *refused.lock().expect("sink refusal lock") = Some(refusal.clone());
+                    }
+                    delivered
+                }
+            })
+        };
         let call = Call {
             name: descriptor.name.clone(),
             auth,
             input,
-            records: sink,
+            records,
             cancel,
             preview,
         };
         // The outer error is the dispatcher's cancellation. The inner refusal
-        // belongs to the handler, even if it uses a dispatcher-like code.
+        // belongs to the handler, even if it uses a dispatcher-like code, unless
+        // it is the refusal the host's sink returned.
         let outcome = match operation.dispatch_validated(call, Some(selection)).await? {
             Ok(outcome) => outcome,
+            Err(refusal)
+                if refused.lock().expect("sink refusal lock").as_ref() == Some(&refusal) =>
+            {
+                return Err(refusal);
+            }
             Err(refusal) => return Err(declared_refusal(descriptor, refusal)),
         };
         operation.validate_output(&outcome)?;

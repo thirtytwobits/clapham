@@ -100,7 +100,8 @@ impl RecordSink {
         Self(Arc::new(move |record| Box::pin(callback(record))))
     }
     /// Deliver one record and await the host's acknowledgement.
-    /// A sink refusal's evidence is propagated unchanged. If delivery failure leaves
+    /// A sink refusal the handler returns reaches the caller unchanged, without being
+    /// declared by the operation. If delivery failure leaves
     /// the operation's effects unresolved, the sink must report [`Evidence::Uncertain`].
     /// Completed evidence means a complete reply, not atomic or durable effects.
     pub async fn send(&self, record: Value) -> Result<(), Refusal> {

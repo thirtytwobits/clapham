@@ -115,13 +115,16 @@ Evidence: [call tests](../crates/clapham/tests/calls.rs),
 
 Declared handler and resource-policy refusals retain code, message, details, retryability and evidence. Their
 category comes from the descriptor. An undeclared code becomes `undeclared_refusal`, retaining
-the original refusal and its evidence. Dispatcher refusals do not require declarations.
+the original refusal and its evidence. Dispatcher refusals do not require declarations, and a
+record-sink refusal the handler returns is carried unchanged without declaration.
 Categories map to CLI exits: usage 2, invalid input 65, not found 66, conflict 67, refused 77,
 unavailable 69, interrupted 75, configuration 78 and internal 70.
 
 Evidence: [call tests](../crates/clapham/tests/calls.rs),
 `declared_refusals_keep_the_code_and_use_the_descriptors_category` and
-`undeclared_handler_refusals_preserve_the_original_including_reserved_looking_codes`;
+`undeclared_handler_refusals_preserve_the_original_including_reserved_looking_codes`,
+`a_returned_sink_refusal_is_carried_unchanged_without_declaration` and
+`a_handler_refusal_other_than_the_sinks_still_requires_declaration`;
 [process tests](../crates/clapham-conformance/tests/cli_process.rs),
 `every_refusal_category_uses_one_json_stderr_line_and_its_exit_code`.
 
@@ -156,9 +159,9 @@ response stream, acknowledged by a request bound to the grant that began the cal
 Acknowledgements are admitted outside the request limits; repeating the last is accepted, and
 the client cancels on one it cannot confirm. The record sink refuses a notification over
 the message bound with `result_too_large` and an unacknowledged record with
-`record_delivery_failed`, both with uncertain evidence; the handler returns the refusal under
-C06. A client without the extension receives the final result alone. If an outcome fits the core bound but its stream
-envelope exceeds it, HTTP sends `result_too_large` with uncertain evidence. An oversized
+`record_delivery_failed`, both with uncertain evidence, and a handler that returns the
+refusal carries it unchanged (C06). A client without the extension receives the final result
+alone. If an outcome fits the core bound but its stream envelope exceeds it, HTTP sends `result_too_large` with uncertain evidence. An oversized
 existing domain refusal closes the stream.
 
 Evidence: [call type tests](../crates/clapham/tests/call_types.rs),

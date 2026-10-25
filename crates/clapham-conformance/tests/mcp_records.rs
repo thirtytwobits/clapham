@@ -14,8 +14,8 @@ use std::{
 
 use bytes::Bytes;
 use clapham::{
-    Bounds, Call, Category, ComposedSet, Configuration, Contribution, Effect, Exposure,
-    OAuthContext, TypedOperation,
+    Bounds, Call, ComposedSet, Configuration, Contribution, Effect, Exposure, OAuthContext,
+    TypedOperation,
 };
 use clapham_mcp_server::{
     ACKNOWLEDGE_REQUEST, HttpServer, RECORD_NOTIFICATION, RECORDS_EXTENSION, Server,
@@ -66,9 +66,7 @@ fn set(bounds: Bounds) -> (ComposedSet, Script) {
         Effect::Query,
     )
     .unwrap()
-    .streams(true)
-    .refusal("record_delivery_failed", Category::Unavailable)
-    .refusal("result_too_large", Category::Usage);
+    .streams(true);
     let script = Script {
         returned: returned.clone(),
         entered: entered.clone(),
