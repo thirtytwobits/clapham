@@ -67,6 +67,14 @@ fn set() -> (ComposedSet, Hold) {
         .operation(descriptor("items.preview", true), |call: Call| async move {
             Ok(Outcome::new(json!(call.preview)))
         })
+        .operation(
+            {
+                let mut admin = descriptor("items.admin", false);
+                admin.scopes = vec!["items:admin".into()];
+                admin
+            },
+            |_: Call| async { Ok(Outcome::new(Value::Null)) },
+        )
         .operation(descriptor("items.hold", false), move |_: Call| {
             let guard = Dropped(dropped.lock().unwrap().take());
             let signal = signal.clone();
@@ -77,7 +85,7 @@ fn set() -> (ComposedSet, Hold) {
             }
         });
     let mut configuration = Configuration::new(ISSUER, AUDIENCE).provider("items", provider);
-    for name in ["null", "absent", "empty", "preview", "hold"] {
+    for name in ["null", "absent", "empty", "preview", "admin", "hold"] {
         configuration = configuration.expose(Exposure::new("items", format!("items.{name}")));
     }
     let hold = Hold {
@@ -215,6 +223,32 @@ async fn the_cli_discovers_a_selection_that_does_not_expose_describe() {
         .unwrap();
     let (backend, _task) = serve_stdio(server).await;
     discovers_the_selection(backend).await;
+}
+
+async fn refuses_missing_scopes(backend: McpBackend) {
+    let refusal = call(&backend, "items.admin", false).await.unwrap_err();
+    assert_eq!(
+        (refusal.code.as_str(), refusal.category, refusal.evidence),
+        (
+            "insufficient_scope",
+            Category::Refused,
+            Evidence::NotDispatched
+        )
+    );
+    assert_eq!(
+        refusal.details,
+        Some(json!({"required_scopes":["items:admin"]}))
+    );
+}
+
+#[tokio::test]
+async fn a_scope_refusal_reaches_the_cli_unchanged_over_http_and_stdio() {
+    let (set, _) = set();
+    let (backend, task) = over_http(set.clone()).await;
+    refuses_missing_scopes(backend).await;
+    task.abort();
+    let (backend, _task) = over_stdio(set).await;
+    refuses_missing_scopes(backend).await;
 }
 
 #[tokio::test]

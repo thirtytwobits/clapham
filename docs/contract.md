@@ -223,7 +223,8 @@ catalogue through the catalogue extension, whether or not the daemon's selection
 `clapham.describe`, and sends operation arguments
 as `tools/call` arguments and a dry run as preview metadata, not authority claims, and
 cancelling closes the call's response stream. A credential the daemon does not accept refuses
-as `mcp_unauthenticated`. Whole-object JSON and property arguments cannot be mixed.
+as `mcp_unauthenticated`; the daemon's refusal before dispatch, such as `insufficient_scope`,
+reaches the CLI unchanged. Whole-object JSON and property arguments cannot be mixed.
 Confirmation and unsupported-preview parsing precede stdin reads. Human output uses
 fields/tables; pipes use versioned NDJSON. HTTP disables redirects and retries. Trusted
 in-process CLI embedding requires host-verified authority.
@@ -238,6 +239,7 @@ Evidence: [CLI tests](../crates/clapham-cli/tests/tree.rs),
 `confirmations_and_dry_runs_are_checked_before_stdin_is_read`;
 [CLI over MCP](../crates/clapham-conformance/tests/cli_mcp.rs),
 `the_cli_discovers_a_selection_that_does_not_expose_describe`,
+`a_scope_refusal_reaches_the_cli_unchanged_over_http_and_stdio`,
 `a_cli_dry_run_reaches_the_daemon_as_preview_metadata`,
 `cancelling_a_cli_call_drops_the_daemons_handler_over_http` and
 `cancelling_a_cli_call_drops_the_daemons_handler_over_stdio`;
@@ -257,6 +259,9 @@ and invocation deadlines are uncertain. Reconnecting does not replay effects. Re
 refusals remain structured tool-error outcomes with their original codes. Records paced by
 acknowledgement are outside the connection's lifetime notification and byte budgets; one sent
 ahead of its acknowledgement is counted. A direct call has no deadline: its caller bounds it.
+A server's refusal before dispatch, such as for missing scopes, is `mcp_forbidden` with
+not-dispatched evidence for a binding, and reaches a direct call unchanged. An abandoned
+catalogue read closes its connection.
 
 Evidence: [client tests](../crates/clapham-mcp-client/tests/contracts.rs),
 `effects_describe_behaviour_without_granting_or_removing_oauth_scopes`,
@@ -265,12 +270,14 @@ Evidence: [client tests](../crates/clapham-mcp-client/tests/contracts.rs),
 `applied_effect_with_lost_reply_is_uncertain_and_never_replayed` and
 `discovery_bounds_and_failed_refresh_invalidate_existing_bindings`;
 [client records tests](../crates/clapham-mcp-client/tests/records.rs),
-`a_direct_call_streams_records_without_spending_the_notification_budget` and
-`records_sent_ahead_of_their_acknowledgement_spend_the_notification_budget`;
+`a_direct_call_streams_records_without_spending_the_notification_budget`,
+`records_sent_ahead_of_their_acknowledgement_spend_the_notification_budget` and
+`an_abandoned_catalogue_read_closes_the_connection`;
 [client HTTP tests](../crates/clapham-mcp-client/src/http.rs),
-`a_tool_call_stream_outlives_the_request_deadline`;
+`a_tool_call_post_has_no_request_deadline`;
 [client HTTP integration](../crates/clapham-mcp-client/tests/http.rs),
-`an_unaccepted_credential_refuses_the_connection_as_unauthenticated`.
+`an_unaccepted_credential_refuses_the_connection_as_unauthenticated` and
+`a_refusal_before_dispatch_is_bounded_for_bindings_and_unchanged_for_direct_calls`.
 
 ## C12: Cross-adapter conformance
 

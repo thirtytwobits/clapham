@@ -388,6 +388,7 @@ fn remote_refusals() -> BTreeMap<String, Category> {
         McpError::Selection,
         McpError::Busy,
         McpError::Unauthenticated,
+        McpError::Forbidden,
         McpError::UnsupportedInteraction,
     ]
     .into_iter()
@@ -466,6 +467,7 @@ impl Remote {
                 JsonObject::new(),
                 &call.records,
                 Some(deadline),
+                false,
                 || self.check(),
             )
             .await

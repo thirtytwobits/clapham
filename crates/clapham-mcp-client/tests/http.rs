@@ -232,3 +232,78 @@ async fn an_unaccepted_credential_refuses_the_connection_as_unauthenticated() {
     );
     task.abort();
 }
+
+async fn scope_challenge(Json(request): Json<Value>) -> Response {
+    let reply = |result: Value| Json(json!({"jsonrpc":"2.0","id":request["id"],"result":result}));
+    match request["method"].as_str().unwrap() {
+        "server/discover" => reply(
+            json!({"resultType":"complete","supportedVersions":["2026-07-28"],
+            "capabilities":{"tools":{}},"ttlMs":0,"cacheScope":"private"}),
+        )
+        .into_response(),
+        "tools/list" => reply(json!({"tools":[{"name":"write","description":"Write",
+            "inputSchema":{"type":"object"}}]}))
+        .into_response(),
+        "tools/call" => (
+            StatusCode::FORBIDDEN,
+            [("content-type", "application/json")],
+            json!({"code":"insufficient_scope","category":"refused",
+                "message":"the grant lacks required scopes","details":{"required_scopes":["admin"]},
+                "retryable":false,"evidence":"not_dispatched"})
+            .to_string(),
+        )
+            .into_response(),
+        _ => StatusCode::ACCEPTED.into_response(),
+    }
+}
+
+#[tokio::test]
+async fn a_refusal_before_dispatch_is_bounded_for_bindings_and_unchanged_for_direct_calls() {
+    let app = Router::new().route("/mcp", post(scope_challenge));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}/mcp", listener.local_addr().unwrap());
+    let task = tokio::spawn(async {
+        axum::serve(listener, app).await.unwrap();
+    });
+    let connection = McpConnection::http(
+        McpHttpOptions::new(endpoint),
+        McpConfig::new("remote", "scope"),
+    )
+    .await
+    .unwrap();
+    let binding = connection
+        .discover()
+        .await
+        .unwrap()
+        .bind(vec![McpSelection::new("write")])
+        .unwrap();
+    let bounded = binding
+        .executor()
+        .call(support::call("remote.write", json!({})))
+        .await
+        .unwrap_err();
+    assert_eq!(
+        (bounded.code.as_str(), bounded.category, bounded.evidence),
+        (
+            "mcp_forbidden",
+            clapham::Category::Refused,
+            Evidence::NotDispatched
+        )
+    );
+    assert!(bounded.details.is_none());
+    let direct = connection
+        .call_tool(
+            "write",
+            serde_json::Map::new(),
+            serde_json::Map::new(),
+            Default::default(),
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(direct.code, "insufficient_scope");
+    assert_eq!(direct.evidence, Evidence::NotDispatched);
+    assert_eq!(direct.details, Some(json!({"required_scopes":["admin"]})));
+    // A refusal for one request leaves the connection usable.
+    connection.discover().await.unwrap();
+    task.abort();
+}

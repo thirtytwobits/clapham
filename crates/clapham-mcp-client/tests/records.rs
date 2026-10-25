@@ -238,6 +238,25 @@ async fn a_record_out_of_sequence_cancels_the_call() {
     assert!(accepted.lock().unwrap().is_empty());
 }
 
+#[tokio::test]
+async fn an_abandoned_catalogue_read_closes_the_connection() {
+    let (connection, mut remote) = Remote::connect().await;
+    let reading = tokio::spawn({
+        let connection = connection.clone();
+        async move { connection.operations().await }
+    });
+    let request = remote.receive().await;
+    assert_eq!(
+        request["method"],
+        "io.github.thirtytwobits.clapham/catalogue"
+    );
+    reading.abort();
+    let _ = reading.await;
+    // The connection closes rather than keep the abandoned request's state.
+    assert!(remote.lines.next_line().await.unwrap().is_none());
+    assert!(connection.operations().await.is_err());
+}
+
 /// A connection that admits one lifetime notification.
 fn sparing() -> McpConfig {
     let mut config = McpConfig::new("remote", "scope");

@@ -23,7 +23,9 @@ impl McpConnection {
     /// records extension, each acknowledged after the sink accepts it.
     ///
     /// No deadline applies: the caller bounds the call, and dropping the future cancels it.
-    /// A tool-reported error, including a remote refusal, is an outcome with `is_error`.
+    /// A tool-reported error, including a remote refusal, is an outcome with `is_error`. A
+    /// Clapham server's structured refusal before dispatch, such as for missing OAuth scopes,
+    /// is returned unchanged.
     pub async fn call_tool(
         &self,
         name: &str,
@@ -33,11 +35,14 @@ impl McpConnection {
     ) -> Result<Outcome, Refusal> {
         self.check()
             .map_err(|error| error.refusal(Evidence::NotDispatched))?;
-        self.invoke(name, arguments, meta, &records, None, || self.check())
+        self.invoke(name, arguments, meta, &records, None, true, || self.check())
             .await
     }
 
-    /// Call `name` once admitted. `check` runs again after queueing, before dispatch.
+    /// Call `name` once admitted. `check` runs again after queueing, before dispatch. With
+    /// `server_refusals`, a server's structured refusal before dispatch is returned unchanged;
+    /// otherwise its bounded diagnostic is.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn invoke(
         &self,
         name: &str,
@@ -45,6 +50,7 @@ impl McpConnection {
         meta: JsonObject,
         records: &RecordSink,
         deadline: Option<Instant>,
+        server_refusals: bool,
         check: impl Fn() -> Result<(), McpError>,
     ) -> Result<Outcome, Refusal> {
         let refused = |error: McpError| error.refusal(Evidence::NotDispatched);
@@ -120,20 +126,25 @@ impl McpConnection {
         };
         let response = match response {
             Err(error) => {
-                let outcome = if matches!(
+                if server_refusals && let Some(refusal) = McpError::server_refusal(&error) {
+                    return Err(refusal);
+                }
+                let completed = matches!(
                     error,
                     ServiceError::McpError(_) | ServiceError::UnexpectedResponse
-                ) {
-                    Evidence::Completed
-                } else {
-                    Evidence::Uncertain
-                };
+                );
                 let error = self
                     .0
                     .state
                     .check()
                     .err()
                     .unwrap_or_else(|| McpError::from_service(error));
+                // The server authorises a request before reading it.
+                let outcome = match error {
+                    McpError::Unauthenticated | McpError::Forbidden => Evidence::NotDispatched,
+                    _ if completed => Evidence::Completed,
+                    _ => Evidence::Uncertain,
+                };
                 return Err(error.refusal(outcome));
             }
             Ok(response) => response,

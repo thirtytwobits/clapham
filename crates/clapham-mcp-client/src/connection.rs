@@ -116,6 +116,9 @@ pub enum McpError {
     /// The server did not accept the connection's credential.
     #[error("MCP credential was not accepted")]
     Unauthenticated,
+    /// The server refused the request before dispatch, such as for missing OAuth scopes.
+    #[error("MCP server refused the request")]
+    Forbidden,
     /// The remote requested an unadvertised interaction or continuation.
     #[error("MCP interaction requires an unsupported host capability")]
     UnsupportedInteraction,
@@ -138,6 +141,7 @@ impl McpError {
             Self::Selection => ("mcp_selection", Usage),
             Self::Busy => ("mcp_busy", Unavailable),
             Self::Unauthenticated => ("mcp_unauthenticated", Refused),
+            Self::Forbidden => ("mcp_forbidden", Refused),
             Self::UnsupportedInteraction => ("mcp_unsupported_interaction", Internal),
         };
         let mut refusal =
@@ -153,8 +157,31 @@ impl McpError {
             ServiceError::McpError(e) => Self::Invocation(e.code.0),
             ServiceError::UnexpectedResponse => Self::Protocol,
             ServiceError::Timeout { .. } => Self::Timeout,
+            #[cfg(feature = "http")]
+            ServiceError::TransportSend(error) => error
+                .error
+                .downcast_ref::<crate::http::HttpError>()
+                .and_then(|error| match error {
+                    rmcp::transport::streamable_http_client::StreamableHttpError::Client(fault) => {
+                        Some(fault.error.clone())
+                    }
+                    _ => None,
+                })
+                .unwrap_or(Self::Transport),
             _ => Self::Transport,
         }
+    }
+    /// The structured refusal a Clapham server gave for a failed request, if any.
+    pub(crate) fn server_refusal(error: &ServiceError) -> Option<clapham::Refusal> {
+        #[cfg(feature = "http")]
+        if let ServiceError::TransportSend(error) = error
+            && let Some(rmcp::transport::streamable_http_client::StreamableHttpError::Client(fault)) =
+                error.error.downcast_ref::<crate::http::HttpError>()
+        {
+            return fault.refusal.as_deref().cloned();
+        }
+        let _ = error;
+        None
     }
 }
 

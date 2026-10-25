@@ -79,7 +79,9 @@ allows and one call at a time. `McpConnection::call_tool` has no deadline: the C
 `--timeout` and cancellation bound each call, and a `tools/call` request over Streamable HTTP
 has no request deadline of its own. The CLI obtains tokens through the application's OAuth
 client or credential store and cannot choose identity in arguments. A credential the server
-does not accept refuses the connection with `mcp_unauthenticated`.
+does not accept refuses the connection with `mcp_unauthenticated`. The server's refusal before
+dispatch, such as an `insufficient_scope` challenge, reaches the CLI unchanged; a bound remote
+tool receives the bounded `mcp_forbidden` instead.
 
 ## Remote connections
 

@@ -14,11 +14,13 @@ impl McpConnection {
     /// selection, whether or not the selection exposes `clapham.describe`.
     ///
     /// Pages, catalogue bytes and the operation count are bounded by the connection's
-    /// `Bounds`, and `operation_timeout` covers the whole catalogue.
+    /// `Bounds`, and `operation_timeout` covers the whole catalogue. An abandoned or expired
+    /// read closes the connection, so its request state cannot outlive it.
     pub async fn operations(&self) -> Result<Vec<Operation>, McpError> {
         self.check()?;
         let deadline = Instant::now() + self.0.config.operation_timeout;
         let _ticket = self.0.admitted.try_acquire().map_err(|_| McpError::Busy)?;
+        let mut cancel_on_drop = None;
         let work = async {
             let _active = self
                 .0
@@ -26,6 +28,8 @@ impl McpConnection {
                 .acquire()
                 .await
                 .map_err(|_| McpError::Transport)?;
+            // Raw catalogue requests have no cancellation of their own.
+            cancel_on_drop = Some(self.0.state.stop.clone().drop_guard());
             let limits = &self.0.config.bounds;
             let mut operations = Vec::new();
             let mut cursor: Option<String> = None;
@@ -75,8 +79,13 @@ impl McpConnection {
             }
             Err(McpError::Limit)
         };
-        timeout_at(deadline, work)
-            .await
-            .unwrap_or(Err(McpError::Timeout))
+        let result = timeout_at(deadline, work).await;
+        if let Some(guard) = cancel_on_drop {
+            guard.disarm();
+        }
+        result.unwrap_or_else(|_| {
+            self.0.state.fail(McpError::Timeout);
+            Err(McpError::Timeout)
+        })
     }
 }

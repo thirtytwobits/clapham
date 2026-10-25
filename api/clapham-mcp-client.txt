@@ -2,6 +2,7 @@ pub mod clapham_mcp_client
 pub enum clapham_mcp_client::McpError
 pub clapham_mcp_client::McpError::Busy
 pub clapham_mcp_client::McpError::Configuration
+pub clapham_mcp_client::McpError::Forbidden
 pub clapham_mcp_client::McpError::Invocation(i32)
 pub clapham_mcp_client::McpError::Limit
 pub clapham_mcp_client::McpError::Protocol
