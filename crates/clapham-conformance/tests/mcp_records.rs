@@ -36,6 +36,9 @@ struct Export {
     count: u64,
     #[serde(default)]
     pad: usize,
+    /// Replace a record refused as too large with an unpadded one.
+    #[serde(default)]
+    shrink: bool,
 }
 
 /// Fires when the handler's future is dropped, including by cancellation.
@@ -80,9 +83,13 @@ fn set(bounds: Bounds) -> (ComposedSet, Script) {
                 let _guard = guard;
                 entered.fetch_add(1, Ordering::SeqCst);
                 for sequence in 1..=input.count {
-                    call.records
-                        .send(json!({"item":sequence,"pad":"x".repeat(input.pad)}))
-                        .await?;
+                    let padded = json!({"item":sequence,"pad":"x".repeat(input.pad)});
+                    match call.records.send(padded).await {
+                        Err(refusal) if input.shrink && refusal.code == "result_too_large" => {
+                            call.records.send(json!({"item":sequence,"pad":""})).await?
+                        }
+                        sent => sent?,
+                    }
                     returned.fetch_add(1, Ordering::SeqCst);
                 }
                 Ok(input.count)
@@ -334,6 +341,28 @@ async fn an_oversized_record_refuses_the_call_with_uncertain_evidence() {
     let refusal = &result["result"]["structuredContent"];
     assert_eq!(refusal["code"], "result_too_large", "{result}");
     assert_eq!(refusal["evidence"], "uncertain");
+    wire.close().await;
+}
+
+#[tokio::test]
+async fn a_record_sent_after_an_oversized_one_keeps_the_sequence() {
+    let bytes = 64 * 1024;
+    let (set, _script) = set(Bounds {
+        message_bytes: bytes,
+        schema_bytes: bytes,
+        ..Bounds::default()
+    });
+    let mut wire = Wire::new(Server::new(set, verified("launcher")).unwrap());
+    let mut call = export(1, Some("call-1"), declaring());
+    call["arguments"]["pad"] = json!(bytes);
+    call["arguments"]["shrink"] = json!(true);
+    wire.send(Some(1), "tools/call", call).await;
+    // The refused record was never sent, so the replacement is the first.
+    let record = wire.record().await;
+    assert_record(&record, "call-1", 1);
+    assert_eq!(record["params"]["record"]["pad"], "");
+    assert_eq!(wire.acknowledge(2, "call-1", 1).await["result"], json!({}));
+    assert_eq!(wire.reply(1).await["result"]["structuredContent"], 1);
     wire.close().await;
 }
 

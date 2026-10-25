@@ -345,6 +345,7 @@ name = "clapham-mcp-client"
 version = "0.2.0"
 dependencies = [
  "axum",
+ "bytes",
  "clapham",
  "futures-util",
  "http",

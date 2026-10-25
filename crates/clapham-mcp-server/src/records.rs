@@ -90,12 +90,18 @@ impl Deliveries {
         })
     }
 
-    fn send(&self, token: &str, waiting: oneshot::Sender<()>) -> u64 {
+    /// The sequence the call's next record will carry.
+    fn next(&self, token: &str) -> u64 {
+        self.lock()[token].sent + 1
+    }
+
+    /// Record that `sequence`, the call's next record, is sent and awaits `waiting`.
+    fn send(&self, token: &str, sequence: u64, waiting: oneshot::Sender<()>) {
         let mut deliveries = self.lock();
         let delivery = deliveries.get_mut(token).expect("registered token");
-        delivery.sent += 1;
+        debug_assert_eq!(sequence, delivery.sent + 1);
+        delivery.sent = sequence;
         delivery.waiting = Some(waiting);
-        delivery.sent
     }
 
     /// Accept the acknowledgement of the record last sent, or repeat that of the record
@@ -153,8 +159,8 @@ pub(crate) fn sink(
         );
         async move {
             let _serial = serial.lock().await;
-            let (accepted, received) = oneshot::channel();
-            let sequence = deliveries.send(&token, accepted);
+            // A refused record is never sent, so it takes no sequence.
+            let sequence = deliveries.next(&token);
             let notification = ServerNotification::CustomNotification(CustomNotification::new(
                 RECORD_NOTIFICATION,
                 Some(json!({"token":token,"sequence":sequence,"record":record})),
@@ -167,6 +173,8 @@ pub(crate) fn sink(
             {
                 return Err(record_too_large());
             }
+            let (accepted, received) = oneshot::channel();
+            deliveries.send(&token, sequence, accepted);
             peer.send_notification(notification)
                 .await
                 .map_err(|_| delivery_failed())?;

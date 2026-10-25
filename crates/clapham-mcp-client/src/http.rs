@@ -124,7 +124,16 @@ impl BoundedHttp {
         // growing it while records stream. Notifications draw on the connection's budgets.
         let allowance = Arc::new(AtomicUsize::new(self.limit + EVENT_FRAMING));
         let admitted = allowance.clone();
-        let bytes = response.bytes_stream().scan(0usize, move |count, chunk| {
+        // The parser admits each event before the next event's bytes are counted, however
+        // the transport chunks them.
+        let mut events = EventBoundaries::default();
+        let pieces = response.bytes_stream().flat_map(move |chunk| {
+            futures_util::stream::iter(match chunk {
+                Ok(chunk) => events.split(chunk).into_iter().map(Ok).collect(),
+                Err(error) => vec![Err(error)],
+            })
+        });
+        let bytes = pieces.scan(0usize, move |count, chunk| {
             let result = chunk.map_err(|_| McpError::Transport).and_then(|chunk| {
                 *count = count.saturating_add(chunk.len());
                 if *count > admitted.load(Ordering::SeqCst) {
@@ -159,6 +168,35 @@ impl BoundedHttp {
                 Ok(event)
             })
             .boxed()
+    }
+}
+
+/// Splits an SSE byte stream after each blank line, the end of an event.
+#[derive(Default)]
+struct EventBoundaries {
+    line: usize,
+}
+impl EventBoundaries {
+    fn split(&mut self, chunk: bytes::Bytes) -> Vec<bytes::Bytes> {
+        let mut pieces = Vec::new();
+        let mut start = 0;
+        for (index, byte) in chunk.iter().enumerate() {
+            match byte {
+                b'\n' => {
+                    if self.line == 0 {
+                        pieces.push(chunk.slice(start..=index));
+                        start = index + 1;
+                    }
+                    self.line = 0;
+                }
+                b'\r' => {}
+                _ => self.line += 1,
+            }
+        }
+        if start < chunk.len() {
+            pieces.push(chunk.slice(start..));
+        }
+        pieces
     }
 }
 impl StreamableHttpClient for BoundedHttp {
@@ -469,6 +507,34 @@ mod tests {
         assert!(stream.next().await.unwrap().is_err());
         assert_eq!(backend.state.check(), Err(McpError::Limit));
         task.abort();
+    }
+
+    #[tokio::test]
+    async fn notifications_in_one_chunk_are_each_admitted_before_the_next() {
+        let event = |message: serde_json::Value| format!("data: {message}\n\n");
+        let notification = |sequence: u64| {
+            event(
+                serde_json::json!({"jsonrpc":"2.0","method":"example.test/record",
+                "params":{"sequence":sequence,"pad":"x".repeat(5000)}}),
+            )
+        };
+        // Each event fits the bound; together they exceed it before any is parsed.
+        let body = notification(1)
+            + &notification(2)
+            + &event(serde_json::json!({"jsonrpc":"2.0","id":1,"result":{}}));
+        let response = http::Response::builder()
+            .header("content-type", "text/event-stream")
+            .body(body)
+            .unwrap();
+        let mut backend = backend();
+        backend.limit = 8192;
+        let events: Vec<_> = backend
+            .stream(reqwest::Response::from(response))
+            .collect()
+            .await;
+        assert_eq!(events.len(), 3);
+        assert!(events.iter().all(Result::is_ok));
+        assert_eq!(backend.state.check(), Ok(()));
     }
 
     #[tokio::test]
