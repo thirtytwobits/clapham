@@ -254,13 +254,7 @@ impl HttpServer {
     }
 
     fn transport_config(&self) -> StreamableHttpServerConfig {
-        StreamableHttpServerConfig::default()
-            .with_legacy_session_mode(false)
-            .with_json_response(true)
-            .with_sse_keep_alive(None)
-            .with_sse_retry(None)
-            .with_max_request_body_bytes(self.set.bounds().message_bytes)
-            .with_stateless_protocol_metadata_required(true)
+        stateless_config(self.set.bounds().message_bytes)
             .with_allowed_hosts(self.allowed_hosts.clone())
             .with_allowed_origins(self.allowed_origins.clone())
             .enforce_origin_validation()
@@ -416,6 +410,18 @@ where
         let service = self.clone();
         Box::pin(async move { Ok(service.handle(request).await) })
     }
+}
+
+/// rmcp's stateless Streamable HTTP transport as every `HttpServer` request uses it,
+/// before Host and Origin policy.
+pub(crate) fn stateless_config(message_bytes: usize) -> StreamableHttpServerConfig {
+    StreamableHttpServerConfig::default()
+        .with_legacy_session_mode(false)
+        .with_json_response(true)
+        .with_sse_keep_alive(None)
+        .with_sse_retry(None)
+        .with_max_request_body_bytes(message_bytes)
+        .with_stateless_protocol_metadata_required(true)
 }
 
 fn refusal_response(

@@ -26,6 +26,7 @@ sse-stream = { version = "0.2.4", optional = true }
 [dev-dependencies]
 tokio = { version = "1", features = ["io-util", "net", "test-util"] }
 axum = "0.8.6"
+rmcp = { version = "=3.6.0", default-features = false, features = ["client", "transport-async-rw"] }
 
 [features]
 default = ["stdio", "http"]

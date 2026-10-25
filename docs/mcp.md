@@ -59,3 +59,36 @@ See [the client library](../crates/clapham-mcp-client/README.md),
 Register resource URI templates on `Server::resources` or `HttpServer::resources` against
 query operations. The adapter validates templates and derives native rmcp annotations from
 operation behaviour. Resource registration belongs to the MCP adapter.
+
+## Protocol facts
+
+Clapham's MCP design relies on these facts. The
+[server fact tests](../crates/clapham-mcp-server/src/rmcp_facts.rs) and
+[client fact tests](../crates/clapham-mcp-client/tests/rmcp_facts.rs) pin each rmcp row.
+rmcp source paths are relative to the rmcp 3.6.0 crate root.
+
+### MCP 2026-07-28
+
+| Fact | Source |
+|---|---|
+| A server may answer any request with an SSE stream scoped to that request, carrying notifications before the final response. The notifications must relate to the originating request; `notifications/progress` and `notifications/message` are examples, not a closed set. | [Streamable HTTP: Receiving Messages](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#receiving-messages) |
+| Every transport carries the same patterns: a request is answered by a response, optionally preceded by notifications scoped to it. stdio carries them as newline-delimited JSON-RPC on one shared channel. | [Message patterns](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns), [stdio](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/stdio) |
+| Messages on one request's stream arrive in the order sent, because the stream is a single SSE response or a single stdio pipe. | follows from the two rows above |
+| Closing a request's SSE stream cancels that request; on stdio the client sends `notifications/cancelled`. | [Streamable HTTP: Cancellation](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#cancellation), [stdio: Cancellation](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/stdio#cancellation) |
+| Servers do not initiate requests. Server-to-client interactions are input requests inside an `InputRequiredResult` (MRTR). | [Message patterns](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns), [SEP-2322](https://modelcontextprotocol.io/seps/2322-MRTR.md) |
+| The core protocol defines no client-to-server notifications over Streamable HTTP. A server that accepts a notification POST answers `202 Accepted` with no body. | [Streamable HTTP: Sending Messages](https://modelcontextprotocol.io/specification/2026-07-28/basic/transports/streamable-http#sending-messages) |
+| Extensions are identified as `{vendor-prefix}/{extension-name}` and declared under an `extensions` map in client and server capabilities. A party whose peer lacks an extension reverts to core behaviour or rejects the request. SEP-2133 is Final. | [SEP-2133](https://modelcontextprotocol.io/seps/2133-extensions.md), [`ClientCapabilities.extensions`](https://modelcontextprotocol.io/specification/2026-07-28/schema#clientcapabilities-extensions), [`ServerCapabilities.extensions`](https://modelcontextprotocol.io/specification/2026-07-28/schema#servercapabilities-extensions) |
+| A client declares its capabilities in each request's `_meta` under `io.modelcontextprotocol/clientCapabilities`; servers must not infer them from earlier requests. A server declares its capabilities in `DiscoverResult`. | [`RequestMetaObject`](https://modelcontextprotocol.io/specification/2026-07-28/schema#requestmetaobject-iomodelcontextprotocolclientcapabilities), [`DiscoverResult`](https://modelcontextprotocol.io/specification/2026-07-28/schema#discoverresult-capabilities) |
+| A progress value must increase with each notification; progress carries a number, an optional total and an optional human-readable message, and both sides should rate-limit it. Progress notifications are not a record channel. | [Progress](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/progress.md) |
+| SEP-2998, partial tool results, was closed on 22 September 2026 without acceptance; new SEPs require a Working Group. | [modelcontextprotocol#2998](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2998) |
+
+### rmcp 3.6.0
+
+| Fact | Source |
+|---|---|
+| A server handler sends a request-scoped notification, including a `CustomNotification { method, params }`, through `RequestContext::peer`. `Peer::send_notification` returns once the transport has written the message, so a handler that awaits each send writes its notifications in order before its response. | `src/service.rs` (`RequestContext`, `Peer::send_notification`, the serve loop's `PeerSinkMessage::Notification` arm), `src/model.rs` (`CustomNotification`) |
+| The stateless Streamable HTTP server prefers a JSON reply, and falls back to SSE when the handler emits a notification before its response. | `src/transport/streamable_http_server/tower.rs` (`StreamableHttpServerConfig::json_response`, `serve_negotiated_request_directly`) |
+| A client receives custom notifications through `ClientHandler::on_custom_notification`. `NotificationContext` carries no originating request id, so a request-scoped notification must carry its own correlation key. | `src/handler/client.rs`, `src/service.rs` (`NotificationContext`) |
+| The serve loop runs each incoming notification's handler in its own task, so handlers are not ordered with one another or with the response. | `src/service.rs` (the serve loop's `JsonRpcMessage::Notification` arm, `spawn_service_task`) |
+| The stateless server answers a client notification `202 Accepted` and drops it without calling the handler. | `src/transport/streamable_http_server/tower.rs` (`ClientJsonRpcMessage::Notification` in the stateless path of `handle_post`) |
+| Custom requests reach `ServerHandler::on_custom_request`. The serve loop runs each request's handler in its own task, so a custom request is answered while a `tools/call` is held, including on the same stdio connection. | `src/handler/server.rs`, `src/service.rs` (the serve loop's `JsonRpcMessage::Request` arm) |
