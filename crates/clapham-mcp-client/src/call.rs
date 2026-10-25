@@ -8,6 +8,8 @@ use tokio::time::{Instant, timeout_at};
 
 /// Tool-result metadata from a Clapham server naming the outcome's absent fields.
 const ABSENT_META_KEY: &str = "io.github.thirtytwobits.clapham/absent";
+/// Tool-result metadata from a Clapham server marking a refusal.
+const REFUSAL_META_KEY: &str = "io.github.thirtytwobits.clapham/refusal";
 
 /// Run `future`, or stop at `deadline` when there is one.
 async fn within<F: Future>(deadline: Option<Instant>, future: F) -> Option<F::Output> {
@@ -23,9 +25,9 @@ impl McpConnection {
     /// records extension, each acknowledged after the sink accepts it.
     ///
     /// No deadline applies: the caller bounds the call, and dropping the future cancels it.
-    /// A tool-reported error, including a remote refusal, is an outcome with `is_error`. A
-    /// Clapham server's structured HTTP refusal, such as for missing OAuth scopes or a full
-    /// queue, is returned unchanged.
+    /// A tool-reported error is an outcome with `is_error`. A Clapham server's refusal, as a
+    /// marked tool result or a structured HTTP refusal such as for missing OAuth scopes or a
+    /// full queue, is returned unchanged.
     pub async fn call_tool(
         &self,
         name: &str,
@@ -153,11 +155,27 @@ impl McpConnection {
         };
         match response {
             CallToolResponse::Complete(result) => {
+                if server_refusals && let Some(refusal) = marked_refusal(&result) {
+                    return Err(refusal);
+                }
                 convert(result).map_err(|e| e.refusal(Evidence::Completed))
             }
             _ => Err(McpError::UnsupportedInteraction.refusal(Evidence::Uncertain)),
         }
     }
+}
+
+/// The refusal a Clapham server marked as such, as distinct from an error outcome.
+fn marked_refusal(result: &CallToolResult) -> Option<Refusal> {
+    let marked = result
+        .meta
+        .as_ref()
+        .and_then(|meta| meta.get(REFUSAL_META_KEY))
+        == Some(&serde_json::Value::Bool(true));
+    if !marked || result.is_error != Some(true) {
+        return None;
+    }
+    serde_json::from_value(result.structured_content.clone()?).ok()
 }
 
 fn convert(result: CallToolResult) -> Result<Outcome, McpError> {

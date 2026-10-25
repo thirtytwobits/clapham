@@ -155,7 +155,8 @@ in order before one terminal result. MCP carries records under the records exten
 notification per record on the call's response stream, acknowledged by a request bound to the
 grant that began the call. Producers wait for the client sink to accept and acknowledge each
 record. Closing the response stream cancels work. Tool-result metadata names absent outcome
-fields, so MCP preserves absent content and an absent result.
+fields and marks refusals, so MCP preserves absent content, an absent result and an error
+outcome whose result has a refusal's shape.
 Acknowledgements are admitted outside the request limits; repeating the last is accepted, and
 the client cancels on one it cannot confirm. The record sink refuses a notification over
 the message bound with `result_too_large` and an unacknowledged record with
@@ -175,7 +176,8 @@ Evidence: [call type tests](../crates/clapham/tests/call_types.rs),
 [CLI over MCP](../crates/clapham-conformance/tests/cli_mcp.rs),
 `the_cli_receives_the_outcome_the_operation_returned_over_http_and_stdio`;
 [result mapping](../crates/clapham-mcp-server/src/mapping.rs),
-`outcomes_name_their_absent_fields_in_result_metadata`;
+`outcomes_name_their_absent_fields_in_result_metadata` and
+`refusal_results_are_marked_apart_from_error_outcomes`;
 [MCP records tests](../crates/clapham-conformance/tests/mcp_records.rs),
 `records_arrive_in_order_each_acknowledged_before_the_result_over_stdio`,
 `records_stream_before_the_result_while_the_call_holds_every_permit_over_http`,
@@ -262,7 +264,7 @@ acknowledgement are outside the connection's lifetime notification and byte budg
 ahead of its acknowledgement is counted. A direct call has no deadline: its caller bounds it.
 A server's HTTP refusal before dispatch is `mcp_forbidden` for missing scopes or `mcp_busy`
 for a full queue, with not-dispatched evidence, for a binding; its structured refusal reaches
-a direct call unchanged. An abandoned
+a direct call unchanged, as does a tool result the server marks as a refusal. An abandoned
 catalogue read closes its connection.
 
 Evidence: [client tests](../crates/clapham-mcp-client/tests/contracts.rs),

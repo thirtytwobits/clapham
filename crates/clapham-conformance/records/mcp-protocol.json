@@ -34,6 +34,9 @@
     },
     "tokenMetaKey": "io.github.thirtytwobits.clapham/records"
   },
+  "refusalMetaKeys": [
+    "io.github.thirtytwobits.clapham/refusal"
+  ],
   "requestMetaKeys": [
     "io.github.thirtytwobits.clapham/preview",
     "io.github.thirtytwobits.clapham/records",

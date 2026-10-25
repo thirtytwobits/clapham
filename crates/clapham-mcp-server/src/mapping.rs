@@ -50,9 +50,20 @@ pub(crate) fn tool(op: &Operation, schema_bytes: usize) -> Result<Tool, ErrorDat
     Ok(tool)
 }
 
+/// Tool-result metadata marking a refusal, as distinct from a tool-reported error outcome
+/// whose result may have any shape.
+pub(crate) const REFUSAL_META_KEY: &str = "io.github.thirtytwobits.clapham/refusal";
+
 pub(crate) fn refusal(refusal: Refusal) -> CallToolResult {
     let mut result = CallToolResult::error(vec![ContentBlock::text(refusal.message.clone())]);
     result.structured_content = Some(serde_json::to_value(refusal).expect("refusals serialize"));
+    result.meta = Some(
+        json!({REFUSAL_META_KEY: true})
+            .as_object()
+            .expect("metadata object")
+            .clone()
+            .into(),
+    );
     result
 }
 
@@ -131,6 +142,22 @@ pub(crate) fn too_large() -> Refusal {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn refusal_results_are_marked_apart_from_error_outcomes() {
+        let marked =
+            |result: CallToolResult| serde_json::to_value(result).unwrap()["_meta"].clone();
+        let refused = Refusal::new("upstream_refused", Category::Refused, "Refused upstream.");
+        assert_eq!(marked(refusal(refused.clone()))[REFUSAL_META_KEY], true);
+        // An error outcome whose result has a refusal's shape stays an outcome.
+        let mut reported = Outcome::new(serde_json::to_value(refused).unwrap());
+        reported.is_error = true;
+        assert!(
+            marked(outcome(reported).unwrap())
+                .get(REFUSAL_META_KEY)
+                .is_none()
+        );
+    }
 
     #[test]
     fn outcomes_name_their_absent_fields_in_result_metadata() {

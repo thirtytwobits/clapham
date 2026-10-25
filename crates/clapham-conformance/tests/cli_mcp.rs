@@ -56,6 +56,19 @@ fn set_with(bounds: Bounds) -> (ComposedSet, Hold) {
     absent.result = None;
     let mut empty = Outcome::new(json!(1));
     empty.content = Some(Vec::new());
+    // A tool-reported error whose result has a refusal's shape.
+    let mut reported = Outcome::new(
+        serde_json::to_value(clapham::Refusal::new(
+            "upstream_refused",
+            Category::Refused,
+            "The upstream list refused the item.",
+        ))
+        .unwrap(),
+    );
+    reported.is_error = true;
+    reported.content = Some(vec![
+        json!({"type":"text","text":"The upstream list refused the item."}),
+    ]);
     let provider = Contribution::new("items")
         .operation(descriptor("items.null", false), |_: Call| async {
             Ok(Outcome::new(Value::Null))
@@ -67,6 +80,10 @@ fn set_with(bounds: Bounds) -> (ComposedSet, Hold) {
         .operation(descriptor("items.empty", false), move |_: Call| {
             let empty = empty.clone();
             async move { Ok(empty) }
+        })
+        .operation(descriptor("items.reported", false), move |_: Call| {
+            let reported = reported.clone();
+            async move { Ok(reported) }
         })
         .operation(descriptor("items.preview", true), |call: Call| async move {
             Ok(Outcome::new(json!(call.preview)))
@@ -89,7 +106,9 @@ fn set_with(bounds: Bounds) -> (ComposedSet, Hold) {
             }
         });
     let mut configuration = Configuration::new(ISSUER, AUDIENCE).provider("items", provider);
-    for name in ["null", "absent", "empty", "preview", "admin", "hold"] {
+    for name in [
+        "null", "absent", "empty", "reported", "preview", "admin", "hold",
+    ] {
         configuration = configuration.expose(Exposure::new("items", format!("items.{name}")));
     }
     let hold = Hold {
@@ -153,7 +172,12 @@ async fn call(
 }
 
 async fn keeps_outcomes(backend: McpBackend, set: &ComposedSet) {
-    for name in ["items.null", "items.absent", "items.empty"] {
+    for name in [
+        "items.null",
+        "items.absent",
+        "items.empty",
+        "items.reported",
+    ] {
         let expected = set
             .call(
                 &set.all(),

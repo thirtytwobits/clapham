@@ -16,7 +16,8 @@ handling use rmcp. Bounds limit input/output, catalogue sizes, active requests a
 
 Tool definitions and annotations derive from operations. Scope requirements and host policy
 control visibility. Calls additionally validate typed input and run resource policies. Domain
-refusals retain their codes in structured tool errors. Native rmcp content blocks stay inside
+refusals retain their codes in structured tool errors, marked under
+`io.github.thirtytwobits.clapham/refusal` in result metadata. Native rmcp content blocks stay inside
 the adapters; the core carries opaque content. Result metadata carries explicit effect evidence
 under `io.github.thirtytwobits.clapham/evidence`, and under `io.github.thirtytwobits.clapham/absent`
 the outcome fields that are absent: `content`, which MCP's required content list cannot omit, and
@@ -71,7 +72,8 @@ server's selection, bounded as `tools/list` is and read through `clapham.describ
 not the selection exposes it. `McpBackend` calls each operation as `tools/call`, with its input as arguments and
 `--dry-run` as `io.github.thirtytwobits.clapham/preview` in request `_meta`. Records arrive under
 the records extension and print as NDJSON, each acknowledged after the output sink accepts it.
-A tool result that carries a structured refusal is that refusal. Cancelling closes the call's
+A tool result marked as a refusal is that refusal; an error outcome stays an outcome whatever
+its result's shape. Cancelling closes the call's
 response stream, or sends `notifications/cancelled` over stdio.
 
 `McpConfig::operator` sizes the connection for an operator: the largest message `Bounds`

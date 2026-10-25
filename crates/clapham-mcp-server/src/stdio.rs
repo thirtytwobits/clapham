@@ -97,12 +97,13 @@ where
             && result.is_error != Some(true)
         {
             // The refusal replaces the outcome, so its absent fields no longer apply.
-            let meta = result.meta.take().map(|mut meta| {
-                meta.remove(mapping::ABSENT_META_KEY);
-                meta
-            });
+            let meta = result.meta.take();
             *result = mapping::refusal(mapping::too_large());
-            result.meta = meta;
+            if let Some(mut meta) = meta {
+                meta.remove(mapping::ABSENT_META_KEY);
+                meta.insert(mapping::REFUSAL_META_KEY.into(), serde_json::json!(true));
+                result.meta = Some(meta);
+            }
         }
         let fits = mapping::size(&item, limit).is_some();
         let sent = self.inner.send(item);
@@ -237,7 +238,9 @@ mod tests {
             response["result"]["structuredContent"]["code"],
             "result_too_large"
         );
-        assert_eq!(response["result"]["_meta"], meta);
+        let mut marked = meta.clone();
+        marked[mapping::REFUSAL_META_KEY] = json!(true);
+        assert_eq!(response["result"]["_meta"], marked);
         transport.close().await.unwrap();
     }
 }

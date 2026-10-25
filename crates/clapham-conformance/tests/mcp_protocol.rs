@@ -100,6 +100,14 @@ async fn mcp_protocol_record_is_current() {
     )
     .await;
     let result_meta_keys: Vec<&String> = described["_meta"].as_object().unwrap().keys().collect();
+    let refused = support::result(
+        &server,
+        "tools/call",
+        json!({"name":"lists.unknown","arguments":{}}),
+        "Bearer human",
+    )
+    .await;
+    let refusal_meta_keys: Vec<&String> = refused["_meta"].as_object().unwrap().keys().collect();
     let catalogue = support::result(&server, CATALOGUE_EXTENSION, json!({}), "Bearer human").await;
     let catalogue_keys: Vec<&String> = catalogue.as_object().unwrap().keys().collect();
     let record = json!({
@@ -111,6 +119,7 @@ async fn mcp_protocol_record_is_current() {
         "resourceTemplates":resources["resourceTemplates"],
         "requestMetaKeys":REQUEST_META_KEYS,
         "resultMetaKeys":result_meta_keys,
+        "refusalMetaKeys":refusal_meta_keys,
     });
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("records/mcp-protocol.json");
     let mut record = record;

@@ -82,8 +82,8 @@ const PREVIEW_META_KEY: &str = "io.github.thirtytwobits.clapham/preview";
 /// `clapham.describe` whether or not the daemon's selection exposes it. A call is
 /// `tools/call`, with the operation's input as its arguments and preview in request `_meta`.
 /// Records arrive under the records extension and are acknowledged after the sink accepts
-/// each one. A refusal is the tool result's structured refusal. Cancelling a call closes its
-/// response stream.
+/// each one. A refusal is the daemon's refusal, unchanged; an error outcome stays an outcome.
+/// Cancelling a call closes its response stream.
 #[derive(Clone)]
 pub struct McpBackend {
     connection: McpConnection,
@@ -131,19 +131,6 @@ fn operator() -> McpConfig {
     McpConfig::operator("daemon", "operator")
 }
 
-/// A tool result that carries a refusal becomes that refusal.
-fn refused(outcome: Outcome) -> Result<Outcome, Refusal> {
-    if outcome.is_error
-        && let Some(refusal) = outcome
-            .result
-            .clone()
-            .and_then(|value| serde_json::from_value::<Refusal>(value).ok())
-    {
-        return Err(refusal);
-    }
-    Ok(outcome)
-}
-
 impl Backend for McpBackend {
     fn catalogue(&self) -> BackendFuture<'_, Vec<Operation>> {
         Box::pin(async move {
@@ -186,7 +173,7 @@ impl Backend for McpBackend {
                     "the request was cancelled",
                 )
                 .with_evidence(Evidence::Uncertain)),
-                outcome = call => outcome.and_then(refused),
+                outcome = call => outcome,
             }
         })
     }
