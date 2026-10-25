@@ -4,7 +4,8 @@ MCP adapters over the transport-independent operation runner. Requires Rust 1.88
 rmcp 3.6.0. The `stdio` and `http` features can be selected independently.
 
 `Server::new` binds verified OAuth authority supplied by the trusted stdio host.
-`HttpServer::new` accepts an asynchronous `Authenticator`; each request is authenticated
+`HttpServer::new` requires the set's OAuth resource binding and accepts an asynchronous
+`Authenticator`; each request is authenticated
 before its body or an operation is dispatched. `OAuthIntrospector` implements RFC 7662 token
 verification with the OAuth library. It checks active status, issuer, audience, subject,
 expiry and not-before. Verified extension claims remain available to resource policy.

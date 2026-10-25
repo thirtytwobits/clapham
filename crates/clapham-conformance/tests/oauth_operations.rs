@@ -78,6 +78,7 @@ async fn verified_grants_scopes_resource_policies_and_cli_records_share_one_runn
     .unwrap()
     .require_scope("lists:read")
     .policy("lists.can_read")
+    .refusal("list_access_denied", clapham::Category::Refused)
     .streams(true)
     .refusal("record_delivery_failed", clapham::Category::Unavailable);
     let delete = TypedOperation::<ListInput, u64>::new(
@@ -291,6 +292,7 @@ async fn native_http_records_wait_for_client_acknowledgement_and_disconnect_canc
         Effect::Query,
     )
     .unwrap()
+    .require_scope("lists:read")
     .streams(true)
     .refusal("record_delivery_failed", clapham::Category::Unavailable);
     let count = TypedOperation::<ListInput, u64>::new("lists.count", "Count lists.", Effect::Query)
@@ -321,22 +323,23 @@ async fn native_http_records_wait_for_client_acknowledgement_and_disconnect_canc
         .compose(bounds)
         .unwrap();
     let server = HttpServer::new(set, |credential: &clapham_mcp_server::Credential| {
-        matches!(
-            credential.authorization(),
-            Some("Bearer controlled" | "Bearer other-grant")
-        )
-        .then(|| {
+        let (subject, scopes, lists): (&str, &[&str], &[&str]) = match credential.authorization()? {
+            "Bearer controlled" => ("alice", &["lists:read"], &["tasks"]),
+            "Bearer other-grant" => ("bob", &["lists:read"], &["tasks"]),
+            "Bearer reduced-scopes" => ("alice", &[], &["tasks"]),
+            "Bearer reduced-resources" => ("alice", &["lists:read"], &["other"]),
+            _ => return None,
+        };
+        Some(
             OAuthContext::from_verified(
                 "https://identity.example.com",
                 "https://lists.example.com",
-                if credential.authorization() == Some("Bearer controlled") {
-                    "alice"
-                } else {
-                    "bob"
-                },
-                std::iter::empty::<String>(),
+                subject,
+                scopes.iter().copied(),
             )
-        })
+            .with_client("same-client")
+            .with_claim("list_ids", json!(lists)),
+        )
     })
     .unwrap();
     let request = |name: &str| {
@@ -370,10 +373,31 @@ async fn native_http_records_wait_for_client_acknowledgement_and_disconnect_canc
         assert!(next.as_mut().poll(&mut cx).is_pending());
         assert_eq!(observed.load(Ordering::SeqCst), 1);
         let ticket = first["ack"].as_str().unwrap();
-        let denied = server
-            .handle_operations(acknowledgement(ticket, "other-grant"))
-            .await;
-        assert_eq!(denied.status(), 404);
+        for token in ["other-grant", "reduced-scopes", "reduced-resources"] {
+            let denied = server
+                .handle_operations(acknowledgement(ticket, token))
+                .await;
+            assert_eq!(denied.status(), 404);
+            assert_eq!(observed.load(Ordering::SeqCst), 1);
+        }
+        struct UnfinishedBody;
+        impl http_body::Body for UnfinishedBody {
+            type Data = bytes::Bytes;
+            type Error = std::convert::Infallible;
+            fn poll_frame(
+                self: std::pin::Pin<&mut Self>,
+                _: &mut std::task::Context<'_>,
+            ) -> std::task::Poll<Option<Result<http_body::Frame<Self::Data>, Self::Error>>>
+            {
+                panic!("ACK bodies must not be polled");
+            }
+        }
+        let request = http::Request::post(format!("/ack/{ticket}"))
+            .header("host", "localhost")
+            .header("authorization", "Bearer controlled")
+            .body(UnfinishedBody)
+            .unwrap();
+        assert_eq!(server.handle_operations(request).await.status(), 400);
         assert_eq!(observed.load(Ordering::SeqCst), 1);
         let accepted = server
             .handle_operations(acknowledgement(ticket, "controlled"))
@@ -532,4 +556,85 @@ async fn server_backed_cli_keeps_selection_and_stops_before_pre_cancelled_or_zer
         .await
         .unwrap();
     assert_eq!(calls.load(Ordering::SeqCst), 1);
+}
+
+#[tokio::test]
+async fn oversized_terminal_outcomes_report_the_size_error_without_rewriting_domain_refusals() {
+    let limit = 8192;
+    let overhead = serde_json::to_vec(&clapham::Outcome::new(json!("")))
+        .unwrap()
+        .len();
+    let payload = "x".repeat(limit - overhead);
+    assert_eq!(
+        serde_json::to_vec(&clapham::Outcome::new(json!(&payload)))
+            .unwrap()
+            .len(),
+        limit
+    );
+    let output = TypedOperation::<ListInput, String>::new(
+        "lists.output",
+        "Return a bounded result.",
+        Effect::Query,
+    )
+    .unwrap();
+    let refusal = TypedOperation::<ListInput, String>::new(
+        "lists.refuse",
+        "Return a large refusal.",
+        Effect::Query,
+    )
+    .unwrap()
+    .refusal("original_code", clapham::Category::Conflict);
+    let provider = Contribution::new("lists")
+        .typed_operation(output.clone(), move |_: Call, _: ListInput| {
+            let payload = payload.clone();
+            async move { Ok(payload) }
+        })
+        .typed_operation(refusal.clone(), move |_: Call, _: ListInput| async move {
+            Err(Refusal::new(
+                "original_code",
+                clapham::Category::Conflict,
+                "x".repeat(limit),
+            ))
+        });
+    let bounds = Bounds {
+        message_bytes: limit,
+        schema_bytes: limit,
+        ..Bounds::default()
+    };
+    let set = Configuration::new("https://identity.example.com", "https://lists.example.com")
+        .provider("lists", provider)
+        .expose(Exposure::typed("lists", &output))
+        .expose(Exposure::typed("lists", &refusal))
+        .compose(bounds.clone())
+        .unwrap();
+    let server = HttpServer::new(set, |credential: &clapham_mcp_server::Credential| {
+        (credential.authorization() == Some("Bearer controlled")).then(|| {
+            OAuthContext::from_verified(
+                "https://identity.example.com",
+                "https://lists.example.com",
+                "alice",
+                std::iter::empty::<String>(),
+            )
+        })
+    })
+    .unwrap();
+    let (endpoint, stop, task) = serve(server.into_router()).await;
+    let backend = HttpBackend::new(endpoint, "controlled", bounds).unwrap();
+    for (name, code) in [
+        ("lists.output", "result_too_large"),
+        ("lists.refuse", "connection_lost"),
+    ] {
+        let error = backend
+            .call(
+                clapham_cli::Invocation::new(name, json!({"id":"tasks"})),
+                Default::default(),
+                Default::default(),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(error.code, code);
+        assert_eq!(error.evidence, clapham::Evidence::Uncertain);
+    }
+    stop.cancel();
+    task.await.unwrap();
 }

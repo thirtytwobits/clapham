@@ -70,3 +70,23 @@ fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthC
         scopes.iter().copied(),
     )
 }
+
+#[allow(dead_code)]
+pub fn compose(
+    contributions: impl IntoIterator<Item = clapham::Contribution>,
+    bounds: clapham::Bounds,
+) -> Result<clapham::ComposedSet, clapham::CompositionError> {
+    compose_with_options(contributions, bounds, clapham::ComposeOptions::default())
+}
+#[allow(dead_code)]
+pub fn compose_with_options(
+    contributions: impl IntoIterator<Item = clapham::Contribution>,
+    bounds: clapham::Bounds,
+    mut options: clapham::ComposeOptions,
+) -> Result<clapham::ComposedSet, clapham::CompositionError> {
+    options.oauth = Some(clapham::OAuthResource {
+        issuer: "https://identity.example.com".into(),
+        audience: "https://lists.example.com".into(),
+    });
+    clapham::compose_with_options(contributions, bounds, options)
+}

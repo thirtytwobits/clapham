@@ -39,9 +39,9 @@
         "tests/call_types.rs",
         "tests/calls.rs",
         "tests/composition.rs",
+        "tests/configuration.rs",
         "tests/contract.rs",
-        "tests/fixtures/revision-v1.json",
-        "tests/redesign.rs"
+        "tests/fixtures/revision-v1.json"
       ]
     },
     "clapham-cli": {

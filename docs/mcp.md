@@ -5,7 +5,7 @@ The core operation model has no rmcp dependency.
 
 ## Server
 
-`Server` binds host-verified OAuth authority to a private stdio connection. `HttpServer`
+`Server` binds host-verified OAuth authority to a private stdio connection. `HttpServer` requires a composed OAuth resource binding and
 authenticates every request using asynchronous middleware. `OAuthIntrospector` delegates
 RFC 7662 requests to the OAuth library and checks active status, issuer, audience, subject,
 expiry and not-before. Introspection extension claims remain available to resource policy.
@@ -29,7 +29,10 @@ The non-MCP HTTP interface uses the same authenticator and runner:
   `{kind:"record"|"outcome"|"refusal",data:...}` frames. Each record also carries a one-use
   `ack` ticket.
 - `POST /ack/{ticket}` acknowledges sink acceptance, with an empty body and the same verified
-  OAuth authority. Successful acknowledgement returns 204.
+  OAuth authority. ACK bodies must be complete and empty. Successful acknowledgement returns 204.
+
+ACK tickets bind the complete verified grant, including scopes and resource restrictions.
+An ACK must retain the authority recorded when the call began.
 
 The CLI acknowledges each record after its sink accepts it. The producer waits for that
 authenticated acknowledgement. Pending tickets and buffering are finite, record order is

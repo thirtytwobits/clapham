@@ -16,7 +16,6 @@ use std::{
 use bytes::Bytes;
 use clapham::{
     Admission, Bounds, Call, ComposeOptions, Contribution, OAuthContext, Operation, Outcome,
-    compose, compose_with_options,
 };
 use clapham_conformance::{ListsGate, ListsHandle};
 use clapham_mcp_server::{Credential, HttpServer};
@@ -30,7 +29,7 @@ use tower_service::Service;
 fn fixture() -> (ListsHandle, HttpServer) {
     let handle = ListsHandle::new();
     handle.create_list("tasks", "Tasks").unwrap();
-    let set = compose_with_options(
+    let set = support::compose_with_options(
         handle.contributions(),
         Bounds::default(),
         ComposeOptions {
@@ -108,7 +107,7 @@ async fn unmapped_credentials_are_refused_before_body_or_gate_or_handler() {
     let handle = ListsHandle::new();
     let gate_calls = Arc::new(AtomicUsize::new(0));
     let observed = gate_calls.clone();
-    let set = compose_with_options(
+    let set = support::compose_with_options(
         handle.contributions(),
         Bounds::default(),
         ComposeOptions {
@@ -224,7 +223,7 @@ fn probe() -> Operation {
 
 #[tokio::test]
 async fn http_request_and_reply_bytes_are_bounded() {
-    let set = compose(
+    let set = support::compose(
         [
             Contribution::new("probe").operation(probe(), |_: Call| async {
                 Ok(Outcome::new(json!("x".repeat(16384))))
@@ -284,7 +283,7 @@ async fn bounded_queue_and_disconnect_cancel_without_timers() {
     let (entered, enter) = oneshot::channel();
     let (dropped, drop_seen) = oneshot::channel();
     let signals = Mutex::new(Some((entered, dropped)));
-    let set = compose(
+    let set = support::compose(
         [
             Contribution::new("probe").operation(probe(), move |_: Call| {
                 let (entered, dropped) = signals.lock().unwrap().take().unwrap();
@@ -340,7 +339,7 @@ async fn concurrent_requests_keep_their_own_authenticated_auths() {
     let signals = Mutex::new(Some((entered, released)));
     let mut descriptor = probe();
     descriptor.name = "probe.identity".parse().unwrap();
-    let set = compose(
+    let set = support::compose(
         [
             Contribution::new("probe").operation(descriptor, move |call: Call| {
                 let signals = if call.auth.has_scope("lists:admin") {
@@ -394,7 +393,7 @@ async fn oversized_declared_refusal_returns_http_failure_without_replacing_its_c
     descriptor
         .refusals
         .insert("original_code".into(), clapham::Category::Conflict);
-    let set = compose(
+    let set = support::compose(
         [
             Contribution::new("probe").operation(descriptor, |_: Call| async {
                 Err(clapham::Refusal::new(
@@ -436,7 +435,7 @@ async fn rejected_host_and_origin_never_reach_authentication_or_the_body() {
     let calls = Arc::new(AtomicUsize::new(0));
     let observed = calls.clone();
     let server = HttpServer::new(
-        compose([], Bounds::default()).unwrap(),
+        support::compose([], Bounds::default()).unwrap(),
         move |credential: &Credential| {
             observed.fetch_add(1, Ordering::SeqCst);
             support::authenticate(credential)
@@ -464,7 +463,7 @@ async fn rejected_host_and_origin_never_reach_authentication_or_the_body() {
 #[tokio::test]
 async fn configured_host_and_origin_reuse_rmcp_authority_matching() {
     let server = HttpServer::new(
-        compose([], Bounds::default()).unwrap(),
+        support::compose([], Bounds::default()).unwrap(),
         support::authenticate,
     )
     .unwrap()
@@ -481,9 +480,9 @@ async fn configured_host_and_origin_reuse_rmcp_authority_matching() {
 }
 
 #[tokio::test]
-async fn authentication_challenge_is_supplied_only_by_the_host() {
+async fn authentication_challenge_advertises_the_resource_and_accepts_host_overrides() {
     let server = HttpServer::new(
-        compose([], Bounds::default()).unwrap(),
+        support::compose([], Bounds::default()).unwrap(),
         support::authenticate,
     )
     .unwrap();
@@ -491,7 +490,10 @@ async fn authentication_challenge_is_supplied_only_by_the_host() {
         .handle(support::request("tools/list", json!({}), "Bearer unknown"))
         .await;
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-    assert_eq!(response.headers()["www-authenticate"], "Bearer");
+    assert_eq!(
+        response.headers()["www-authenticate"],
+        "Bearer resource_metadata=\"https://lists.example.com/.well-known/oauth-protected-resource\""
+    );
     for challenge in [
         "Basic realm=\"lists\"",
         "Bearer resource_metadata=\"https://host.invalid/.well-known/oauth-protected-resource\"",
@@ -513,7 +515,7 @@ async fn empty_authorization_is_distinct_from_missing_authorization() {
     let values = Arc::new(Mutex::new(Vec::new()));
     let seen = values.clone();
     let server = HttpServer::new(
-        compose([], Bounds::default()).unwrap(),
+        support::compose([], Bounds::default()).unwrap(),
         move |credential: &Credential| {
             seen.lock()
                 .unwrap()
@@ -544,7 +546,7 @@ async fn empty_authorization_is_distinct_from_missing_authorization() {
 
 #[tokio::test]
 async fn a_long_request_id_cannot_force_an_oversized_replacement_refusal() {
-    let set = compose(
+    let set = support::compose(
         [
             Contribution::new("probe").operation(probe(), |_: Call| async {
                 Ok(Outcome::new(json!("x".repeat(8192))))
@@ -578,4 +580,53 @@ async fn a_long_request_id_cannot_force_an_oversized_replacement_refusal() {
             .len()
             <= 8192
     );
+}
+
+#[test]
+fn http_requires_an_explicit_oauth_resource_binding() {
+    let unbound = clapham::compose([], Bounds::default()).unwrap();
+    let refusal = HttpServer::new(unbound, |_: &Credential| -> Option<OAuthContext> {
+        panic!("configuration must fail before authentication")
+    })
+    .unwrap_err();
+    assert_eq!(refusal.code, "mcp_configuration");
+    assert_eq!(refusal.evidence, clapham::Evidence::NotDispatched);
+}
+
+#[tokio::test]
+async fn mismatched_verified_authority_is_rejected_by_both_http_interfaces() {
+    for (issuer, audience) in [
+        ("https://other.example.com", "https://lists.example.com"),
+        ("https://identity.example.com", "https://other.example.com"),
+    ] {
+        let server = HttpServer::new(
+            support::compose([], Bounds::default()).unwrap(),
+            move |_: &Credential| {
+                Some(OAuthContext::from_verified(
+                    issuer,
+                    audience,
+                    "alice",
+                    std::iter::empty::<String>(),
+                ))
+            },
+        )
+        .unwrap();
+        let mcp = server
+            .handle(support::request(
+                "tools/list",
+                json!({}),
+                "Bearer controlled",
+            ))
+            .await;
+        assert_eq!(mcp.status(), StatusCode::UNAUTHORIZED);
+        let native = Request::post("/call")
+            .header("host", "localhost")
+            .header("authorization", "Bearer controlled")
+            .body(UnreadBody)
+            .unwrap();
+        assert_eq!(
+            server.handle_operations(native).await.status(),
+            StatusCode::UNAUTHORIZED
+        );
+    }
 }

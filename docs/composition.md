@@ -15,15 +15,25 @@ Every `require.scopes` entry is mandatory. Configured scope/policy restrictions 
 provider declarations; selection and aliasing cannot erase them. Policies are resolved by
 name and checked against the operation's generated input schema. Provider/policy registrations,
 source names and public names must be unique. Policy implementation code remains in Rust.
+`require.policy` adds one named policy alongside the provider's intrinsic policies. A policy
+function can combine several account and resource checks. Every policy refusal code must be
+declared by the operation.
+
+Policy input schemas must match validation structure after removing annotations such as
+titles, descriptions and examples, and the explicit default 2020-12 dialect declaration.
+Property names, defaults, validation constraints and reference structure remain significant.
+This conservative comparison supports hand-authored and remote descriptors without assuming
+that arbitrary different schemas are equivalent.
 
 The common composer validates names, descriptions, schemas and budgets. Schema references
 resolve offline within their document. Invalid bounds, excess schema/catalogue size and
-operation count fail composition. Typed input conversion is checked before admission, and
-successful output is validated after dispatch. Rust construction does not bypass these checks.
+operation count fail composition. Typed input conversion is checked before admission; the handler receives a fresh
+deserialisation at dispatch.
+Successful output is validated after dispatch. Rust construction does not bypass these checks.
 
 The composed set is immutable and cheaply clonable. Selections are bound to that set and its
 clones. Canonical revisions include descriptor permission requirements and relevant remote
 binding revisions. Revisions exclude handler implementations, caller identity and host policy.
 
 See [the application guide](composing.md), [contract](contract.md) and
-[configuration tests](../crates/clapham/tests/redesign.rs).
+[configuration tests](../crates/clapham/tests/configuration.rs).

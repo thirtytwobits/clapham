@@ -2,7 +2,7 @@
 
 use clapham::{
     Bounds, Cancellation, ComposeOptions, ComposedSet, Evidence, ExecutionMode, OAuthContext,
-    RecordSink, compose, compose_with_options,
+    RecordSink, compose_with_options,
 };
 use clapham_conformance::ListsHandle;
 use clapham_mcp_client::{McpConfig, McpConnection, McpHttpOptions, McpSelection};
@@ -18,7 +18,18 @@ fn auth() -> OAuthContext {
 fn fixture() -> (ListsHandle, ComposedSet) {
     let handle = ListsHandle::new();
     handle.create_list("tasks", "Tasks").unwrap();
-    let set = compose(handle.contributions(), Bounds::default()).unwrap();
+    let set = compose_with_options(
+        handle.contributions(),
+        Bounds::default(),
+        ComposeOptions {
+            oauth: Some(clapham::OAuthResource {
+                issuer: "https://identity.example.com".into(),
+                audience: "https://lists.example.com".into(),
+            }),
+            ..Default::default()
+        },
+    )
+    .unwrap();
     (handle, set)
 }
 async fn invoke(set: &ComposedSet, name: &str, input: Value) -> clapham::CallResult {

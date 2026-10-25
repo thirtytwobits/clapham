@@ -66,6 +66,8 @@ compatibility and budgets are checked before a set is exposed.
 
 [`Operation`] remains the language-neutral descriptor used by adapters and dynamic providers.
 [`compose`] and [`compose_with_options`] accept trusted host registrations directly.
+Their optional OAuth resource binding serves trusted hosts that establish issuer/audience
+elsewhere; HTTP servers require an explicit binding.
 [`ComposeOptions::policies`] resolves intrinsic resource-policy names through the same checks.
 
 ## Authority and execution
@@ -77,7 +79,7 @@ host binds verified authority to its privately launched connection.
 
 Every declared scope is mandatory, independently of effect hints or a custom [`Gate`].
 [`ResourcePolicy`] checks verified authority against typed input before the operation handler
-runs. Composition preserves provider requirements and adds configured restrictions. Discovery
+runs. Resource-policy refusal codes must be declared by the operation. Composition preserves provider requirements and adds configured restrictions. Discovery
 checks operation-level authority; resource-specific access is checked on invocation.
 
 [`ComposedSet::call`] enforces selection, OAuth resource binding, scopes, input validation,

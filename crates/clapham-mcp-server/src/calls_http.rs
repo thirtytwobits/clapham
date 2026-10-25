@@ -132,7 +132,7 @@ impl HttpServer {
             }))
     }
 
-    async fn acknowledge<B>(&self, request: Request<B>, auth: OAuthContext) -> Response<Full<Bytes>>
+    fn acknowledge<B>(&self, request: Request<B>, auth: OAuthContext) -> Response<Full<Bytes>>
     where
         B: Body<Data = Bytes> + Send + 'static,
         B::Error: fmt::Display,
@@ -151,20 +151,12 @@ impl HttpServer {
                 "the record acknowledgement is unknown",
             );
         };
-        let body = Limited::new(
-            request
-                .into_body()
-                .map_err(|error| std::io::Error::other(error.to_string())),
-            1,
-        )
-        .collect()
-        .await;
-        if !body.is_ok_and(|bytes| bytes.to_bytes().is_empty()) {
+        if !request.body().is_end_stream() {
             return refusal_response(
                 StatusCode::BAD_REQUEST,
                 "invalid_input",
                 Category::InvalidInput,
-                "acknowledgements have an empty body",
+                "acknowledgements require an empty, completed body",
             );
         }
         let pending = {
@@ -277,7 +269,7 @@ impl HttpServer {
             .filter(|auth| {
                 self.set
                     .oauth_resource()
-                    .is_none_or(|resource| auth.is_for(resource))
+                    .is_some_and(|resource| auth.is_for(resource))
             })
         else {
             let mut response = refusal_response(
@@ -293,10 +285,10 @@ impl HttpServer {
             }
             return full(response);
         };
-        if request.method() == http::Method::POST && request.uri().path().starts_with("/ack/") {
-            return full(self.acknowledge(request, auth).await);
-        }
         drop(authentication);
+        if request.method() == http::Method::POST && request.uri().path().starts_with("/ack/") {
+            return full(self.acknowledge(request, auth));
+        }
         let Ok(outstanding) = self.outstanding.clone().try_acquire_owned() else {
             return full(refusal_response(
                 StatusCode::SERVICE_UNAVAILABLE,
@@ -443,6 +435,7 @@ impl HttpServer {
                     invocation.preview,
                 )
                 .await;
+            let outcome = result.is_ok();
             let (kind, data) = match result {
                 Ok(outcome) => (
                     "outcome",
@@ -453,7 +446,13 @@ impl HttpServer {
                     serde_json::to_value(refusal).expect("refusal serialises"),
                 ),
             };
-            let _ = send(&sender, kind, data, limit, None).await;
+            if let Err(refusal) = send(&sender, kind, data, limit, None).await
+                && outcome
+                && refusal.code == "result_too_large"
+            {
+                let data = serde_json::to_value(refusal).expect("refusal serialises");
+                let _ = send(&sender, "refusal", data, limit, None).await;
+            }
         });
         Response::builder()
             .header(header::CONTENT_TYPE, "application/x-ndjson")

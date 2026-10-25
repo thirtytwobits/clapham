@@ -54,7 +54,7 @@ impl fmt::Debug for Credential {
     }
 }
 
-/// Application policy mapping one request's credential to an authenticated auth.
+/// Application policy mapping one request's credential to verified OAuth authority.
 ///
 /// Returning `None` refuses the HTTP request before reading its body or running
 /// any operation. Identity is never retained from an earlier HTTP request.
@@ -80,7 +80,7 @@ where
 ///
 /// Implements the Tower service trait for HTTP servers and routers. The application
 /// owns listening, TLS and shutdown. Clones share the bounded request queue and gate;
-/// no session or previous auth is used to authorise a request.
+/// each request establishes its own verified OAuth authority.
 #[derive(Clone)]
 pub struct HttpServer {
     set: ComposedSet,
@@ -109,7 +109,7 @@ impl fmt::Debug for HttpServer {
 
 impl HttpServer {
     /// Expose all operations, using the supplied authenticator on every HTTP request.
-    /// Unsupported resource templates refuse before serving, as for [`Server::new`].
+    /// The set must specify its OAuth resource through configuration or compose options.
     pub fn new(set: ComposedSet, authenticator: impl Authenticator) -> Result<Self, Refusal> {
         let selection = set.all();
         validate_resources(&selection, &Default::default())?;
@@ -135,7 +135,11 @@ impl HttpServer {
                 url.set_path(&path);
                 (Some(path), format!("Bearer resource_metadata=\"{url}\""))
             }
-            None => (None, "Bearer".into()),
+            None => {
+                return Err(crate::configuration(
+                    "HTTP requires an OAuth resource binding; use Configuration or ComposeOptions::oauth",
+                ));
+            }
         };
         let challenge = challenge
             .parse()
@@ -339,7 +343,7 @@ impl HttpServer {
             .filter(|auth| {
                 self.set
                     .oauth_resource()
-                    .is_none_or(|resource| auth.is_for(resource))
+                    .is_some_and(|resource| auth.is_for(resource))
             })
         else {
             let mut response = refusal_response(

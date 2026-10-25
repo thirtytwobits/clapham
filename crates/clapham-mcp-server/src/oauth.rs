@@ -14,6 +14,9 @@ use crate::{Authenticator, Credential};
 /// elevation. The resource server requires matching issuer/audience and checks
 /// active status, expiry and not-before claims on each request. Redirects are
 /// disabled so credentials cannot be forwarded to another endpoint.
+/// The introspection response must include matching `iss` and `aud` claims.
+/// `exp` and `nbf` are checked when provided; otherwise the authorisation server
+/// establishes validity through its `active` response.
 #[derive(Clone)]
 pub struct OAuthIntrospector {
     resource: OAuthResource,
@@ -178,6 +181,14 @@ mod tests {
         assert_eq!(access.subject(), "alice");
         assert!(access.has_scope("items:tick"));
         assert!(!access.has_scope("lists:delete"));
+        let mut no_expiry = valid.clone();
+        no_expiry.as_object_mut().unwrap().remove("exp");
+        assert!(authority(&resource, &serde_json::from_value(no_expiry).unwrap(), 100).is_some());
+        for claim in ["iss", "aud"] {
+            let mut missing = valid.clone();
+            missing.as_object_mut().unwrap().remove(claim);
+            assert!(authority(&resource, &serde_json::from_value(missing).unwrap(), 100).is_none());
+        }
         for (key, value) in [
             ("active", json!(false)),
             ("iss", json!("https://other.example.com")),

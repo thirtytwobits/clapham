@@ -277,18 +277,25 @@ fn release_notes(changelog: &str, version: &str) -> Result<String> {
             format!("CHANGELOG.md needs exactly one {heading} section, found {found}").into(),
         );
     }
-    let Some(changes) = lines.iter().position(|line| *line == "### Changes") else {
-        return Err(format!("CHANGELOG.md {heading} needs a ### Changes subsection").into());
-    };
-    if !lines[changes + 1..]
+    let subsections: Vec<_> = lines
         .iter()
-        .take_while(|line| !line.starts_with("### "))
-        .any(|line| !line.trim().is_empty())
-    {
-        return Err(format!(
-            "CHANGELOG.md {heading} ### Changes is empty; record the contract changes or state that there are none"
-        )
-        .into());
+        .enumerate()
+        .filter_map(|(index, line)| line.starts_with("### ").then_some(index))
+        .collect();
+    if subsections.is_empty() {
+        return Err(format!("CHANGELOG.md {heading} needs a subsection").into());
+    }
+    for (position, index) in subsections.iter().copied().enumerate() {
+        let end = subsections
+            .get(position + 1)
+            .copied()
+            .unwrap_or(lines.len());
+        if !lines[index + 1..end]
+            .iter()
+            .any(|line| !line.trim().is_empty())
+        {
+            return Err(format!("CHANGELOG.md {heading} {} is empty", lines[index]).into());
+        }
     }
     Ok(format!("{}\n", lines.join("\n").trim()))
 }
@@ -430,10 +437,19 @@ mod tests {
             release_notes(&changelog.replace('\n', "\r\n"), "0.1.0-rc.1").unwrap(),
             expected
         );
+        assert!(
+            release_notes(
+                &changelog.replace("### Changes", "### Breaking"),
+                "0.1.0-rc.1"
+            )
+            .is_ok()
+        );
         for (invalid, reason) in [
             (
-                changelog.replace("### Changes", "### Added"),
-                "needs a ### Changes",
+                changelog
+                    .replace("### Changes", "Changes")
+                    .replace("### Added", "Added"),
+                "needs a subsection",
             ),
             (
                 "## [0.1.0-rc.1]\n### Changes\n\n### Added\nNew.\n".into(),

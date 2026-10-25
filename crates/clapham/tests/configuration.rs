@@ -20,6 +20,7 @@ fn operation() -> TypedOperation<GetList, String> {
         .unwrap()
         .require_scope("lists:read")
         .policy("lists.can_read")
+        .refusal("list_access_denied", Category::Refused)
 }
 
 fn provider() -> Contribution {
@@ -757,4 +758,174 @@ fn typed_handlers_cannot_pass_domain_refusals_off_as_conversion_failures() {
     assert_eq!(refusal.category, Category::Internal);
     assert_eq!(refusal.evidence, clapham::Evidence::Completed);
     assert_eq!(refusal.details.unwrap()["code"], "invalid_input");
+}
+
+#[test]
+fn resource_policy_refusals_obey_declarations_and_preserve_not_dispatched_evidence() {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+    for (code, declared) in [
+        ("list_access_denied", true),
+        ("cancelled", false),
+        ("invalid_input", false),
+        ("cancelled", true),
+    ] {
+        let calls = Arc::new(AtomicUsize::new(0));
+        let entered = calls.clone();
+        let mut op = TypedOperation::<GetList, u64>::new(
+            "lists.get",
+            "Read a protected list.",
+            Effect::Query,
+        )
+        .unwrap()
+        .policy("lists.access");
+        if declared {
+            op = op.refusal(code, Category::Refused);
+        }
+        let policy = ResourcePolicy::typed(move |_: OAuthContext, _: GetList| async move {
+            let mut refusal = Refusal::new(code, Category::Internal, "denied")
+                .with_evidence(clapham::Evidence::Uncertain);
+            refusal.retryable = true;
+            refusal.details = Some(serde_json::json!({"id":"tasks"}));
+            Err(refusal)
+        });
+        let set = Configuration::new("https://identity.example.com", "https://lists.example.com")
+            .provider(
+                "lists",
+                Contribution::new("lists").typed_operation(
+                    op.clone(),
+                    move |_: Call, _: GetList| {
+                        entered.fetch_add(1, Ordering::SeqCst);
+                        async { Ok(1) }
+                    },
+                ),
+            )
+            .register_policy("lists.access", policy)
+            .expose(Exposure::typed("lists", &op))
+            .compose(Bounds::default())
+            .unwrap();
+        let refusal =
+            block_on(op.call(&set, authority(&[]), GetList { id: "tasks".into() })).unwrap_err();
+        assert_eq!(refusal.evidence, clapham::Evidence::NotDispatched);
+        assert_eq!(calls.load(Ordering::SeqCst), 0);
+        if declared {
+            assert_eq!(refusal.code, code);
+            assert_eq!(refusal.category, Category::Refused);
+            assert!(refusal.retryable);
+            assert_eq!(refusal.details.unwrap()["id"], "tasks");
+        } else {
+            assert_eq!(refusal.code, "undeclared_refusal");
+            let original = refusal.details.unwrap();
+            assert_eq!(original["code"], code);
+            assert_eq!(original["evidence"], "not_dispatched");
+        }
+    }
+}
+
+#[test]
+fn policy_input_conversion_failure_remains_a_dispatcher_error() {
+    let op =
+        TypedOperation::<GetList, u64>::new("lists.get", "Read a protected list.", Effect::Query)
+            .unwrap()
+            .policy("lists.convert");
+    let set = Configuration::new("https://identity.example.com", "https://lists.example.com")
+        .provider(
+            "lists",
+            Contribution::new("lists").typed_operation(op.clone(), |_: Call, _: GetList| async {
+                panic!("handler must not run")
+            }),
+        )
+        .register_policy(
+            "lists.convert",
+            ResourcePolicy::typed(|_: OAuthContext, _: ConvertedInput| async {
+                panic!("policy must not run")
+            }),
+        )
+        .expose(Exposure::typed("lists", &op))
+        .compose(Bounds::default())
+        .unwrap();
+    let refusal = block_on(op.call(
+        &set,
+        authority(&[]),
+        GetList {
+            id: "blocked".into(),
+        },
+    ))
+    .unwrap_err();
+    assert_eq!(refusal.code, "invalid_input");
+    assert_eq!(refusal.evidence, clapham::Evidence::NotDispatched);
+}
+
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct NamedList {
+    id: String,
+    title: String,
+}
+
+#[test]
+fn policies_accept_schema_annotations_but_reject_validation_and_default_changes() {
+    let op = TypedOperation::<NamedList, u64>::new("lists.get", "Read a list.", Effect::Query)
+        .unwrap()
+        .policy("lists.access");
+    let config = |descriptor: clapham::Operation| {
+        Configuration::new("https://identity.example.com", "https://lists.example.com")
+            .provider(
+                "lists",
+                Contribution::new("lists").operation(descriptor, |_: Call| async {
+                    Ok(clapham::Outcome::new(serde_json::json!(1)))
+                }),
+            )
+            .register_policy(
+                "lists.access",
+                ResourcePolicy::typed(|_: OAuthContext, input: NamedList| async move {
+                    assert_eq!(
+                        (input.id.as_str(), input.title.as_str()),
+                        ("tasks", "Tasks")
+                    );
+                    Ok(())
+                }),
+            )
+            .expose(Exposure::typed("lists", &op))
+    };
+    let mut descriptor = op.descriptor().clone();
+    descriptor.input.remove("$schema");
+    descriptor
+        .input
+        .insert("title".into(), serde_json::json!("RemoteList"));
+    descriptor.input.insert(
+        "description".into(),
+        serde_json::json!("Remote description."),
+    );
+    descriptor.input["properties"]["title"]["description"] = serde_json::json!("A display title.");
+    let set = config(descriptor.clone())
+        .compose(Bounds::default())
+        .unwrap();
+    block_on(set.call(
+        &set.all(),
+        authority(&[]),
+        "lists.get",
+        serde_json::json!({"id":"tasks","title":"Tasks"}),
+        Default::default(),
+        Default::default(),
+        false,
+    ))
+    .unwrap();
+    for keyword in ["type", "default"] {
+        let mut invalid = descriptor.clone();
+        invalid.input["properties"]["title"][keyword] = if keyword == "type" {
+            serde_json::json!("integer")
+        } else {
+            serde_json::json!("Other")
+        };
+        assert!(config(invalid).compose(Bounds::default()).is_err());
+    }
+    let mut other_dialect = descriptor;
+    other_dialect.input.insert(
+        "$schema".into(),
+        serde_json::json!("http://json-schema.org/draft-07/schema#"),
+    );
+    assert!(config(other_dialect).compose(Bounds::default()).is_err());
 }

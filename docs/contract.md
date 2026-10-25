@@ -19,7 +19,7 @@ Evidence: [descriptor tests](../crates/clapham/tests/contract.rs),
 `descriptor_round_trips_and_validates_against_the_published_schema`,
 `requires_an_input_schema_with_an_explicit_object_root` and
 `refuses_malformed_and_unknown_descriptor_fields`;
-[typed tests](../crates/clapham/tests/redesign.rs),
+[typed tests](../crates/clapham/tests/configuration.rs),
 `typed_authoring_preserves_schema_constraints_refusals_and_conversion_failures`,
 `typed_schemas_preserve_nested_references_renaming_and_unknown_field_rules`,
 `typed_conversion_failures_preserve_dispatch_evidence_and_output_validation` and
@@ -38,15 +38,17 @@ expiry and not-before. A stdio host binds verified authority to its private conn
 Request arguments and metadata cannot replace authority. Scope elevation is controlled by
 the authorisation server.
 
-Evidence: [core permission tests](../crates/clapham/tests/redesign.rs),
+Evidence: [core permission tests](../crates/clapham/tests/configuration.rs),
 `equivalent_grants_have_equivalent_access_and_resource_binding_is_checked` and
-`composition_aliases_preserve_intrinsic_requirements_and_original_handler_names`;
+`composition_aliases_preserve_intrinsic_requirements_and_original_handler_names` and
+`policies_accept_schema_annotations_but_reject_validation_and_default_changes`;
 [introspection tests](../crates/clapham-mcp-server/src/oauth.rs),
 `introspected_authority_checks_activity_issuer_audience_and_validity`;
 [HTTP/CLI integration](../crates/clapham-conformance/tests/oauth_operations.rs),
 `verified_grants_scopes_resource_policies_and_cli_records_share_one_runner`,
 `native_http_records_wait_for_client_acknowledgement_and_disconnect_cancels_dispatch` and
-`native_http_client_rejects_missing_duplicate_truncated_and_oversized_terminals`.
+`native_http_client_rejects_missing_duplicate_truncated_and_oversized_terminals` and
+`oversized_terminal_outcomes_report_the_size_error_without_rewriting_domain_refusals`.
 
 ## C03: One atomic configuration path
 
@@ -57,10 +59,11 @@ preserves intrinsic provider requirements and adds restrictions. Unknown registr
 duplicate sources/names, invalid aliases/schemas, incompatible policies and exhausted budgets
 refuse composition. Schema compilation is offline. Each namespace has one owner.
 
-Evidence: [configuration tests](../crates/clapham/tests/redesign.rs),
+Evidence: [configuration tests](../crates/clapham/tests/configuration.rs),
 `json_rust_and_mixed_configuration_share_definitions_permissions_and_revisions`,
 `json_rust_and_mixed_configuration_reject_the_same_semantic_errors` and
-`composition_aliases_preserve_intrinsic_requirements_and_original_handler_names`;
+`composition_aliases_preserve_intrinsic_requirements_and_original_handler_names` and
+`policies_accept_schema_annotations_but_reject_validation_and_default_changes`;
 [composition tests](../crates/clapham/tests/composition.rs),
 `refuses_repeated_namespaces_even_without_operations_and_reserves_its_own`,
 `refuses_invalid_input_and_output_schemas_and_unresolved_external_references` and
@@ -85,22 +88,32 @@ Evidence: [call tests](../crates/clapham/tests/calls.rs),
 
 Pre-cancelled calls stop first. The runner otherwise checks selection, OAuth resource binding,
 scopes, input/schema conversion, host admission, preview, locality and typed resource policies
-before dispatch. Successful output is schema-validated. Pending or denied admission never runs
+before dispatch. Resource-policy refusals use the operation's declared codes and categories,
+with not-dispatched evidence. Policy input-conversion errors remain dispatcher errors.
+Successful output is schema-validated. Pending or denied admission never runs
 the handler. Resource policies do not run during discovery because resource input is absent.
 Trusted low-level invocation remains a dispatch primitive; external adapters use the set runner.
+Plain composition may omit the OAuth resource binding for hosts that establish issuer and
+audience elsewhere. HTTP servers require an explicit binding, supplied by `Configuration` or
+`ComposeOptions::oauth`.
 
 Evidence: [call tests](../crates/clapham/tests/calls.rs),
 `pre_cancelled_calls_skip_validation_and_admission_without_dispatch`,
 `input_validation_precedes_the_gate_and_prevents_dispatch`,
 `pending_and_denied_admission_do_not_dispatch_and_precede_preview_checks` and
 `preview_requires_support_and_is_passed_unchanged_to_the_handler`;
-[configuration tests](../crates/clapham/tests/redesign.rs),
+[configuration tests](../crates/clapham/tests/configuration.rs),
 `json_rust_and_mixed_configuration_share_definitions_permissions_and_revisions` and
-`resource_policy_cancellation_stops_before_handler_dispatch`.
+`resource_policy_cancellation_stops_before_handler_dispatch`,
+`resource_policy_refusals_obey_declarations_and_preserve_not_dispatched_evidence` and
+`policy_input_conversion_failure_remains_a_dispatcher_error`;
+[HTTP authority tests](../crates/clapham-conformance/tests/mcp_http.rs),
+`http_requires_an_explicit_oauth_resource_binding` and
+`mismatched_verified_authority_is_rejected_by_both_http_interfaces`.
 
 ## C06: Refusals retain contributor codes
 
-Declared handler refusals retain code, message, details, retryability and evidence. Their
+Declared handler and resource-policy refusals retain code, message, details, retryability and evidence. Their
 category comes from the descriptor. An undeclared code becomes `undeclared_refusal`, retaining
 the original refusal and its evidence. Dispatcher refusals do not require declarations.
 Categories map to CLI exits: usage 2, invalid input 65, not found 66, conflict 67, refused 77,
@@ -112,7 +125,7 @@ Evidence: [call tests](../crates/clapham/tests/calls.rs),
 [process tests](../crates/clapham-conformance/tests/cli_process.rs),
 `every_refusal_category_uses_one_json_stderr_line_and_its_exit_code`.
 
-Evidence: [typed refusal tests](../crates/clapham/tests/redesign.rs),
+Evidence: [typed refusal tests](../crates/clapham/tests/configuration.rs),
 `typed_handlers_cannot_pass_domain_refusals_off_as_conversion_failures`.
 
 ## C07: Evidence records dispatch knowledge
@@ -138,7 +151,9 @@ errors remain outcomes and do not undergo successful-output validation. Records 
 in order before one terminal result. Operation HTTP uses bounded NDJSON frames and acknowledges
 record delivery through one-use tickets bound to verified OAuth authority. Producers wait
 for the client sink to accept and acknowledge each record. Disconnect cancels work. MCP returns the final
-result; its progress notifications are distinct from record delivery.
+result; its progress notifications are distinct from record delivery. If an outcome
+fits the core bound but its stream envelope exceeds it, HTTP sends `result_too_large` with
+uncertain evidence. An oversized existing domain refusal closes the stream.
 
 Evidence: [call type tests](../crates/clapham/tests/call_types.rs),
 `ordered_content_keeps_all_block_kinds_and_binary_payloads_without_fetching` and
@@ -148,7 +163,8 @@ Evidence: [call type tests](../crates/clapham/tests/call_types.rs),
 [HTTP/CLI integration](../crates/clapham-conformance/tests/oauth_operations.rs),
 `verified_grants_scopes_resource_policies_and_cli_records_share_one_runner`,
 `native_http_records_wait_for_client_acknowledgement_and_disconnect_cancels_dispatch` and
-`native_http_client_rejects_missing_duplicate_truncated_and_oversized_terminals`.
+`native_http_client_rejects_missing_duplicate_truncated_and_oversized_terminals` and
+`oversized_terminal_outcomes_report_the_size_error_without_rewriting_domain_refusals`.
 
 ## C09: Discovery respects authority
 

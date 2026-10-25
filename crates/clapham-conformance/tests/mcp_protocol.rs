@@ -5,7 +5,7 @@ mod support;
 
 use std::{fs, path::PathBuf, sync::Arc};
 
-use clapham::{Bounds, ComposeOptions, compose_with_options};
+use clapham::{Bounds, ComposeOptions};
 use clapham_conformance::{ListsGate, ListsHandle};
 use clapham_mcp_server::{HttpServer, REQUEST_META_KEYS};
 use serde_json::{Value, json};
@@ -13,7 +13,7 @@ use serde_json::{Value, json};
 #[tokio::test]
 async fn mcp_protocol_record_is_current() {
     let lists = ListsHandle::new();
-    let set = compose_with_options(
+    let set = support::compose_with_options(
         lists.contributions(),
         Bounds::default(),
         ComposeOptions {

@@ -484,7 +484,7 @@ fn insert_operation(
                 format!("unresolved resource policy {name}"),
             )
         })?;
-        if policy.input != descriptor.input {
+        if !crate::policy::compatible_input(&policy.input, &descriptor.input) {
             return Err(CompositionError::new(
                 CompositionCode::InvalidConfiguration,
                 format!("resource policy {name} has incompatible input"),

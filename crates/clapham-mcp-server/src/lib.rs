@@ -47,7 +47,7 @@ pub const REQUEST_META_KEYS: &[&str] = &[
 // stdio transport rechecks the exact encoded frame before writing any bytes.
 const ENVELOPE_RESERVE: usize = 1024;
 
-/// MCP 2026-07-28 over a selection, bound to one application-supplied auth.
+/// MCP 2026-07-28 over a selection, bound to verified OAuth authority supplied by the host.
 ///
 /// Clones share admission and execution state. Identity never comes from MCP input.
 #[derive(Debug, Clone)]
