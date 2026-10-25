@@ -157,31 +157,39 @@ impl McpError {
             ServiceError::McpError(e) => Self::Invocation(e.code.0),
             ServiceError::UnexpectedResponse => Self::Protocol,
             ServiceError::Timeout { .. } => Self::Timeout,
-            #[cfg(feature = "http")]
-            ServiceError::TransportSend(error) => error
-                .error
-                .downcast_ref::<crate::http::HttpError>()
-                .and_then(|error| match error {
-                    rmcp::transport::streamable_http_client::StreamableHttpError::Client(fault) => {
-                        Some(fault.error.clone())
-                    }
-                    _ => None,
-                })
-                .unwrap_or(Self::Transport),
+            ServiceError::TransportSend(error) => {
+                Self::from_transport(&error).unwrap_or(Self::Transport)
+            }
             _ => Self::Transport,
         }
+    }
+    /// The diagnostic an HTTP failure carries, if the transport recorded one.
+    pub(crate) fn from_transport(error: &rmcp::transport::DynamicTransportError) -> Option<Self> {
+        #[cfg(feature = "http")]
+        if let Some(fault) = fault(error) {
+            return Some(fault.error.clone());
+        }
+        let _ = error;
+        None
     }
     /// The structured refusal a Clapham server gave for a failed request, if any.
     pub(crate) fn server_refusal(error: &ServiceError) -> Option<clapham::Refusal> {
         #[cfg(feature = "http")]
         if let ServiceError::TransportSend(error) = error
-            && let Some(rmcp::transport::streamable_http_client::StreamableHttpError::Client(fault)) =
-                error.error.downcast_ref::<crate::http::HttpError>()
+            && let Some(fault) = fault(error)
         {
             return fault.refusal.as_deref().cloned();
         }
         let _ = error;
         None
+    }
+}
+
+#[cfg(feature = "http")]
+fn fault(error: &rmcp::transport::DynamicTransportError) -> Option<&crate::http::Fault> {
+    match error.error.downcast_ref::<crate::http::HttpError>()? {
+        rmcp::transport::streamable_http_client::StreamableHttpError::Client(fault) => Some(fault),
+        _ => None,
     }
 }
 
@@ -351,9 +359,11 @@ impl McpConnection {
             result => {
                 let error = state.check().err().unwrap_or(match result {
                     Err(_) => McpError::Timeout,
+                    Ok(Err(rmcp::service::ClientInitializeError::TransportError {
+                        error, ..
+                    })) => McpError::from_transport(&error).unwrap_or(McpError::Transport),
                     Ok(Err(
-                        rmcp::service::ClientInitializeError::TransportError { .. }
-                        | rmcp::service::ClientInitializeError::ConnectionClosed(_)
+                        rmcp::service::ClientInitializeError::ConnectionClosed(_)
                         | rmcp::service::ClientInitializeError::Cancelled,
                     )) => McpError::Transport,
                     _ => McpError::Protocol,

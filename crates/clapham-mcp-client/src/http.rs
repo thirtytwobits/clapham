@@ -161,20 +161,25 @@ impl BoundedHttp {
             .send()
             .await
             .map_err(|_| error(McpError::Transport))?;
-        if response.status() == reqwest::StatusCode::UNAUTHORIZED {
-            return Err(self.fail(McpError::Unauthenticated));
+        let status = response.status();
+        if status.is_success() {
+            return Ok(response);
         }
-        // A refusal before dispatch, such as a scope challenge, for this request alone.
-        if response.status() == reqwest::StatusCode::FORBIDDEN {
-            return Err(StreamableHttpError::Client(Fault {
-                error: McpError::Forbidden,
-                refusal: server_refusal(response, self.limit).await,
-            }));
+        // An unaccepted credential ends the connection; a scope challenge or a full queue
+        // refuses this request alone, before dispatch.
+        let error = match status {
+            reqwest::StatusCode::UNAUTHORIZED => McpError::Unauthenticated,
+            reqwest::StatusCode::FORBIDDEN => McpError::Forbidden,
+            reqwest::StatusCode::SERVICE_UNAVAILABLE => McpError::Busy,
+            _ => McpError::Transport,
+        };
+        if error == McpError::Unauthenticated {
+            self.state.fail(error.clone());
         }
-        if !response.status().is_success() {
-            return Err(error(McpError::Transport));
-        }
-        Ok(response)
+        Err(StreamableHttpError::Client(Fault {
+            error,
+            refusal: server_refusal(response, self.limit).await,
+        }))
     }
     fn stream(&self, response: reqwest::Response) -> BoxStream<'static, Result<Sse, SseError>> {
         let state = self.state.clone();

@@ -44,6 +44,10 @@ struct Hold {
 
 /// Operations whose outcomes MCP alone cannot distinguish, a dry run and a held call.
 fn set() -> (ComposedSet, Hold) {
+    set_with(Bounds::default())
+}
+
+fn set_with(bounds: Bounds) -> (ComposedSet, Hold) {
     let entered = Arc::new(Notify::new());
     let (dropped, on_drop) = oneshot::channel();
     let dropped = Mutex::new(Some(dropped));
@@ -92,7 +96,7 @@ fn set() -> (ComposedSet, Hold) {
         entered,
         dropped: on_drop,
     };
-    (configuration.compose(Bounds::default()).unwrap(), hold)
+    (configuration.compose(bounds).unwrap(), hold)
 }
 
 fn http_server(set: ComposedSet) -> HttpServer {
@@ -108,12 +112,17 @@ async fn over_http(set: ComposedSet) -> (McpBackend, tokio::task::JoinHandle<()>
 }
 
 async fn serve_http(server: HttpServer) -> (McpBackend, tokio::task::JoinHandle<()>) {
+    let (endpoint, task) = listen(server).await;
+    (McpBackend::http(endpoint, "operator").await.unwrap(), task)
+}
+
+async fn listen(server: HttpServer) -> (String, tokio::task::JoinHandle<()>) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let endpoint = format!("http://{}/mcp", listener.local_addr().unwrap());
     let task = tokio::spawn(async move {
         axum::serve(listener, server.into_router()).await.unwrap();
     });
-    (McpBackend::http(endpoint, "operator").await.unwrap(), task)
+    (endpoint, task)
 }
 
 /// A daemon serving `set` over a private stdio connection bound to the operator.
@@ -249,6 +258,45 @@ async fn a_scope_refusal_reaches_the_cli_unchanged_over_http_and_stdio() {
     task.abort();
     let (backend, _task) = over_stdio(set).await;
     refuses_missing_scopes(backend).await;
+}
+
+#[tokio::test]
+async fn a_busy_daemons_refusal_reaches_the_cli_unchanged() {
+    // The daemon queues one request, which a held call occupies.
+    let (set, hold) = set_with(Bounds {
+        in_flight: 1,
+        waiting: 0,
+        ..Bounds::default()
+    });
+    let (endpoint, task) = listen(http_server(set)).await;
+    let holding = McpBackend::http(&endpoint, "operator").await.unwrap();
+    let refused = McpBackend::http(&endpoint, "operator").await.unwrap();
+    let cancel = Cancellation::new();
+    let held = {
+        let cancel = cancel.clone();
+        tokio::spawn(async move {
+            holding
+                .call(
+                    Invocation::new("items.hold", json!({})),
+                    RecordSink::default(),
+                    cancel,
+                )
+                .await
+        })
+    };
+    hold.entered.notified().await;
+    let refusal = call(&refused, "items.null", false).await.unwrap_err();
+    assert_eq!(
+        (refusal.code.as_str(), refusal.category, refusal.evidence),
+        (
+            "server_busy",
+            Category::Unavailable,
+            Evidence::NotDispatched
+        )
+    );
+    cancel.cancel();
+    held.await.unwrap().unwrap_err();
+    task.abort();
 }
 
 #[tokio::test]

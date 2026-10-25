@@ -80,8 +80,8 @@ allows and one call at a time. `McpConnection::call_tool` has no deadline: the C
 has no request deadline of its own. The CLI obtains tokens through the application's OAuth
 client or credential store and cannot choose identity in arguments. A credential the server
 does not accept refuses the connection with `mcp_unauthenticated`. The server's refusal before
-dispatch, such as an `insufficient_scope` challenge, reaches the CLI unchanged; a bound remote
-tool receives the bounded `mcp_forbidden` instead.
+dispatch, such as an `insufficient_scope` challenge or `server_busy`, reaches the CLI unchanged;
+a bound remote tool receives the bounded `mcp_forbidden` or `mcp_busy` instead.
 
 ## Remote connections
 

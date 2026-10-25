@@ -24,8 +24,8 @@ impl McpConnection {
     ///
     /// No deadline applies: the caller bounds the call, and dropping the future cancels it.
     /// A tool-reported error, including a remote refusal, is an outcome with `is_error`. A
-    /// Clapham server's structured refusal before dispatch, such as for missing OAuth scopes,
-    /// is returned unchanged.
+    /// Clapham server's structured HTTP refusal, such as for missing OAuth scopes or a full
+    /// queue, is returned unchanged.
     pub async fn call_tool(
         &self,
         name: &str,
@@ -139,9 +139,11 @@ impl McpConnection {
                     .check()
                     .err()
                     .unwrap_or_else(|| McpError::from_service(error));
-                // The server authorises a request before reading it.
+                // The server authorises and admits a request before reading it.
                 let outcome = match error {
-                    McpError::Unauthenticated | McpError::Forbidden => Evidence::NotDispatched,
+                    McpError::Unauthenticated | McpError::Forbidden | McpError::Busy => {
+                        Evidence::NotDispatched
+                    }
                     _ if completed => Evidence::Completed,
                     _ => Evidence::Uncertain,
                 };

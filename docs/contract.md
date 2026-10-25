@@ -223,8 +223,8 @@ catalogue through the catalogue extension, whether or not the daemon's selection
 `clapham.describe`, and sends operation arguments
 as `tools/call` arguments and a dry run as preview metadata, not authority claims, and
 cancelling closes the call's response stream. A credential the daemon does not accept refuses
-as `mcp_unauthenticated`; the daemon's refusal before dispatch, such as `insufficient_scope`,
-reaches the CLI unchanged. Whole-object JSON and property arguments cannot be mixed.
+as `mcp_unauthenticated`; the daemon's refusal before dispatch, such as `insufficient_scope`
+or `server_busy`, reaches the CLI unchanged. Whole-object JSON and property arguments cannot be mixed.
 Confirmation and unsupported-preview parsing precede stdin reads. Human output uses
 fields/tables; pipes use versioned NDJSON. HTTP disables redirects and retries. Trusted
 in-process CLI embedding requires host-verified authority.
@@ -240,6 +240,7 @@ Evidence: [CLI tests](../crates/clapham-cli/tests/tree.rs),
 [CLI over MCP](../crates/clapham-conformance/tests/cli_mcp.rs),
 `the_cli_discovers_a_selection_that_does_not_expose_describe`,
 `a_scope_refusal_reaches_the_cli_unchanged_over_http_and_stdio`,
+`a_busy_daemons_refusal_reaches_the_cli_unchanged`,
 `a_cli_dry_run_reaches_the_daemon_as_preview_metadata`,
 `cancelling_a_cli_call_drops_the_daemons_handler_over_http` and
 `cancelling_a_cli_call_drops_the_daemons_handler_over_stdio`;
@@ -259,8 +260,9 @@ and invocation deadlines are uncertain. Reconnecting does not replay effects. Re
 refusals remain structured tool-error outcomes with their original codes. Records paced by
 acknowledgement are outside the connection's lifetime notification and byte budgets; one sent
 ahead of its acknowledgement is counted. A direct call has no deadline: its caller bounds it.
-A server's refusal before dispatch, such as for missing scopes, is `mcp_forbidden` with
-not-dispatched evidence for a binding, and reaches a direct call unchanged. An abandoned
+A server's HTTP refusal before dispatch is `mcp_forbidden` for missing scopes or `mcp_busy`
+for a full queue, with not-dispatched evidence, for a binding; its structured refusal reaches
+a direct call unchanged. An abandoned
 catalogue read closes its connection.
 
 Evidence: [client tests](../crates/clapham-mcp-client/tests/contracts.rs),
