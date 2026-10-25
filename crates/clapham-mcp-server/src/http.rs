@@ -1,3 +1,5 @@
+#[path = "calls_http.rs"]
+mod calls;
 use std::{
     convert::Infallible,
     fmt,
@@ -9,7 +11,7 @@ use std::{
 };
 
 use bytes::Bytes;
-use clapham::{Category, ComposedSet, Evidence, Principal, Refusal, Selection};
+use clapham::{Category, ComposedSet, Evidence, OAuthContext, Refusal, Selection};
 use http::{Request, Response, StatusCode, header};
 use http_body::Body;
 use http_body_util::{BodyExt, Empty, Full, Limited, combinators::BoxBody};
@@ -18,12 +20,12 @@ use rmcp::transport::streamable_http_server::{
 };
 use tokio::sync::Semaphore;
 
-use crate::{Server, validate_resources};
+use crate::{Server, register_resources, validate_resources};
 
 /// An opaque HTTP Authorization value. Debug output never prints its contents.
 ///
 /// Missing Authorization is represented by [`Default`]; only the application's
-/// authenticator decides whether that credential represents a principal.
+/// authenticator decides whether that credential establishes authority.
 #[derive(Clone, Default)]
 pub struct Credential {
     authorization: Option<String>,
@@ -52,21 +54,25 @@ impl fmt::Debug for Credential {
     }
 }
 
-/// Application policy mapping one request's credential to an authenticated principal.
+/// Application policy mapping one request's credential to an authenticated auth.
 ///
 /// Returning `None` refuses the HTTP request before reading its body or running
 /// any operation. Identity is never retained from an earlier HTTP request.
 pub trait Authenticator: Send + Sync + 'static {
-    /// Authenticate the opaque credential supplied on this request.
-    fn authenticate(&self, credential: &Credential) -> Option<Principal>;
+    /// Verify the credential using trusted OAuth middleware or introspection.
+    fn authenticate<'a>(&'a self, credential: &'a Credential) -> AuthenticationFuture<'a>;
 }
+
+/// Asynchronous OAuth token-verification result.
+pub type AuthenticationFuture<'a> =
+    std::pin::Pin<Box<dyn Future<Output = Option<OAuthContext>> + Send + 'a>>;
 
 impl<F> Authenticator for F
 where
-    F: Fn(&Credential) -> Option<Principal> + Send + Sync + 'static,
+    F: Fn(&Credential) -> Option<OAuthContext> + Send + Sync + 'static,
 {
-    fn authenticate(&self, credential: &Credential) -> Option<Principal> {
-        self(credential)
+    fn authenticate<'a>(&'a self, credential: &'a Credential) -> AuthenticationFuture<'a> {
+        Box::pin(std::future::ready(self(credential)))
     }
 }
 
@@ -74,16 +80,20 @@ where
 ///
 /// Implements the Tower service trait for HTTP servers and routers. The application
 /// owns listening, TLS and shutdown. Clones share the bounded request queue and gate;
-/// no session or previous principal is used to authorise a request.
+/// no session or previous auth is used to authorise a request.
 #[derive(Clone)]
 pub struct HttpServer {
     set: ComposedSet,
     selection: Selection,
     discovery: Selection,
+    resources: std::collections::BTreeMap<String, String>,
     authenticator: Arc<dyn Authenticator>,
     outstanding: Arc<Semaphore>,
+    authenticating: Arc<Semaphore>,
+    acknowledgements: Arc<std::sync::Mutex<calls::Acknowledgements>>,
     executing: Arc<Semaphore>,
     authentication_challenge: Option<http::HeaderValue>,
+    metadata_path: Option<String>,
     allowed_hosts: Vec<String>,
     allowed_origins: Vec<String>,
 }
@@ -102,20 +112,62 @@ impl HttpServer {
     /// Unsupported resource templates refuse before serving, as for [`Server::new`].
     pub fn new(set: ComposedSet, authenticator: impl Authenticator) -> Result<Self, Refusal> {
         let selection = set.all();
-        validate_resources(&selection)?;
+        validate_resources(&selection, &Default::default())?;
+        let (metadata_path, challenge) = match set.oauth_resource() {
+            Some(resource) => {
+                let mut url = reqwest::Url::parse(&resource.audience).map_err(|_| {
+                    crate::configuration("OAuth resource must be an absolute HTTP URI")
+                })?;
+                let loopback = matches!(
+                    url.host_str(),
+                    Some("localhost" | "127.0.0.1" | "[::1]" | "::1")
+                );
+                if (url.scheme() != "https" && !(url.scheme() == "http" && loopback))
+                    || !url.username().is_empty()
+                    || url.password().is_some()
+                    || url.query().is_some()
+                    || url.fragment().is_some()
+                {
+                    return Err(crate::configuration("invalid OAuth resource URI"));
+                }
+                let path = if url.path() == "/" { "" } else { url.path() };
+                let path = format!("/.well-known/oauth-protected-resource{path}");
+                url.set_path(&path);
+                (Some(path), format!("Bearer resource_metadata=\"{url}\""))
+            }
+            None => (None, "Bearer".into()),
+        };
+        let challenge = challenge
+            .parse()
+            .map_err(|_| crate::configuration("invalid OAuth metadata URI"))?;
         let bounds = set.bounds();
         let config = StreamableHttpServerConfig::default();
         Ok(Self {
             outstanding: Arc::new(Semaphore::new(bounds.in_flight + bounds.waiting)),
+            authenticating: Arc::new(Semaphore::new(bounds.in_flight + bounds.waiting)),
+            acknowledgements: Default::default(),
             executing: Arc::new(Semaphore::new(bounds.in_flight)),
-            authentication_challenge: None,
+            authentication_challenge: Some(challenge),
+            metadata_path,
             set,
             discovery: selection.clone(),
             selection,
+            resources: Default::default(),
             authenticator: Arc::new(authenticator),
             allowed_hosts: config.allowed_hosts,
             allowed_origins: Vec::new(),
         })
+    }
+
+    /// Register MCP resource URI templates against query operations.
+    pub fn resources<I, N, U>(mut self, resources: I) -> Result<Self, Refusal>
+    where
+        I: IntoIterator<Item = (N, U)>,
+        N: Into<String>,
+        U: Into<String>,
+    {
+        register_resources(&self.set, &mut self.resources, resources)?;
+        Ok(self)
     }
 
     /// Replace the exposed selection, retaining the internal describe operation.
@@ -125,7 +177,7 @@ impl HttpServer {
         S: AsRef<str>,
     {
         self.selection = self.set.select(names)?;
-        validate_resources(&self.selection)?;
+        validate_resources(&self.selection, &self.resources)?;
         self.discovery = self.set.select(
             self.selection
                 .operations()
@@ -133,6 +185,40 @@ impl HttpServer {
                 .chain(["clapham.describe"]),
         )?;
         Ok(self)
+    }
+
+    fn scope_challenge(&self, auth: &OAuthContext, name: &str) -> Option<Response<Full<Bytes>>> {
+        let operation = self
+            .set
+            .get(name)
+            .filter(|_| self.selection.contains(name))?;
+        let required = &operation.descriptor().scopes;
+        if required.iter().all(|scope| auth.has_scope(scope)) {
+            return None;
+        }
+        let mut refusal = Refusal::not_dispatched(
+            "insufficient_scope",
+            Category::Refused,
+            "the grant lacks required scopes",
+        );
+        refusal.details = Some(serde_json::json!({"required_scopes":required}));
+        let mut response = Response::builder()
+            .status(StatusCode::FORBIDDEN)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Full::new(Bytes::from(
+                serde_json::to_vec(&refusal).expect("refusal serialises"),
+            )))
+            .expect("valid scope refusal");
+        let challenge = format!(
+            "Bearer error=\"insufficient_scope\", scope=\"{}\"",
+            required.join(" ")
+        )
+        .parse()
+        .expect("composition checks scope syntax");
+        response
+            .headers_mut()
+            .insert(header::WWW_AUTHENTICATE, challenge);
+        Some(response)
     }
 
     /// Allowed HTTP hosts or authorities. Defaults to rmcp's loopback host list.
@@ -230,7 +316,32 @@ impl HttpServer {
                 );
             }
         };
-        let Some(principal) = self.authenticator.authenticate(&credential) else {
+        let Ok(_outstanding) = self.outstanding.try_acquire() else {
+            return refusal_response(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "server_busy",
+                Category::Unavailable,
+                "the HTTP request queue is full",
+            );
+        };
+        let Ok(authentication) = self.authenticating.try_acquire() else {
+            return refusal_response(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "server_busy",
+                Category::Unavailable,
+                "authentication queue is full",
+            );
+        };
+        let Some(auth) = self
+            .authenticator
+            .authenticate(&credential)
+            .await
+            .filter(|auth| {
+                self.set
+                    .oauth_resource()
+                    .is_none_or(|resource| auth.is_for(resource))
+            })
+        else {
             let mut response = refusal_response(
                 StatusCode::UNAUTHORIZED,
                 "not_authenticated",
@@ -244,14 +355,20 @@ impl HttpServer {
             }
             return response;
         };
-        let Ok(_outstanding) = self.outstanding.try_acquire() else {
-            return refusal_response(
-                StatusCode::SERVICE_UNAVAILABLE,
-                "server_busy",
-                Category::Unavailable,
-                "the HTTP request queue is full",
-            );
-        };
+        drop(authentication);
+        if request
+            .headers()
+            .get("mcp-method")
+            .and_then(|value| value.to_str().ok())
+            == Some("tools/call")
+            && let Some(name) = request
+                .headers()
+                .get("mcp-name")
+                .and_then(|value| value.to_str().ok())
+            && let Some(response) = self.scope_challenge(&auth, name)
+        {
+            return response;
+        }
         let _executing = self
             .executing
             .acquire()
@@ -262,7 +379,8 @@ impl HttpServer {
             set: self.set.clone(),
             selection: self.selection.clone(),
             discovery: self.discovery.clone(),
-            principal,
+            auth,
+            resources: self.resources.clone(),
             // The outer HTTP execution permit covers this entire request.
             slots: None,
             http_failure: Some(failure.clone()),

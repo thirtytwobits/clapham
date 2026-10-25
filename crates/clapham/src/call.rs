@@ -7,7 +7,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{OperationName, Principal, Refusal};
+use crate::{OAuthContext, OperationName, Refusal};
 
 /// What is known about an invocation's effects, independently of result delivery.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -21,61 +21,6 @@ pub enum Evidence {
     Uncertain,
 }
 
-/// Ordered content from an operation. References are retained without fetching them.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
-pub enum ContentBlock {
-    /// Plain text.
-    Text {
-        /// The text, unchanged.
-        text: String,
-    },
-    /// An image reference, including a data URI for inline content.
-    Image {
-        /// The image's URL or data URI.
-        url: String,
-        /// The image's MIME type.
-        mime_type: String,
-    },
-    /// An audio reference, including a data URI for inline content.
-    Audio {
-        /// The audio's URL or data URI.
-        url: String,
-        /// The audio's MIME type.
-        mime_type: String,
-    },
-    /// A reference to a resource.
-    ResourceLink {
-        /// The resource URI.
-        uri: String,
-        /// The name people read.
-        name: String,
-        /// The MIME type, where supplied.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        mime_type: Option<String>,
-    },
-    /// An embedded resource.
-    Resource {
-        /// The resource URI.
-        uri: String,
-        /// The MIME type, where supplied.
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        mime_type: Option<String>,
-        /// The inline resource payload.
-        contents: ResourceContents,
-    },
-}
-
-/// An embedded resource's text or base64-encoded bytes.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(tag = "encoding", content = "data", rename_all = "snake_case")]
-pub enum ResourceContents {
-    /// Text, unchanged.
-    Text(String),
-    /// Base64-encoded bytes, unchanged.
-    Base64(String),
-}
-
 /// A handler's result, optional ordered content and dispatch evidence.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -87,9 +32,9 @@ pub struct Outcome {
         deserialize_with = "present_result"
     )]
     pub result: Option<Value>,
-    /// Ordered content blocks, where the operation returned content semantics.
+    /// Opaque ordered content supplied and interpreted by an adapter.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub content: Option<Vec<ContentBlock>>,
+    pub content: Option<Vec<Value>>,
     /// A tool-reported execution error, distinct from a dispatch refusal.
     #[serde(default)]
     pub is_error: bool,
@@ -182,7 +127,7 @@ pub struct Call {
     /// The operation's own name, without a front end's alias.
     pub name: OperationName,
     /// The authenticated caller.
-    pub principal: Principal,
+    pub auth: OAuthContext,
     /// Input validated against the operation's compiled schema before dispatch.
     pub input: Value,
     /// The host's sink for typed records.
@@ -195,10 +140,10 @@ pub struct Call {
 
 impl Call {
     /// A call with a discard sink, a fresh cancellation signal and no dry run.
-    pub fn new(name: OperationName, principal: Principal, input: Value) -> Self {
+    pub fn new(name: OperationName, auth: OAuthContext, input: Value) -> Self {
         Self {
             name,
-            principal,
+            auth,
             input,
             records: RecordSink::default(),
             cancel: Cancellation::new(),
@@ -210,10 +155,57 @@ impl Call {
 /// A sendable handler future, which may borrow its handler.
 pub type HandlerFuture<'a> = Pin<Box<dyn Future<Output = Result<Outcome, Refusal>> + Send + 'a>>;
 
-/// An object-safe asynchronous operation handler.
+/// A conversion error produced by the typed adapter.
+/// Application failures remain ordinary handler refusals.
+#[derive(Debug)]
+pub struct ConversionFailure(Refusal);
+impl ConversionFailure {
+    pub(crate) fn input(error: impl fmt::Display) -> Self {
+        Self(Refusal::not_dispatched(
+            "invalid_input",
+            crate::Category::InvalidInput,
+            error.to_string(),
+        ))
+    }
+    pub(crate) fn output(error: impl fmt::Display, evidence: Evidence) -> Self {
+        Self(
+            Refusal::new(
+                "invalid_result",
+                crate::Category::Internal,
+                error.to_string(),
+            )
+            .with_evidence(evidence),
+        )
+    }
+}
+impl From<ConversionFailure> for Refusal {
+    fn from(error: ConversionFailure) -> Self {
+        error.0
+    }
+}
+impl fmt::Display for ConversionFailure {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+impl std::error::Error for ConversionFailure {}
+
+/// A typed conversion failure or an ordinary handler result/refusal.
+pub type CheckedHandlerFuture<'a> =
+    Pin<Box<dyn Future<Output = Result<Result<Outcome, Refusal>, ConversionFailure>> + Send + 'a>>;
+
+/// A transport-independent asynchronous operation handler.
 pub trait Handler: Send + Sync {
     /// Run a call whose input and identity have been prepared by its dispatcher.
     fn call(&self, call: Call) -> HandlerFuture<'_>;
+    /// Separate dispatcher conversion failures from the handler's declared refusals.
+    fn call_checked(&self, call: Call) -> CheckedHandlerFuture<'_> {
+        Box::pin(async move { Ok(self.call(call).await) })
+    }
+    /// Validate conversion into the handler input before admission or dispatch.
+    fn validate_conversion(&self, _: &Value) -> Result<(), ConversionFailure> {
+        Ok(())
+    }
 }
 
 impl<F, Fut> Handler for F
@@ -229,5 +221,11 @@ where
 impl Handler for Box<dyn Handler> {
     fn call(&self, call: Call) -> HandlerFuture<'_> {
         self.as_ref().call(call)
+    }
+    fn call_checked(&self, call: Call) -> CheckedHandlerFuture<'_> {
+        self.as_ref().call_checked(call)
+    }
+    fn validate_conversion(&self, input: &Value) -> Result<(), ConversionFailure> {
+        self.as_ref().validate_conversion(input)
     }
 }

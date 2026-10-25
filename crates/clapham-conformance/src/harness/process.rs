@@ -28,7 +28,11 @@ impl Process {
     }
     fn command(&self) -> Command {
         let mut command = Command::new(&self.program);
-        command.args(&self.args).envs(&self.env).kill_on_drop(true);
+        command
+            .args(&self.args)
+            .envs(&self.env)
+            .env("CLAPHAM_FIXTURE_MODE", "1")
+            .kill_on_drop(true);
         command
     }
 }
@@ -66,8 +70,8 @@ pub struct ProcessFrontEnd {
     process: Process,
 }
 impl ProcessFrontEnd {
-    /// Use `serve --stdio --as KIND:ID` or `serve --http 127.0.0.1:0` for server modes.
-    /// HTTP credentials are `Bearer KIND:ID`; the host authenticator maps them explicitly.
+    /// Fixture hosts bind scripted verified claims through their private environment.
+    /// HTTP credentials use the same fixture-only claim snapshot.
     pub fn new(kind: ProcessKind, process: Process) -> Self {
         Self { kind, process }
     }
@@ -82,6 +86,13 @@ impl FrontEnd for ProcessFrontEnd {
     fn binds_tools(&self) -> bool {
         matches!(self.kind, ProcessKind::BoundStdio | ProcessKind::BoundHttp)
     }
+    fn hidden_refusal_code(&self) -> Option<&str> {
+        match self.kind {
+            ProcessKind::CommandLine => Some("usage"),
+            ProcessKind::BoundStdio | ProcessKind::BoundHttp => Some("mcp_selection"),
+            _ => None,
+        }
+    }
     fn observe<'a>(
         &'a self,
         fixture: &'a Fixture,
@@ -92,29 +103,32 @@ impl FrontEnd for ProcessFrontEnd {
             if self.kind == ProcessKind::CommandLine {
                 return cli(&self.process, case).await;
             }
-            let mut host = Host::start(&self.process, self.kind, &case.principal).await?;
+            let mut host = Host::start(&self.process, self.kind, &case.auth).await?;
             let observation = match self.kind {
                 ProcessKind::McpStdio | ProcessKind::McpHttp => {
                     let catalogue = host
                         .request(
                             "tools/call",
                             json!({"name":"clapham.describe","arguments":{}}),
-                            &case.principal,
+                            &case.auth,
                         )
                         .await?;
-                    let catalogue = names(&catalogue["structuredContent"])?;
-                    let tools = host.tools(&case.principal, &fixture.bounds).await?;
+                    let catalogue = names(&catalogue.result()?["structuredContent"])?;
+                    let tools = host.tools(&case.auth, &fixture.bounds).await?;
                     check_tools(&catalogue, &tools)?;
                     let result = host
                         .request(
                             "tools/call",
                             json!({"name":case.operation,"arguments":case.input}),
-                            &case.principal,
+                            &case.auth,
                         )
                         .await?;
                     Observation {
                         catalogue,
-                        frames: vec![Frame::Outcome(mcp_outcome(result)?)],
+                        frames: vec![match result {
+                            HostReply::Result(value) => Frame::Outcome(mcp_outcome(value)?),
+                            HostReply::Refusal(refusal) => Frame::Refusal(refusal),
+                        }],
                         exit_code: None,
                     }
                 }
@@ -123,7 +137,7 @@ impl FrontEnd for ProcessFrontEnd {
                     config.bounds = fixture.bounds.clone();
                     let connection = if let Some(endpoint) = &host.endpoint {
                         let mut options = McpHttpOptions::new(endpoint);
-                        options.bearer_token = Some(principal(&case.principal));
+                        options.bearer_token = Some(auth(&case.auth));
                         McpConnection::http(options, config).await
                     } else {
                         let reader = host
@@ -151,25 +165,18 @@ impl FrontEnd for ProcessFrontEnd {
     }
 }
 
-fn principal(principal: &Principal) -> String {
-    let kind = match principal.kind {
-        PrincipalKind::Human => "human",
-        PrincipalKind::Agent => "agent",
-        PrincipalKind::Service => "service",
-        PrincipalKind::System => "system",
-    };
-    format!("{kind}:{}", principal.id)
+fn auth(auth: &OAuthContext) -> String {
+    serde_json::to_string(auth).expect("fixture claims serialise")
 }
 async fn cli_once(
     process: &Process,
-    principal_value: &Principal,
+    auth_value: &OAuthContext,
     operation: &str,
     input: &Value,
 ) -> Result<(Vec<Frame>, i32), Failure> {
     let mut child = process
         .command()
-        .arg("--as")
-        .arg(principal(principal_value))
+        .env("CLAPHAM_FIXTURE_ACCESS", auth(auth_value))
         .args(operation.split('.'))
         .args(["--yes", "--format", "ndjson", "--json"])
         .arg("-")
@@ -224,8 +231,7 @@ async fn cli_once(
     Ok((frames, code))
 }
 async fn cli(process: &Process, case: &Case) -> Result<Observation, Failure> {
-    let (described, exit) =
-        cli_once(process, &case.principal, "clapham.describe", &json!({})).await?;
+    let (described, exit) = cli_once(process, &case.auth, "clapham.describe", &json!({})).await?;
     if exit != 0 {
         return Err(Failure::new("CLI describe was refused"));
     }
@@ -233,8 +239,7 @@ async fn cli(process: &Process, case: &Case) -> Result<Observation, Failure> {
         return Err(Failure::new("CLI describe returned unexpected frames"));
     };
     let catalogue = names(value)?;
-    let (frames, exit_code) =
-        cli_once(process, &case.principal, &case.operation, &case.input).await?;
+    let (frames, exit_code) = cli_once(process, &case.auth, &case.operation, &case.input).await?;
     Ok(Observation {
         catalogue,
         frames,
@@ -250,11 +255,25 @@ struct Host {
     client: Option<reqwest::Client>,
     id: u64,
 }
+enum HostReply {
+    Result(Value),
+    Refusal(Refusal),
+}
+impl HostReply {
+    fn result(self) -> Result<Value, Failure> {
+        match self {
+            Self::Result(value) => Ok(value),
+            Self::Refusal(refusal) => Err(Failure::new(format!(
+                "HTTP authorisation refused: {refusal}"
+            ))),
+        }
+    }
+}
 impl Host {
     async fn start(
         process: &Process,
         kind: ProcessKind,
-        caller: &Principal,
+        caller: &OAuthContext,
     ) -> Result<Self, Failure> {
         let http = matches!(kind, ProcessKind::McpHttp | ProcessKind::BoundHttp);
         let mut command = process.command();
@@ -262,7 +281,9 @@ impl Host {
         if http {
             command.args(["--http", "127.0.0.1:0"]);
         } else {
-            command.args(["--stdio", "--as"]).arg(principal(caller));
+            command
+                .args(["--stdio"])
+                .env("CLAPHAM_FIXTURE_ACCESS", auth(caller));
         }
         let mut child = command
             .stdin(Stdio::piped())
@@ -312,7 +333,11 @@ impl Host {
         }
         Ok(host)
     }
-    async fn tools(&mut self, caller: &Principal, bounds: &Bounds) -> Result<Vec<String>, Failure> {
+    async fn tools(
+        &mut self,
+        caller: &OAuthContext,
+        bounds: &Bounds,
+    ) -> Result<Vec<String>, Failure> {
         let mut tools = Vec::new();
         let mut cursor = None;
         let mut seen = BTreeSet::new();
@@ -320,6 +345,7 @@ impl Host {
             let page = self
                 .request("tools/list", json!({"cursor":cursor}), caller)
                 .await?;
+            let page = page.result()?;
             tools.extend(names(&page["tools"])?);
             if tools.len() > bounds.tools {
                 return Err(Failure::new("tools/list exceeds fixture bounds"));
@@ -338,8 +364,8 @@ impl Host {
         &mut self,
         method: &str,
         mut params: Value,
-        caller: &Principal,
-    ) -> Result<Value, Failure> {
+        caller: &OAuthContext,
+    ) -> Result<HostReply, Failure> {
         params["_meta"] = json!({"io.modelcontextprotocol/protocolVersion":"2026-07-28",
             "io.modelcontextprotocol/clientCapabilities":{}});
         self.id += 1;
@@ -350,17 +376,27 @@ impl Host {
                 .as_ref()
                 .unwrap()
                 .post(endpoint)
-                .bearer_auth(principal(caller))
+                .bearer_auth(auth(caller))
                 .header("mcp-protocol-version", "2026-07-28")
                 .header("mcp-method", method)
                 .header("accept", "application/json, text/event-stream");
             if let Some(name) = params.get("name").and_then(Value::as_str) {
                 send = send.header("mcp-name", name);
             }
-            send.json(&request)
+            let response = send
+                .json(&request)
                 .send()
                 .await
-                .map_err(|e| Failure::new(e.to_string()))?
+                .map_err(|e| Failure::new(e.to_string()))?;
+            if matches!(response.status().as_u16(), 401 | 403) {
+                // Compare the OAuth HTTP refusal with the same shared boundary on stdio.
+                let refusal = response
+                    .json::<Refusal>()
+                    .await
+                    .map_err(|e| Failure::new(e.to_string()))?;
+                return Ok(HostReply::Refusal(refusal));
+            }
+            response
                 .error_for_status()
                 .map_err(|e| Failure::new(e.to_string()))?
                 .json()
@@ -394,6 +430,7 @@ impl Host {
         response
             .get("result")
             .cloned()
+            .map(HostReply::Result)
             .ok_or_else(|| Failure::new("MCP response has no result"))
     }
     async fn finish(mut self) -> Result<(), Failure> {
@@ -459,7 +496,7 @@ async fn bound(
         .map_err(|e| Failure::new(e.to_string()))?;
     let mut describe_selection = McpSelection::new("clapham.describe");
     describe_selection.alias = Some("describe".into());
-    describe_selection.principals = Some(vec![case.principal.kind]);
+    describe_selection.scopes = case.auth.scopes().iter().cloned().collect();
     let describe = catalogue
         .bind(vec![describe_selection])
         .map_err(|e| Failure::new(e.to_string()))?;
@@ -475,7 +512,7 @@ async fn bound(
     let described = set
         .call(
             &set.all(),
-            case.principal.clone(),
+            case.auth.clone(),
             "remote.describe",
             json!({}),
             RecordSink::default(),
@@ -495,7 +532,7 @@ async fn bound(
     )?;
     let mut selection = McpSelection::new(&case.operation);
     selection.alias = Some("call".into());
-    selection.principals = Some(vec![case.principal.kind]);
+    selection.scopes = case.auth.scopes().iter().cloned().collect();
     let result = match catalogue.bind(vec![selection]) {
         Err(error) => Err(error.refusal(clapham::Evidence::NotDispatched)),
         Ok(binding) => {
@@ -510,7 +547,7 @@ async fn bound(
             .map_err(|e| Failure::new(e.to_string()))?;
             set.call(
                 &set.all(),
-                case.principal.clone(),
+                case.auth.clone(),
                 "remote.call",
                 case.input.clone(),
                 RecordSink::default(),

@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 
 use crate::{
     Admission, Call, Cancellation, Category, ComposedOperation, ComposedSet, Evidence,
-    ExecutionMode, Locality, Operation, Outcome, Principal, RecordSink, Refusal,
+    ExecutionMode, Locality, OAuthContext, Operation, Outcome, RecordSink, Refusal,
 };
 
 /// The outcome or refusal of a call through a composed set.
@@ -95,7 +95,7 @@ impl ComposedSet {
         Selection::new(self.operations.clone(), self.identity.clone())
     }
 
-    /// Validate, admit and run a selected operation under the authenticated principal.
+    /// Validate, admit and run a selected operation under the authenticated auth.
     ///
     /// Already-cancelled calls return before any validation or admission. Otherwise,
     /// the order is selection, input, gate, preview support, locality, dispatch and
@@ -107,7 +107,7 @@ impl ComposedSet {
     pub async fn call(
         &self,
         selection: &Selection,
-        principal: Principal,
+        auth: OAuthContext,
         name: &str,
         input: Value,
         sink: RecordSink,
@@ -122,8 +122,28 @@ impl ComposedSet {
         }
         let operation = self.get(name).ok_or_else(unknown_operation)?;
         let descriptor = operation.descriptor();
+        if self
+            .oauth
+            .as_ref()
+            .is_some_and(|resource| !auth.is_for(resource))
+        {
+            return Err(Refusal::not_dispatched(
+                "not_authenticated",
+                Category::Refused,
+                "the verified grant is not bound to this resource server",
+            ));
+        }
+        if !descriptor.scopes.iter().all(|scope| auth.has_scope(scope)) {
+            let mut refusal = Refusal::not_dispatched(
+                "insufficient_scope",
+                Category::Refused,
+                "the grant lacks required OAuth scopes",
+            );
+            refusal.details = Some(json!({"required_scopes": descriptor.scopes}));
+            return Err(refusal);
+        }
         operation.validate_input(&input)?;
-        match self.gate.admit(&principal, descriptor) {
+        match self.gate.admit(&auth, descriptor) {
             Admission::Allow => {}
             Admission::Deny => {
                 return Err(Refusal::not_dispatched(
@@ -156,9 +176,23 @@ impl ComposedSet {
                 "the operation needs the running daemon",
             ));
         }
+        for policy in &operation.policies {
+            use futures_util::future::{Either, select};
+            match select(
+                Box::pin(cancel.cancelled()),
+                policy.check(auth.clone(), input.clone()),
+            )
+            .await
+            {
+                Either::Left(_) => {
+                    return Err(crate::composition::cancelled(Evidence::NotDispatched));
+                }
+                Either::Right((result, _)) => result?,
+            }
+        }
         let call = Call {
             name: descriptor.name.clone(),
-            principal,
+            auth,
             input,
             records: sink,
             cancel,

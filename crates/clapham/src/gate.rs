@@ -1,7 +1,7 @@
 use std::fmt;
 use std::sync::Arc;
 
-use crate::{ApplicationInfo, Operation, Principal};
+use crate::{ApplicationInfo, OAuthContext, Operation};
 
 /// The gate's per-call admission decision.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,27 +23,27 @@ pub enum Admission {
 /// after a call returns `admission_pending`; a hidden catalogue candidate is not a
 /// call attempt.
 pub trait Gate: Send + Sync {
-    /// Query whether this principal may run or discover this operation.
+    /// Query whether this auth may run or discover this operation.
     /// This check must be safe to repeat without any subsequent dispatch.
-    fn admit(&self, principal: &Principal, operation: &Operation) -> Admission;
+    fn admit(&self, auth: &OAuthContext, operation: &Operation) -> Admission;
 }
 
 impl<F> Gate for F
 where
-    F: Fn(&Principal, &Operation) -> Admission + Send + Sync,
+    F: Fn(&OAuthContext, &Operation) -> Admission + Send + Sync,
 {
-    fn admit(&self, principal: &Principal, operation: &Operation) -> Admission {
-        self(principal, operation)
+    fn admit(&self, auth: &OAuthContext, operation: &Operation) -> Admission {
+        self(auth, operation)
     }
 }
 
-/// Admit precisely the principal kinds recorded in the descriptor.
+/// Admit grants containing every scope required by the descriptor.
 #[derive(Debug, Clone, Copy, Default)]
-pub struct DefaultGate;
+pub struct ScopeGate;
 
-impl Gate for DefaultGate {
-    fn admit(&self, principal: &Principal, operation: &Operation) -> Admission {
-        if operation.principals.contains(&principal.kind) {
+impl Gate for ScopeGate {
+    fn admit(&self, auth: &OAuthContext, operation: &Operation) -> Admission {
+        if operation.scopes.iter().all(|scope| auth.has_scope(scope)) {
             Admission::Allow
         } else {
             Admission::Deny
@@ -64,20 +64,26 @@ pub enum ExecutionMode {
 /// Host policy, execution mode and application identity, fixed at composition.
 #[derive(Clone)]
 pub struct ComposeOptions {
-    /// Per-call admission policy. Defaults to [`DefaultGate`].
+    /// Per-call admission policy. Defaults to [`ScopeGate`].
     pub gate: Arc<dyn Gate>,
     /// Whether daemon-local operations can run here.
     pub execution: ExecutionMode,
     /// The application's name and version, reported by `clapham.version` when supplied.
     pub application: Option<ApplicationInfo>,
+    /// Expected OAuth issuer and audience, where bound by composition.
+    pub oauth: Option<crate::OAuthResource>,
+    /// Named application resource policies resolved by the shared composer.
+    pub policies: std::collections::BTreeMap<String, crate::ResourcePolicy>,
 }
 
 impl Default for ComposeOptions {
     fn default() -> Self {
         Self {
-            gate: Arc::new(DefaultGate),
+            gate: Arc::new(ScopeGate),
             execution: ExecutionMode::InProcess,
             application: None,
+            oauth: None,
+            policies: Default::default(),
         }
     }
 }

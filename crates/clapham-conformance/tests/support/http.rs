@@ -1,19 +1,19 @@
 //! Shared scripted HTTP authentication and JSON request construction.
 
 use bytes::Bytes;
-use clapham::{Principal, PrincipalKind};
+use clapham::OAuthContext;
 use clapham_mcp_server::{Credential, HttpServer, PREVIEW_META_KEY};
 use http::{Request, StatusCode};
 use http_body_util::{BodyExt, Full};
 use serde_json::{Value, json};
 
-pub fn authenticate(credential: &Credential) -> Option<Principal> {
-    let kind = match credential.authorization()? {
-        "Bearer human" => PrincipalKind::Human,
-        "Bearer agent" => PrincipalKind::Agent,
+pub fn authenticate(credential: &Credential) -> Option<OAuthContext> {
+    let scopes: &[&str] = match credential.authorization()? {
+        "Bearer human" => &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+        "Bearer agent" => &["lists:read", "lists:write"][..],
         _ => return None,
     };
-    Some(Principal::new("credential-owner", kind))
+    Some(oauth_context("credential-owner", scopes))
 }
 
 pub fn metadata() -> Value {
@@ -60,4 +60,13 @@ pub async fn result(server: &HttpServer, method: &str, params: Value, credential
         serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes()).unwrap();
     assert!(value.get("error").is_none(), "{value}");
     value["result"].clone()
+}
+
+fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthContext {
+    clapham::OAuthContext::from_verified(
+        "https://identity.example.com",
+        "https://lists.example.com",
+        subject,
+        scopes.iter().copied(),
+    )
 }

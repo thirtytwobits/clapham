@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::{
-    Admission, Call, CallResult, Category, Effect, Gate, Handler, HandlerFuture, Locality,
-    Operation, Outcome, Refusal, Selection,
+    Admission, Call, CallResult, Category, Effect, Gate, Handler, Locality, Operation, Outcome,
+    Refusal, Selection,
 };
 
 /// The catalogue returned by `clapham.describe`.
@@ -56,14 +56,14 @@ impl Dispatch {
         &'a self,
         call: Call,
         selection: Option<&'a Selection>,
-    ) -> HandlerFuture<'a> {
+    ) -> crate::CheckedHandlerFuture<'a> {
         match self {
-            Self::Handler(handler) => handler.call(call),
-            Self::Describe(describe) => Box::pin(async move { describe.call(call, selection) }),
+            Self::Handler(handler) => handler.call_checked(call),
+            Self::Describe(describe) => Box::pin(async move { Ok(describe.call(call, selection)) }),
             Self::Version {
                 info,
                 message_bytes,
-            } => Box::pin(async move { bounded_outcome(info, *message_bytes) }),
+            } => Box::pin(async move { Ok(bounded_outcome(info, *message_bytes)) }),
         }
     }
 }
@@ -109,7 +109,13 @@ impl Describe {
             let operation = candidates
                 .into_iter()
                 .find(|operation| operation.name.as_str() == name)
-                .filter(|operation| self.gate.admit(&call.principal, operation) == Admission::Allow)
+                .filter(|operation| {
+                    operation
+                        .scopes
+                        .iter()
+                        .all(|scope| call.auth.has_scope(scope))
+                        && self.gate.admit(&call.auth, operation) == Admission::Allow
+                })
                 .ok_or_else(|| {
                     Refusal::new(
                         "unknown_operation",
@@ -121,7 +127,13 @@ impl Describe {
         } else {
             let operations: Vec<_> = candidates
                 .into_iter()
-                .filter(|operation| self.gate.admit(&call.principal, operation) == Admission::Allow)
+                .filter(|operation| {
+                    operation
+                        .scopes
+                        .iter()
+                        .all(|scope| call.auth.has_scope(scope))
+                        && self.gate.admit(&call.auth, operation) == Admission::Allow
+                })
                 .collect();
             bounded_outcome(&operations, self.message_bytes)
         }
@@ -195,13 +207,14 @@ fn descriptor(
         input: input.as_object().expect("input has an object root").clone(),
         output: Some(output),
         effect: Effect::Query,
-        principals: Effect::Query.default_principals().to_vec(),
+        scopes: Vec::new(),
+        policies: Vec::new(),
         locality: Locality::Workspace,
         refusals,
         streams: false,
-        resource: None,
         preview: false,
         positional: Vec::new(),
+        confirmation: false,
         idempotent: true,
         open_world: false,
     }

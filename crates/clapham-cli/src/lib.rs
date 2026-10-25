@@ -1,5 +1,7 @@
 #![doc = include_str!("../README.md")]
 
+mod backend;
+pub use backend::{Backend, BackendFuture, HttpBackend};
 mod input;
 mod output;
 mod process;
@@ -13,8 +15,8 @@ use std::time::Duration;
 
 use clap::{Command, error::ErrorKind};
 use clapham::{
-    CallResult, Cancellation, Category, ComposedSet, Locality, Principal, PrincipalKind,
-    RecordSink, Refusal, Selection,
+    CallResult, Cancellation, Category, ComposedSet, Locality, OAuthContext, RecordSink, Refusal,
+    Selection,
 };
 use serde_json::Value;
 
@@ -26,8 +28,6 @@ pub use settings::{Format, OutputOptions, Shell};
 pub struct Invocation {
     /// The complete operation name, with command-line aliases resolved.
     pub name: String,
-    /// The supplied principal, or the identity selected by `--as`.
-    pub principal: Principal,
     /// The input object, validated against the operation's schema.
     pub input: Value,
     /// Whether administrative or destructive effects were explicitly confirmed.
@@ -43,10 +43,9 @@ pub struct Invocation {
 impl Invocation {
     /// An invocation without confirmation, preview or timeout, with automatic output.
     /// The call runner still validates input and enforces every safeguard.
-    pub fn new(name: impl Into<String>, principal: Principal, input: Value) -> Self {
+    pub fn new(name: impl Into<String>, input: Value) -> Self {
         Self {
             name: name.into(),
-            principal,
             input,
             yes: false,
             preview: false,
@@ -100,7 +99,8 @@ impl std::error::Error for CliError {}
 pub struct Cli {
     set: ComposedSet,
     selection: Selection,
-    principal: Principal,
+    auth: Option<OAuthContext>,
+    backend: Option<std::sync::Arc<dyn Backend>>,
     command: Command,
     tree: tree::Node,
     deadline: settings::Deadline,
@@ -111,27 +111,33 @@ impl Cli {
     /// Build nested commands and schema-derived arguments, without dispatching.
     ///
     /// Unrepresentable names and colliding flags refuse as `cli_configuration`.
-    /// Supply [`process_principal`] for a normal process's default operator.
+    /// The host supplies authority established by trusted OAuth middleware.
     pub fn new(
         name: impl Into<String>,
         set: ComposedSet,
-        principal: Principal,
+        auth: OAuthContext,
     ) -> Result<Self, Refusal> {
-        let name = name.into();
-        let tree = tree::Node::from_set(&set)?;
-        let command = settings::command(
-            tree.command(&name, &set)?.arg(
-                clap::Arg::new(tree::AS)
-                    .long("as")
-                    .global(true)
-                    .value_name("KIND:ID")
-                    .help("Run as human:<id>, agent:<id>, service:<id> or system:<id>"),
-            ),
-        );
+        Self::build(name.into(), set, Some(auth), None)
+    }
+
+    fn build(
+        name: String,
+        set: ComposedSet,
+        auth: Option<OAuthContext>,
+        names: Option<Vec<String>>,
+    ) -> Result<Self, Refusal> {
+        let selection = if let Some(names) = names {
+            set.select(names)?
+        } else {
+            set.all()
+        };
+        let tree = tree::Node::from_selection(&selection)?;
+        let command = settings::command(tree.command(&name, &set)?);
         Ok(Self {
-            selection: set.all(),
+            selection,
             set,
-            principal,
+            auth,
+            backend: None,
             command,
             tree,
             deadline: settings::Deadline::default(),
@@ -173,11 +179,6 @@ impl Cli {
             )?;
             return Err(CliError::Help(self.completions(shell)));
         }
-        let principal = matches
-            .get_one::<String>(tree::AS)
-            .map(|value| input::principal(value))
-            .transpose()?
-            .unwrap_or_else(|| self.principal.clone());
         let (node, matches) = self.tree.selected(&matches);
         let name = node
             .operation
@@ -209,7 +210,6 @@ impl Cli {
         operation.validate_input(&input)?;
         Ok(Invocation {
             name: name.clone(),
-            principal,
             input,
             yes,
             preview,
@@ -231,13 +231,64 @@ impl Cli {
         records: RecordSink,
         cancel: Cancellation,
     ) -> CallResult {
+        if let Some(backend) = &self.backend {
+            let operation = self
+                .set
+                .get(&invocation.name)
+                .filter(|_| self.selection.contains(&invocation.name))
+                .ok_or_else(|| {
+                    Refusal::not_dispatched(
+                        "unknown_operation",
+                        Category::NotFound,
+                        "the operation is not in this CLI selection",
+                    )
+                })?;
+            settings::confirmation(operation.descriptor(), invocation.yes)?;
+            settings::preview(operation.descriptor(), invocation.preview)?;
+            operation.validate_input(&invocation.input)?;
+            if cancel.is_cancelled() {
+                return Err(Refusal::not_dispatched(
+                    "cancelled",
+                    Category::Interrupted,
+                    "cancelled before dispatch",
+                ));
+            }
+            if invocation.timeout.is_some_and(|timeout| timeout.is_zero()) {
+                return Err(Refusal::not_dispatched(
+                    "cancelled",
+                    Category::Interrupted,
+                    "the call deadline expired before dispatch",
+                ));
+            }
+            let timeout = invocation.timeout;
+            let run = backend.call(invocation, records, cancel.clone());
+            if let Some(timeout) = timeout {
+                use futures_util::future::{Either, select};
+                if let Either::Right((result, _)) = select(self.deadline.wait(timeout), run).await {
+                    return result;
+                }
+                return Err(Refusal::new(
+                    "cancelled",
+                    Category::Interrupted,
+                    "the call deadline expired",
+                )
+                .with_evidence(clapham::Evidence::Uncertain));
+            }
+            return run.await;
+        }
         let call_cancel = Cancellation::new();
         if cancel.is_cancelled() {
             call_cancel.cancel();
         }
         let call = self.set.call(
             &self.selection,
-            invocation.principal,
+            self.auth.clone().ok_or_else(|| {
+                Refusal::not_dispatched(
+                    "not_authenticated",
+                    Category::Refused,
+                    "verified authority is required",
+                )
+            })?,
             &invocation.name,
             invocation.input,
             records,
@@ -300,18 +351,6 @@ impl Cli {
             .await
             .map_err(Into::into)
     }
-}
-
-/// The process account as a human principal, obtained from the operating system.
-///
-/// Failure to resolve a non-empty account refuses as `cli_configuration`; no
-/// anonymous or environment-variable fallback is silently substituted.
-pub fn process_principal() -> Result<Principal, Refusal> {
-    let account = whoami::username().map_err(|error| configuration(error.to_string()))?;
-    if account.is_empty() {
-        return Err(configuration("the process account is empty"));
-    }
-    Ok(Principal::new(account, PrincipalKind::Human))
 }
 
 fn usage(message: impl Into<String>) -> Refusal {

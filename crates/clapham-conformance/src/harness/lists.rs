@@ -44,7 +44,7 @@ pub fn lists_fixture() -> Fixture {
         ],
     );
     let mut denied_tick = Case::new("items.tick", json!({"list_id":"tasks","id":"a"}));
-    denied_tick.principal = Principal::new("agent", PrincipalKind::Agent);
+    denied_tick.auth = oauth_context("agent", &["lists:read", "lists:write"]);
     fixture.cases.push(denied_tick);
     fixture.cases.push(Case::new(
         "lists.create",
@@ -56,11 +56,20 @@ pub fn lists_fixture() -> Fixture {
 /// Descriptor defaults and the normal lists gate, with `agent:denied` refused for all domain operations.
 /// Built-in describe remains available so omission is checked through every adapter.
 pub fn lists_gate() -> Arc<dyn Gate> {
-    Arc::new(|principal: &Principal, operation: &clapham::Operation| {
-        if principal.id == "denied" && operation.name.namespace() != Some("clapham") {
+    Arc::new(|auth: &OAuthContext, operation: &clapham::Operation| {
+        if auth.subject() == "denied" && operation.name.namespace() != Some("clapham") {
             Admission::Deny
         } else {
-            ListsGate.admit(principal, operation)
+            ListsGate.admit(auth, operation)
         }
     })
+}
+
+fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthContext {
+    clapham::OAuthContext::from_verified(
+        "https://identity.example.com",
+        "https://lists.example.com",
+        subject,
+        scopes.iter().copied(),
+    )
 }

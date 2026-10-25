@@ -220,7 +220,7 @@ fn human_stream_records_and_custom_renderers_work_as_process_output() {
 fn every_refusal_category_uses_one_json_stderr_line_and_its_exit_code() {
     for (args, code, exit) in [
         (vec!["lists", "delete", "--id", "tasks"], "usage", 2),
-        (vec!["--as", "agent:bot", "lists", "compact"], "usage", 2),
+        (vec!["lists", "compact"], "usage", 2),
         (vec!["lists", "create", "--json", "{}"], "invalid_input", 65),
         (vec!["lists", "get", "absent"], "list_not_found", 66),
         (
@@ -237,11 +237,7 @@ fn every_refusal_category_uses_one_json_stderr_line_and_its_exit_code() {
             "list_changed",
             67,
         ),
-        (
-            vec!["--as", "agent:bot", "lists", "compact", "--yes"],
-            "not_admitted",
-            77,
-        ),
+        (vec!["probe", "denied"], "not_admitted", 77),
         (vec!["probe", "daemon"], "no_daemon", 69),
         (
             vec!["lists", "get", "tasks", "--timeout", "0s"],

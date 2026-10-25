@@ -108,9 +108,14 @@
       ]
     },
     "Operation": {
-      "description": "An operation's language-neutral descriptor.\n\nOmitting `principals` admits the effect's default kinds. An explicit empty list\nadmits no kinds. The remaining MCP hints, `idempotent` and `open_world`, are\nrequired rather than silently defaulted. Composition compiles the schemas and\nchecks the descriptor's cross-field semantics before calls can run.",
+      "description": "An operation's language-neutral descriptor.\n\nOAuth scopes and resource policies constrain admission independently of effects.\nThe behaviour declarations, `idempotent` and `open_world`, are\nrequired rather than silently defaulted. Composition compiles the schemas and\nchecks the descriptor's cross-field semantics before calls can run.",
       "type": "object",
       "properties": {
+        "confirmation": {
+          "description": "Whether the CLI requires explicit confirmation.",
+          "type": "boolean",
+          "default": false
+        },
         "description": {
           "description": "What the operation does; this field is required.",
           "type": "string"
@@ -120,7 +125,7 @@
           "$ref": "#/$defs/Effect"
         },
         "idempotent": {
-          "description": "The declared MCP idempotency hint; queries always map to true.",
+          "description": "Whether repeating the operation has the same effect as one call.",
           "type": "boolean"
         },
         "input": {
@@ -145,7 +150,7 @@
           "$ref": "#/$defs/OperationName"
         },
         "open_world": {
-          "description": "The declared MCP open-world hint.",
+          "description": "Whether the operation reaches entities outside its own domain.",
           "type": "boolean"
         },
         "output": {
@@ -158,6 +163,14 @@
               "type": "null"
             }
           ]
+        },
+        "policies": {
+          "description": "Named resource policies, resolved at composition.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
         },
         "positional": {
           "description": "Input properties taken as positional command-line arguments, in order.",
@@ -172,13 +185,6 @@
           "type": "boolean",
           "default": false
         },
-        "principals": {
-          "description": "The kinds admitted; when omitted, defaults from `effect`.",
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/PrincipalKind"
-          }
-        },
         "refusals": {
           "description": "Each declared refusal code and the category front ends act on.",
           "type": "object",
@@ -187,12 +193,13 @@
           },
           "default": {}
         },
-        "resource": {
-          "description": "A query's resource URI template, where supplied.",
-          "type": [
-            "string",
-            "null"
-          ]
+        "scopes": {
+          "description": "Every OAuth scope required to invoke or discover this operation.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
         },
         "streams": {
           "description": "Whether typed records precede the result.",
@@ -226,31 +233,6 @@
         "pattern": "[^A-Za-z0-9_.-]"
       },
       "pattern": "^[A-Za-z0-9_.-]+$"
-    },
-    "PrincipalKind": {
-      "description": "The kind of caller running an operation.",
-      "oneOf": [
-        {
-          "description": "A person using the host.",
-          "type": "string",
-          "const": "human"
-        },
-        {
-          "description": "An agent acting under the host's authority.",
-          "type": "string",
-          "const": "agent"
-        },
-        {
-          "description": "A service authenticated by the host.",
-          "type": "string",
-          "const": "service"
-        },
-        {
-          "description": "The host acting for itself.",
-          "type": "string",
-          "const": "system"
-        }
-      ]
     },
     "Schema": {
       "type": [

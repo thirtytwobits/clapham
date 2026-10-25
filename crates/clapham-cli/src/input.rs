@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::io::Read;
 
 use clap::ArgMatches;
-use clapham::{Operation, Principal, PrincipalKind, Refusal};
+use clapham::{Operation, Refusal};
 use serde_json::{Map, Value};
 
 use crate::{
@@ -207,19 +207,4 @@ pub(crate) fn bind(
         }
     }
     Ok(Value::Object(input))
-}
-
-pub(crate) fn principal(value: &str) -> Result<Principal, Refusal> {
-    let (kind, id) = value
-        .split_once(':')
-        .filter(|(_, id)| !id.is_empty())
-        .ok_or_else(|| usage("--as expects <kind>:<id> with a non-empty id"))?;
-    let kind = match kind {
-        "human" => PrincipalKind::Human,
-        "agent" => PrincipalKind::Agent,
-        "service" => PrincipalKind::Service,
-        "system" => PrincipalKind::System,
-        _ => return Err(usage("--as kind must be human, agent, service or system")),
-    };
-    Ok(Principal::new(id, kind))
 }

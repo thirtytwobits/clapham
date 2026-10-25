@@ -121,14 +121,13 @@ pub(crate) fn command(command: Command) -> Command {
 }
 
 pub(crate) fn confirmation(operation: &Operation, yes: bool) -> Result<(), Refusal> {
-    if matches!(
+    if (matches!(
         operation.effect,
         Effect::Administrative | Effect::Destructive
-    ) && !yes
+    ) || operation.confirmation)
+        && !yes
     {
-        return Err(usage(
-            "administrative and destructive operations require --yes",
-        ));
+        return Err(usage("the operation requires --yes"));
     }
     Ok(())
 }

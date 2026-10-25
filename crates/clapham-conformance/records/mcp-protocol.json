@@ -135,8 +135,13 @@
           },
           "Operation": {
             "additionalProperties": false,
-            "description": "An operation's language-neutral descriptor.\n\nOmitting `principals` admits the effect's default kinds. An explicit empty list\nadmits no kinds. The remaining MCP hints, `idempotent` and `open_world`, are\nrequired rather than silently defaulted. Composition compiles the schemas and\nchecks the descriptor's cross-field semantics before calls can run.",
+            "description": "An operation's language-neutral descriptor.\n\nOAuth scopes and resource policies constrain admission independently of effects.\nThe behaviour declarations, `idempotent` and `open_world`, are\nrequired rather than silently defaulted. Composition compiles the schemas and\nchecks the descriptor's cross-field semantics before calls can run.",
             "properties": {
+              "confirmation": {
+                "default": false,
+                "description": "Whether the CLI requires explicit confirmation.",
+                "type": "boolean"
+              },
               "description": {
                 "description": "What the operation does; this field is required.",
                 "type": "string"
@@ -146,7 +151,7 @@
                 "description": "What the operation does to its environment."
               },
               "idempotent": {
-                "description": "The declared MCP idempotency hint; queries always map to true.",
+                "description": "Whether repeating the operation has the same effect as one call.",
                 "type": "boolean"
               },
               "input": {
@@ -171,7 +176,7 @@
                 "description": "The operation's identity, split into namespace and local name at the first dot."
               },
               "open_world": {
-                "description": "The declared MCP open-world hint.",
+                "description": "Whether the operation reaches entities outside its own domain.",
                 "type": "boolean"
               },
               "output": {
@@ -184,6 +189,14 @@
                   }
                 ],
                 "description": "The result JSON Schema, where supplied; object and boolean schemas are admitted."
+              },
+              "policies": {
+                "default": [],
+                "description": "Named resource policies, resolved at composition.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
               },
               "positional": {
                 "default": [],
@@ -198,13 +211,6 @@
                 "description": "Whether the operation accepts a dry run.",
                 "type": "boolean"
               },
-              "principals": {
-                "description": "The kinds admitted; when omitted, defaults from `effect`.",
-                "items": {
-                  "$ref": "#/$defs/PrincipalKind"
-                },
-                "type": "array"
-              },
               "refusals": {
                 "additionalProperties": {
                   "$ref": "#/$defs/Category"
@@ -213,12 +219,13 @@
                 "description": "Each declared refusal code and the category front ends act on.",
                 "type": "object"
               },
-              "resource": {
-                "description": "A query's resource URI template, where supplied.",
-                "type": [
-                  "string",
-                  "null"
-                ]
+              "scopes": {
+                "default": [],
+                "description": "Every OAuth scope required to invoke or discover this operation.",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
               },
               "streams": {
                 "default": false,
@@ -252,31 +259,6 @@
             },
             "pattern": "^[A-Za-z0-9_.-]+$",
             "type": "string"
-          },
-          "PrincipalKind": {
-            "description": "The kind of caller running an operation.",
-            "oneOf": [
-              {
-                "const": "human",
-                "description": "A person using the host.",
-                "type": "string"
-              },
-              {
-                "const": "agent",
-                "description": "An agent acting under the host's authority.",
-                "type": "string"
-              },
-              {
-                "const": "service",
-                "description": "A service authenticated by the host.",
-                "type": "string"
-              },
-              {
-                "const": "system",
-                "description": "The host acting for itself.",
-                "type": "string"
-              }
-            ]
           },
           "Schema": {
             "type": [

@@ -15,8 +15,8 @@ use std::{
 
 use bytes::Bytes;
 use clapham::{
-    Admission, Bounds, Call, ComposeOptions, Contribution, Operation, Outcome, Principal, compose,
-    compose_with_options,
+    Admission, Bounds, Call, ComposeOptions, Contribution, OAuthContext, Operation, Outcome,
+    compose, compose_with_options,
 };
 use clapham_conformance::{ListsGate, ListsHandle};
 use clapham_mcp_server::{Credential, HttpServer};
@@ -39,7 +39,13 @@ fn fixture() -> (ListsHandle, HttpServer) {
         },
     )
     .unwrap();
-    (handle, HttpServer::new(set, support::authenticate).unwrap())
+    (
+        handle,
+        HttpServer::new(set, support::authenticate)
+            .unwrap()
+            .resources(clapham_conformance::LIST_RESOURCES.iter().copied())
+            .unwrap(),
+    )
 }
 
 #[tokio::test]
@@ -67,8 +73,18 @@ async fn each_request_authenticates_independently_without_a_session() {
         );
         assert_eq!(reply["result"]["cacheScope"], "private");
     }
-    let denied = support::result(&server, "tools/call", json!({"name":"lists.compact","arguments":{},"_meta":{"principal":{"id":"human","kind":"human"}}}), "Bearer agent").await;
-    assert_eq!(denied["structuredContent"]["code"], "not_admitted");
+    let denied = server.handle(support::request("tools/call",json!({"name":"lists.compact","arguments":{},"_meta":{"subject":"alice","client_id":"operator","scopes":["lists:admin"]}}),"Bearer agent")).await;
+    assert_eq!(denied.status(), StatusCode::FORBIDDEN);
+    assert!(
+        denied.headers()["www-authenticate"]
+            .to_str()
+            .unwrap()
+            .contains("lists:admin")
+    );
+    let denied: clapham::Refusal =
+        serde_json::from_slice(&denied.into_body().collect().await.unwrap().to_bytes()).unwrap();
+    assert_eq!(denied.code, "insufficient_scope");
+    assert_eq!(denied.evidence, clapham::Evidence::NotDispatched);
     let refused = server
         .handle(support::request("tools/list", json!({}), "Bearer unknown"))
         .await;
@@ -96,7 +112,7 @@ async fn unmapped_credentials_are_refused_before_body_or_gate_or_handler() {
         handle.contributions(),
         Bounds::default(),
         ComposeOptions {
-            gate: Arc::new(move |_: &Principal, _: &Operation| {
+            gate: Arc::new(move |_: &OAuthContext, _: &Operation| {
                 observed.fetch_add(1, Ordering::SeqCst);
                 Admission::Allow
             }),
@@ -203,7 +219,7 @@ async fn http_protocol_and_origin_checks_are_enforced_without_sessions() {
 }
 
 fn probe() -> Operation {
-    serde_json::from_value(json!({"name":"probe.large","description":"Read a large result.","input":{"type":"object"},"effect":"query","locality":"workspace","idempotent":true,"open_world":false,"resource":"probe://large"})).unwrap()
+    serde_json::from_value(json!({"name":"probe.large","description":"Read a large result.","input":{"type":"object"},"effect":"query","locality":"workspace","idempotent":true,"open_world":false})).unwrap()
 }
 
 #[tokio::test]
@@ -221,7 +237,10 @@ async fn http_request_and_reply_bytes_are_bounded() {
         },
     )
     .unwrap();
-    let server = HttpServer::new(set, support::authenticate).unwrap();
+    let server = HttpServer::new(set, support::authenticate)
+        .unwrap()
+        .resources([("probe.large", "probe://large")])
+        .unwrap();
     let response = server
         .handle(support::request(
             "tools/call",
@@ -314,18 +333,17 @@ fn credentials_do_not_expose_authorization_in_debug_output() {
 }
 
 #[tokio::test]
-async fn concurrent_requests_keep_their_own_authenticated_principals() {
+async fn concurrent_requests_keep_their_own_authenticated_auths() {
     use std::sync::Mutex;
     let (entered, enter) = oneshot::channel();
     let (release, released) = oneshot::channel();
     let signals = Mutex::new(Some((entered, released)));
     let mut descriptor = probe();
     descriptor.name = "probe.identity".parse().unwrap();
-    descriptor.resource = None;
     let set = compose(
         [
             Contribution::new("probe").operation(descriptor, move |call: Call| {
-                let signals = if call.principal.kind == clapham::PrincipalKind::Human {
+                let signals = if call.auth.has_scope("lists:admin") {
                     signals.lock().unwrap().take()
                 } else {
                     None
@@ -335,7 +353,7 @@ async fn concurrent_requests_keep_their_own_authenticated_principals() {
                         let _ = entered.send(());
                         released.await.unwrap();
                     }
-                    Ok(Outcome::new(serde_json::to_value(call.principal).unwrap()))
+                    Ok(Outcome::new(serde_json::to_value(call.auth).unwrap()))
                 }
             }),
         ],
@@ -356,12 +374,18 @@ async fn concurrent_requests_keep_their_own_authenticated_principals() {
         "Bearer agent",
     )
     .await;
-    assert_eq!(agent["structuredContent"]["kind"], "agent");
+    assert_eq!(
+        agent["structuredContent"]["scopes"],
+        json!(["lists:read", "lists:write"])
+    );
     release.send(()).unwrap();
     let response = human.await;
     let reply: Value =
         serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes()).unwrap();
-    assert_eq!(reply["result"]["structuredContent"]["kind"], "human");
+    assert_eq!(
+        reply["result"]["structuredContent"]["scopes"],
+        json!(["items:tick", "lists:admin", "lists:read", "lists:write"])
+    );
 }
 
 #[tokio::test]
@@ -387,7 +411,10 @@ async fn oversized_declared_refusal_returns_http_failure_without_replacing_its_c
         },
     )
     .unwrap();
-    let server = HttpServer::new(set, support::authenticate).unwrap();
+    let server = HttpServer::new(set, support::authenticate)
+        .unwrap()
+        .resources([("probe.large", "probe://large")])
+        .unwrap();
     for (method, params) in [
         ("tools/call", json!({"name":"probe.large"})),
         ("resources/read", json!({"uri":"probe://large"})),
@@ -464,7 +491,7 @@ async fn authentication_challenge_is_supplied_only_by_the_host() {
         .handle(support::request("tools/list", json!({}), "Bearer unknown"))
         .await;
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-    assert!(!response.headers().contains_key("www-authenticate"));
+    assert_eq!(response.headers()["www-authenticate"], "Bearer");
     for challenge in [
         "Basic realm=\"lists\"",
         "Bearer resource_metadata=\"https://host.invalid/.well-known/oauth-protected-resource\"",

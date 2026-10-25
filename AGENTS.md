@@ -12,7 +12,7 @@ application, a product or another piece's internals. Fixtures use lists and item
 Rust builds with Cargo alone. Do not introduce another build system or a Node dependency
 into a Rust build. The gate toolchain is Rust 1.99.0.
 
-`clapham` keeps Rust 1.85. `clapham-mcp-server` and `clapham-mcp-client` keep Rust 1.88,
+The core, CLI and MCP crates keep Rust 1.88,
 which rmcp 3.6.0 requires. Keep the dependency boundary policy in `tools/xtask` explicit;
 normal, development, build, optional and target-specific dependencies obey it alike.
 

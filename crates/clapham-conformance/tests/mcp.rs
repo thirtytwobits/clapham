@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use clapham::{
-    Bounds, Call, ComposeOptions, Contribution, Operation, Outcome, Principal, PrincipalKind,
-    compose, compose_with_options,
+    Bounds, Call, ComposeOptions, Contribution, OAuthContext, Operation, Outcome, compose,
+    compose_with_options,
 };
 use clapham_conformance::{ListsGate, ListsHandle};
 use clapham_mcp_server::Server;
@@ -77,8 +77,11 @@ impl Wire {
     }
 }
 
-fn principal() -> Principal {
-    Principal::new("launcher", PrincipalKind::Human)
+fn auth() -> OAuthContext {
+    oauth_context(
+        "launcher",
+        &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+    )
 }
 fn fixture() -> (ListsHandle, Server) {
     let handle = ListsHandle::new();
@@ -92,7 +95,13 @@ fn fixture() -> (ListsHandle, Server) {
         },
     )
     .unwrap();
-    (handle, Server::new(set, principal()).unwrap())
+    (
+        handle,
+        Server::new(set, auth())
+            .unwrap()
+            .resources(clapham_conformance::LIST_RESOURCES.iter().copied())
+            .unwrap(),
+    )
 }
 fn descriptor(name: &str) -> Operation {
     serde_json::from_value(json!({"name":name,"description":"Probe a protocol boundary.","input":{"type":"object","additionalProperties":false},"effect":"query","locality":"workspace","idempotent":true,"open_world":false})).unwrap()
@@ -143,7 +152,7 @@ async fn cancelled_held_call_releases_execution_and_transport_slots() {
         },
     )
     .unwrap();
-    let server = Server::new(set, principal()).unwrap();
+    let server = Server::new(set, auth()).unwrap();
     let mut held = handle.hold("lists.get").unwrap();
     let mut wire = Wire::new(server);
     wire.send(
@@ -210,7 +219,7 @@ async fn pagination_is_bounded_and_cursors_are_checked() {
         ..Bounds::default()
     };
     let set = compose([contribution], bounds).unwrap();
-    let mut wire = Wire::new(Server::new(set, principal()).unwrap());
+    let mut wire = Wire::new(Server::new(set, auth()).unwrap());
     let mut cursor = None;
     let mut names = Vec::new();
     let mut pages = 0;
@@ -259,7 +268,7 @@ async fn frame_limits_include_encoded_result_and_oversized_input_recovers() {
         },
     )
     .unwrap();
-    let mut wire = Wire::new(Server::new(set, principal()).unwrap());
+    let mut wire = Wire::new(Server::new(set, auth()).unwrap());
     // Bounded decoding discards an entire oversized line, then resumes at the next.
     wire.input
         .write_all(format!("{}\n", "x".repeat(16384)).as_bytes())
@@ -283,24 +292,16 @@ async fn content_null_and_boolean_output_schema_retain_their_meaning() {
         Ok(Outcome {
             result: Some(Value::Null),
             content: Some(vec![
-                clapham::ContentBlock::Text {
-                    text: "Text".into(),
-                },
-                clapham::ContentBlock::Image {
-                    url: "data:image/png;base64,AAAA".into(),
-                    mime_type: "image/png".into(),
-                },
-                clapham::ContentBlock::Audio {
-                    url: "https://example.invalid/audio".into(),
-                    mime_type: "audio/wav".into(),
-                },
+                json!({"type":"text","text":"Text"}),
+                json!({"type":"image","data":"AAAA","mimeType":"image/png"}),
+                json!({"type":"resource_link","uri":"https://example.invalid/audio","name":"https://example.invalid/audio","mimeType":"audio/wav"}),
             ]),
             is_error: true,
             evidence: clapham::Evidence::Completed,
         })
     });
     let set = compose([contribution], Bounds::default()).unwrap();
-    let mut wire = Wire::new(Server::new(set, principal()).unwrap());
+    let mut wire = Wire::new(Server::new(set, auth()).unwrap());
     let catalogue = wire.result(1, "tools/list", json!({})).await;
     let tool = catalogue["tools"]
         .as_array()
@@ -341,7 +342,7 @@ async fn oversized_refusal_closes_instead_of_changing_its_code() {
         },
     )
     .unwrap();
-    let mut wire = Wire::new(Server::new(set, principal()).unwrap());
+    let mut wire = Wire::new(Server::new(set, auth()).unwrap());
     wire.send(1, "tools/call", json!({"name":"probe.refusal"}))
         .await;
     let mut line = String::new();
@@ -358,12 +359,15 @@ fn unsupported_resource_templates_refuse_before_serving() {
                 .as_object()
                 .unwrap()
                 .clone();
-        op.resource = Some(uri.into());
         let contribution = Contribution::new("probe")
             .operation(op, |_: Call| async { Ok(Outcome::new(Value::Null)) });
         let set = compose([contribution], Bounds::default()).unwrap();
         assert_eq!(
-            Server::new(set, principal()).unwrap_err().code,
+            Server::new(set, auth())
+                .unwrap()
+                .resources([("probe.resource", uri)])
+                .unwrap_err()
+                .code,
             "mcp_configuration"
         );
     }
@@ -381,7 +385,7 @@ async fn describe_admission_is_required_for_discovery_but_does_not_disable_calls
             handle.contributions(),
             Bounds::default(),
             ComposeOptions {
-                gate: Arc::new(move |_: &Principal, op: &Operation| {
+                gate: Arc::new(move |_: &OAuthContext, op: &Operation| {
                     if op.name.as_str() == "clapham.describe" {
                         decision
                     } else {
@@ -393,7 +397,9 @@ async fn describe_admission_is_required_for_discovery_but_does_not_disable_calls
         )
         .unwrap();
         let mut wire = Wire::new(
-            Server::new(set, principal())
+            Server::new(set, auth())
+                .unwrap()
+                .resources(clapham_conformance::LIST_RESOURCES.iter().copied())
                 .unwrap()
                 .select(["lists.get"])
                 .unwrap(),
@@ -438,8 +444,7 @@ async fn describe_admission_is_required_for_discovery_but_does_not_disable_calls
 
 #[tokio::test]
 async fn oversized_resource_result_returns_refusal_and_keeps_connection_usable() {
-    let mut op = descriptor("probe.large");
-    op.resource = Some("probe://large".into());
+    let op = descriptor("probe.large");
     let contribution = Contribution::new("probe").operation(op, |_: Call| async {
         Ok(Outcome::new(json!({"text":"x".repeat(8192)})))
     });
@@ -452,7 +457,12 @@ async fn oversized_resource_result_returns_refusal_and_keeps_connection_usable()
         },
     )
     .unwrap();
-    let mut wire = Wire::new(Server::new(set, principal()).unwrap());
+    let mut wire = Wire::new(
+        Server::new(set, auth())
+            .unwrap()
+            .resources([("probe.large", "probe://large")])
+            .unwrap(),
+    );
     let result = wire
         .result(1, "resources/read", json!({"uri":"probe://large"}))
         .await;
@@ -470,20 +480,22 @@ async fn oversized_resource_result_returns_refusal_and_keeps_connection_usable()
 
 #[tokio::test]
 async fn resource_error_outcomes_retain_content_and_error_flag() {
-    let mut op = descriptor("probe.error");
-    op.resource = Some("probe://error".into());
+    let op = descriptor("probe.error");
     let contribution = Contribution::new("probe").operation(op, |_: Call| async {
         Ok(Outcome {
             result: Some(json!({"reason":"unavailable"})),
-            content: Some(vec![clapham::ContentBlock::Text {
-                text: "Details".into(),
-            }]),
+            content: Some(vec![json!({"type":"text","text":"Details"})]),
             is_error: true,
             evidence: clapham::Evidence::Completed,
         })
     });
     let set = compose([contribution], Bounds::default()).unwrap();
-    let mut wire = Wire::new(Server::new(set, principal()).unwrap());
+    let mut wire = Wire::new(
+        Server::new(set, auth())
+            .unwrap()
+            .resources([("probe.error", "probe://error")])
+            .unwrap(),
+    );
     let result = wire
         .result(1, "resources/read", json!({"uri":"probe://error"}))
         .await;
@@ -526,13 +538,19 @@ fn equivalent_resource_template_shapes_refuse_before_serving() {
             .as_object()
             .unwrap()
             .clone();
-        op.resource = Some(format!("probe://{{{variable}}}"));
         contribution =
             contribution.operation(op, |_: Call| async { Ok(Outcome::new(Value::Null)) });
     }
     let set = compose([contribution], Bounds::default()).unwrap();
     assert_eq!(
-        Server::new(set, principal()).unwrap_err().code,
+        Server::new(set, auth())
+            .unwrap()
+            .resources([
+                ("probe.first", "probe://{id}"),
+                ("probe.second", "probe://{name}")
+            ])
+            .unwrap_err()
+            .code,
         "mcp_configuration"
     );
 }
@@ -548,7 +566,7 @@ async fn resource_discovery_does_not_describe_unrelated_tools() {
         handle.contributions(),
         Bounds::default(),
         ComposeOptions {
-            gate: Arc::new(move |_: &Principal, op: &Operation| {
+            gate: Arc::new(move |_: &OAuthContext, op: &Operation| {
                 seen.lock().unwrap().push(op.name.to_string());
                 clapham::Admission::Allow
             }),
@@ -556,7 +574,12 @@ async fn resource_discovery_does_not_describe_unrelated_tools() {
         },
     )
     .unwrap();
-    let mut wire = Wire::new(Server::new(set, principal()).unwrap());
+    let mut wire = Wire::new(
+        Server::new(set, auth())
+            .unwrap()
+            .resources(clapham_conformance::LIST_RESOURCES.iter().copied())
+            .unwrap(),
+    );
     wire.result(1, "resources/read", json!({"uri":"lists://tasks"}))
         .await;
     assert!(
@@ -567,4 +590,13 @@ async fn resource_discovery_does_not_describe_unrelated_tools() {
             .all(|name| ["clapham.describe", "lists.list", "lists.get"].contains(&name.as_str()))
     );
     wire.close().await;
+}
+
+fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthContext {
+    clapham::OAuthContext::from_verified(
+        "https://identity.example.com",
+        "https://lists.example.com",
+        subject,
+        scopes.iter().copied(),
+    )
 }

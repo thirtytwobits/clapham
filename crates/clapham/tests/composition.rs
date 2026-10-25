@@ -10,7 +10,7 @@ use std::task::{Context, Poll};
 
 use clapham::{
     Bounds, Call, Category, ComposedSet, CompositionCode, Contribution, Evidence, Handler,
-    HandlerFuture, Operation, Outcome, Principal, PrincipalKind, RecordSink, Refusal, compose,
+    HandlerFuture, Operation, Outcome, RecordSink, Refusal, compose,
 };
 use futures_executor::block_on;
 use futures_util::task::noop_waker;
@@ -40,7 +40,10 @@ fn one(operation: Operation, bounds: Bounds) -> Result<ComposedSet, clapham::Com
 fn call() -> Call {
     Call::new(
         "front.alias".parse().unwrap(),
-        Principal::new("reader", PrincipalKind::Human),
+        oauth_context(
+            "reader",
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+        ),
         json!({ "id": "item-1" }),
     )
 }
@@ -284,8 +287,11 @@ impl Handler for BorrowingHandler {
         Box::pin(async move {
             assert_eq!(call.name.as_str(), "lists.items.get");
             assert_eq!(
-                call.principal,
-                Principal::new("reader", PrincipalKind::Human)
+                call.auth,
+                oauth_context(
+                    "reader",
+                    &["lists:read", "lists:write", "lists:admin", "items:tick"][..]
+                )
             );
             assert_eq!(call.input, json!({ "id": "item-1" }));
             assert!(call.preview);
@@ -567,11 +573,10 @@ fn every_descriptor_field_participates_in_the_revision() {
         ("input", json!({ "type": "object" })),
         ("output", json!(true)),
         ("effect", json!("mutation")),
-        ("principals", json!(["human"])),
+        ("scopes", json!(["lists:read"])),
         ("locality", json!("daemon")),
         ("refusals", json!({ "list_missing": "conflict" })),
         ("streams", json!(true)),
-        ("resource", json!("lists://{id}")),
         ("preview", json!(true)),
         ("positional", json!(["id"])),
         ("idempotent", json!(false)),
@@ -597,7 +602,7 @@ fn revision_probe() {
 
 #[test]
 fn revision_v1_matches_the_independent_golden_digest() {
-    // The fixture has deliberately unordered nested keys and omitted principal
+    // The fixture has deliberately unordered nested keys and omitted auth
     // defaults. This literal pins the documented preimage across both map backends.
     let operation: Operation =
         serde_json::from_str(include_str!("fixtures/revision-v1.json")).unwrap();
@@ -607,21 +612,7 @@ fn revision_v1_matches_the_independent_golden_digest() {
             .select(["lists.items.get"])
             .unwrap()
             .revision(),
-        "sha256:0cf27f0b33f394b0fa9d5048705443e9150834eaa75c602a1d651449b10f86e8"
-    );
-}
-
-#[test]
-fn an_empty_principal_list_composes_without_granting_default_kinds() {
-    let mut operation = descriptor("lists.items.get");
-    operation.principals.clear();
-    let set = one(operation, Bounds::default()).unwrap();
-    assert!(
-        set.get("lists.items.get")
-            .unwrap()
-            .descriptor()
-            .principals
-            .is_empty()
+        "sha256:9adcd6f47686e790557eb091234c45b6801fe6fb93310d89579f456fbe1810cb"
     );
 }
 
@@ -744,4 +735,13 @@ fn revision_is_stable_across_processes() {
             "{stdout}"
         );
     }
+}
+
+fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthContext {
+    clapham::OAuthContext::from_verified(
+        "https://identity.example.com",
+        "https://lists.example.com",
+        subject,
+        scopes.iter().copied(),
+    )
 }

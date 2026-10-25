@@ -4,8 +4,8 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
-rust-version = "1.85"
-description = "The contract for operations, descriptors, refusals, principals, composition, selection, gates and calls."
+rust-version = "1.88"
+description = "The contract for operations, descriptors, refusals, OAuth authority, composition, selection, gates and calls."
 readme = "README.md"
 
 [dependencies]

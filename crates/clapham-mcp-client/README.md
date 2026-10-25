@@ -6,7 +6,7 @@ independently. No transport is included when default features are disabled.
 
 Create an `McpConfig` with the connection's namespace and a non-secret credential-scope
 revision. Set its shared `clapham::Bounds` and operation deadline as needed. The host approves
-the endpoint and credentials or creates the process streams and handles process shutdown.
+an HTTPS endpoint (HTTP is limited to explicit loopback), credentials or creates the process streams and handles process shutdown.
 
 Start with [`McpConnection`], discover a [`McpCatalogue`], then bind a
 [`McpToolBinding`] and compose its contribution in a daemon-mode host.
@@ -31,10 +31,10 @@ let set = compose_with_options(
 # }
 ```
 
-Each selection can assign a local alias and explicit principal kinds. Remote hints determine
+Each selection can assign a local alias and explicit required OAuth scopes. Remote hints determine
 query, destructive or mutation effects. Unannotated tools default to destructive, and an
 administrative claim maps conservatively to destructive. Remote metadata cannot grant
-administrative authority or principal access. The host gate still controls admission.
+authority. The host gate still controls admission.
 The contribution retains its connection and binding revision. Fresh discovery and tool-list
 notifications fence stale calls.
 
@@ -42,9 +42,9 @@ Results use `Outcome`, ordered content and `Evidence`; adapter errors map to bou
 `Refusal` codes. A tool-reported `isError` remains an outcome. Dropping an invocation requests
 cancellation, and uncertain effects are never replayed automatically.
 
-See the [client contract](https://github.com/thirtytwobits/clapham/blob/v0.1.1/docs/mcp.md#client)
+See the [client contract](../../docs/mcp.md#remote-connections)
 for refusal mappings and transport limits, and the
-[0.1.0 guarantees](https://github.com/thirtytwobits/clapham/blob/v0.1.1/docs/contract.md)
+[operation guarantees](../../docs/contract.md)
 for the application-facing contract and corresponding tests.
 
 The crate's `NOTICE` and `LICENSE` retain copyright and licence terms; repository provenance

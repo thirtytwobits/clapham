@@ -79,6 +79,8 @@ pub enum CompositionCode {
     DuplicateOperation,
     /// The shared bounds are invalid.
     InvalidBounds,
+    /// Configuration references or permission bindings are invalid.
+    InvalidConfiguration,
     /// The serialised descriptor catalogue exceeds its byte bound.
     CatalogueTooLarge,
     /// The operation count exceeds the catalogue's limit.
@@ -95,6 +97,7 @@ impl CompositionCode {
             Self::InvalidSchema => "invalid_schema",
             Self::SchemaTooLarge => "schema_too_large",
             Self::DuplicateOperation => "duplicate_operation",
+            Self::InvalidConfiguration => "invalid_configuration",
             Self::InvalidBounds => "invalid_bounds",
             Self::CatalogueTooLarge => "catalogue_too_large",
             Self::TooManyOperations => "too_many_operations",
@@ -112,7 +115,7 @@ pub struct CompositionError {
 }
 
 impl CompositionError {
-    fn new(code: CompositionCode, message: impl Into<String>) -> Self {
+    pub(crate) fn new(code: CompositionCode, message: impl Into<String>) -> Self {
         Self {
             code,
             message: message.into(),
@@ -135,6 +138,7 @@ pub struct ComposedOperation {
     output: Option<jsonschema::Validator>,
     handler: Dispatch,
     pub(crate) binding_revision: Option<Arc<str>>,
+    pub(crate) policies: Vec<crate::ResourcePolicy>,
 }
 
 impl fmt::Debug for ComposedOperation {
@@ -155,7 +159,11 @@ impl ComposedOperation {
     pub fn validate_input(&self, input: &Value) -> Result<(), Refusal> {
         self.input.validate(input).map_err(|error| {
             Refusal::not_dispatched("invalid_input", Category::InvalidInput, error.to_string())
-        })
+        })?;
+        if let Dispatch::Handler(handler) = &self.handler {
+            handler.validate_conversion(input)?;
+        }
+        Ok(())
     }
 
     /// Validate a successful result with the compiled output schema, if declared.
@@ -220,7 +228,7 @@ impl ComposedOperation {
         .await
         {
             Either::Left(_) => Err(cancelled(Evidence::Uncertain)),
-            Either::Right((outcome, _)) => Ok(outcome),
+            Either::Right((outcome, _)) => outcome.map_err(Refusal::from),
         }
     }
 }
@@ -239,6 +247,7 @@ pub struct ComposedSet {
     pub(crate) identity: Arc<()>,
     pub(crate) gate: Arc<dyn Gate>,
     pub(crate) execution: ExecutionMode,
+    pub(crate) oauth: Option<crate::OAuthResource>,
     revision: String,
     bounds: Bounds,
 }
@@ -271,6 +280,10 @@ impl ComposedSet {
     /// A versioned SHA-256 digest of canonical descriptors in complete-name order.
     pub fn revision(&self) -> &str {
         &self.revision
+    }
+    /// OAuth resource binding established during composition.
+    pub fn oauth_resource(&self) -> Option<&crate::OAuthResource> {
+        self.oauth.as_ref()
     }
     /// The finite limits used to build this set.
     pub fn bounds(&self) -> &Bounds {
@@ -338,6 +351,7 @@ pub fn compose_with_options(
                 binding_revision.clone(),
                 &bounds,
                 &mut catalogue_remaining,
+                &options.policies,
             )?;
         }
     }
@@ -352,6 +366,7 @@ pub fn compose_with_options(
             None,
             &bounds,
             &mut catalogue_remaining,
+            &options.policies,
         )?;
     }
     describe.initialise(
@@ -370,20 +385,38 @@ pub fn compose_with_options(
         identity: Arc::new(()),
         gate: options.gate,
         execution: options.execution,
+        oauth: options.oauth,
         revision,
         bounds,
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn insert_operation(
     operations: &mut BTreeMap<String, Arc<ComposedOperation>>,
     namespace: &str,
-    descriptor: Operation,
+    mut descriptor: Operation,
     handler: Dispatch,
     binding_revision: Option<Arc<str>>,
     bounds: &Bounds,
     catalogue_remaining: &mut usize,
+    resource_policies: &BTreeMap<String, crate::ResourcePolicy>,
 ) -> Result<(), CompositionError> {
+    descriptor.scopes.sort();
+    descriptor.scopes.dedup();
+    descriptor.policies.sort();
+    descriptor.policies.dedup();
+    if descriptor.scopes.iter().any(|scope| {
+        scope.is_empty()
+            || scope
+                .bytes()
+                .any(|c| !(0x21..=0x7e).contains(&c) || c == b'"' || c == b'\\')
+    }) {
+        return Err(CompositionError::new(
+            CompositionCode::InvalidConfiguration,
+            "invalid OAuth scope",
+        ));
+    }
     let name = descriptor.name.as_str();
     if descriptor.name.namespace() != Some(namespace) || descriptor.name.local_name().is_empty() {
         return Err(CompositionError::new(
@@ -443,6 +476,22 @@ fn insert_operation(
         .as_ref()
         .map(|schema| compile(schema.as_value(), name))
         .transpose()?;
+    let mut policies = Vec::new();
+    for name in &descriptor.policies {
+        let policy = resource_policies.get(name).ok_or_else(|| {
+            CompositionError::new(
+                CompositionCode::InvalidConfiguration,
+                format!("unresolved resource policy {name}"),
+            )
+        })?;
+        if policy.input != descriptor.input {
+            return Err(CompositionError::new(
+                CompositionCode::InvalidConfiguration,
+                format!("resource policy {name} has incompatible input"),
+            ));
+        }
+        policies.push(policy.clone());
+    }
     operations.insert(
         name.to_owned(),
         Arc::new(ComposedOperation {
@@ -451,6 +500,7 @@ fn insert_operation(
             output,
             handler,
             binding_revision,
+            policies,
         }),
     );
     Ok(())

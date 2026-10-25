@@ -1,16 +1,19 @@
 //! Remote contributions preserve local results and refusal codes through both transports.
 
 use clapham::{
-    Bounds, Cancellation, ComposeOptions, ComposedSet, Evidence, ExecutionMode, Principal,
-    PrincipalKind, RecordSink, compose, compose_with_options,
+    Bounds, Cancellation, ComposeOptions, ComposedSet, Evidence, ExecutionMode, OAuthContext,
+    RecordSink, compose, compose_with_options,
 };
 use clapham_conformance::ListsHandle;
 use clapham_mcp_client::{McpConfig, McpConnection, McpHttpOptions, McpSelection};
 use clapham_mcp_server::{Credential, HttpServer, Server};
 use serde_json::{Value, json};
 
-fn principal() -> Principal {
-    Principal::new("host", PrincipalKind::Human)
+fn auth() -> OAuthContext {
+    oauth_context(
+        "host",
+        &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+    )
 }
 fn fixture() -> (ListsHandle, ComposedSet) {
     let handle = ListsHandle::new();
@@ -21,7 +24,7 @@ fn fixture() -> (ListsHandle, ComposedSet) {
 async fn invoke(set: &ComposedSet, name: &str, input: Value) -> clapham::CallResult {
     set.call(
         &set.all(),
-        principal(),
+        auth(),
         name,
         input,
         RecordSink::default(),
@@ -38,10 +41,11 @@ async fn exercise(connection: &McpConnection, local: &ComposedSet) -> ComposedSe
         catalogue.diagnostics()
     );
     let binding = catalogue
-        .bind(vec![
-            McpSelection::new("lists.get"),
-            McpSelection::new("lists.compact"),
-        ])
+        .bind(vec![McpSelection::new("lists.get"), {
+            let mut selection = McpSelection::new("lists.compact");
+            selection.scopes = vec!["lists:admin".into()];
+            selection
+        }])
         .unwrap();
     assert_eq!(binding.operations()[0].name.as_str(), "remote.lists.get");
     assert_eq!(binding.operations()[0].effect, clapham::Effect::Query);
@@ -49,9 +53,9 @@ async fn exercise(connection: &McpConnection, local: &ComposedSet) -> ComposedSe
     // The server's administrative marker must not widen access through a binding.
     assert_eq!(binding.operations()[1].effect, clapham::Effect::Destructive);
     assert!(
-        !binding.operations()[1]
-            .principals
-            .contains(&PrincipalKind::Agent)
+        binding.operations()[1]
+            .scopes
+            .contains(&"lists:admin".to_owned())
     );
     let remote = compose_with_options(
         [binding.contribution()],
@@ -65,7 +69,7 @@ async fn exercise(connection: &McpConnection, local: &ComposedSet) -> ComposedSe
     let denied = remote
         .call(
             &remote.all(),
-            Principal::new("agent", PrincipalKind::Agent),
+            oauth_context("agent", &["lists:read", "lists:write"][..]),
             "remote.lists.compact",
             json!({}),
             RecordSink::default(),
@@ -74,7 +78,7 @@ async fn exercise(connection: &McpConnection, local: &ComposedSet) -> ComposedSe
         )
         .await
         .unwrap_err();
-    assert_eq!(denied.code, "not_admitted");
+    assert_eq!(denied.code, "insufficient_scope");
     assert_eq!(denied.evidence, Evidence::NotDispatched);
     let local_result = invoke(local, "lists.get", json!({"id":"tasks"}))
         .await
@@ -103,7 +107,7 @@ async fn exercise(connection: &McpConnection, local: &ComposedSet) -> ComposedSe
 #[tokio::test]
 async fn stdio_binding_calls_the_same_lists_contribution() {
     let (handle, local) = fixture();
-    let server = Server::new(local.clone(), principal()).unwrap();
+    let server = Server::new(local.clone(), auth()).unwrap();
     let (client_io, server_io) = tokio::io::duplex(8192);
     let (read, write) = tokio::io::split(server_io);
     let task = tokio::spawn(async move {
@@ -133,7 +137,7 @@ async fn stdio_binding_calls_the_same_lists_contribution() {
         remote
             .call(
                 &remote.all(),
-                principal(),
+                auth(),
                 "remote.lists.get",
                 json!({"id":"tasks"}),
                 RecordSink::default(),
@@ -156,7 +160,7 @@ async fn stdio_binding_calls_the_same_lists_contribution() {
 async fn http_binding_authenticates_and_calls_the_same_lists_contribution() {
     let (_, local) = fixture();
     let server = HttpServer::new(local.clone(), |credential: &Credential| {
-        (credential.authorization() == Some("Bearer authority")).then(principal)
+        (credential.authorization() == Some("Bearer authority")).then(auth)
     })
     .unwrap();
     let router = axum::Router::new().route(
@@ -178,4 +182,13 @@ async fn http_binding_authenticates_and_calls_the_same_lists_contribution() {
     exercise(&connection, &local).await;
     connection.close();
     task.abort();
+}
+
+fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthContext {
+    clapham::OAuthContext::from_verified(
+        "https://identity.example.com",
+        "https://lists.example.com",
+        subject,
+        scopes.iter().copied(),
+    )
 }

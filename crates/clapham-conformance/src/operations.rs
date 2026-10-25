@@ -238,16 +238,19 @@ impl Kind {
                 .clone(),
             output,
             effect,
-            principals: effect.default_principals().to_vec(),
+            scopes: if matches!(self, Self::Tick) {
+                vec!["items:tick".into()]
+            } else if matches!(self, Self::Compact | Self::Delete) {
+                vec!["lists:admin".into()]
+            } else {
+                Vec::new()
+            },
+            policies: Vec::new(),
             locality: Locality::Workspace,
             refusals,
             streams,
-            resource: match self {
-                Self::List => Some("lists://".into()),
-                Self::Get => Some("lists://{id}".into()),
-                _ => None,
-            },
             preview: matches!(self, Self::Create),
+            confirmation: false,
             positional: if matches!(self, Self::Get) {
                 vec!["id".into()]
             } else {

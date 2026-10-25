@@ -8,8 +8,8 @@ use std::sync::{
 use clapham::{
     Admission, ApplicationInfo, Bounds, Call, CallResult, Cancellation, Catalogue, Category,
     ComposeOptions, ComposedSet, CompositionCode, Contribution, Effect, Evidence, Handler,
-    HandlerFuture, Locality, Operation, Outcome, Principal, PrincipalKind, RecordSink, Selection,
-    VersionInfo, compose, compose_with_options,
+    HandlerFuture, Locality, OAuthContext, Operation, Outcome, RecordSink, Selection, VersionInfo,
+    compose, compose_with_options,
 };
 use futures_executor::block_on;
 use serde_json::{Value, json};
@@ -19,6 +19,7 @@ fn operation(name: &str, effect: Effect) -> Operation {
         "name": name, "description": "Read or maintain a list.",
         "input": { "type": "object", "properties": { "id": { "type": "string" } } },
         "output": { "type": "array", "items": { "type": "string" } },
+        "scopes": if matches!(effect, Effect::Administrative | Effect::Destructive) { vec!["lists:admin"] } else { vec![] },
         "effect": effect, "locality": "workspace", "idempotent": true, "open_world": false
     }))
     .unwrap()
@@ -38,13 +39,13 @@ fn contribution() -> Contribution {
 fn call(
     set: &ComposedSet,
     selection: &Selection,
-    kind: PrincipalKind,
+    kind: &[&str],
     name: &str,
     input: Value,
 ) -> CallResult {
     block_on(set.call(
         selection,
-        Principal::new("list-reader", kind),
+        oauth_context("list-reader", kind),
         name,
         input,
         RecordSink::default(),
@@ -53,7 +54,7 @@ fn call(
     ))
 }
 
-fn describe(set: &ComposedSet, selection: &Selection, kind: PrincipalKind, input: Value) -> Value {
+fn describe(set: &ComposedSet, selection: &Selection, kind: &[&str], input: Value) -> Value {
     let outcome = call(set, selection, kind, "clapham.describe", input).unwrap();
     assert_eq!(outcome.evidence, Evidence::Completed);
     assert!(!outcome.is_error);
@@ -90,26 +91,43 @@ fn an_empty_host_gets_both_built_ins_in_the_registry_and_all_selection() {
     for operation in set.operations() {
         assert_eq!(operation.effect, Effect::Query);
         assert_eq!(operation.locality, Locality::Workspace);
-        assert_eq!(operation.principals, Effect::Query.default_principals());
+        assert!(operation.scopes.is_empty());
         assert!(operation.idempotent);
         assert!(!operation.open_world);
     }
     assert_eq!(set.all().revision(), set.revision());
     assert_eq!(
-        names(describe(&set, &set.all(), PrincipalKind::Human, json!({}))),
+        names(describe(
+            &set,
+            &set.all(),
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+            json!({})
+        )),
         ["clapham.describe", "clapham.version"]
     );
 }
 
 #[test]
 fn default_discovery_omits_administration_for_an_agent_but_lists_it_for_a_human() {
-    let set = compose([contribution()], Bounds::default()).unwrap();
+    let mut contribution = contribution();
+    contribution.operations[1].0.scopes = vec!["lists:admin".into()];
+    let set = compose([contribution], Bounds::default()).unwrap();
     assert_eq!(
-        names(describe(&set, &set.all(), PrincipalKind::Agent, json!({}))),
+        names(describe(
+            &set,
+            &set.all(),
+            &["lists:read", "lists:write"][..],
+            json!({})
+        )),
         ["clapham.describe", "clapham.version", "lists.get"]
     );
     assert_eq!(
-        names(describe(&set, &set.all(), PrincipalKind::Human, json!({}))),
+        names(describe(
+            &set,
+            &set.all(),
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+            json!({})
+        )),
         [
             "clapham.describe",
             "clapham.version",
@@ -127,7 +145,7 @@ fn named_discovery_returns_the_exact_descriptor_including_its_schemas() {
         let result = describe(
             &set,
             &set.all(),
-            PrincipalKind::Human,
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
             json!({ "name": name }),
         );
         assert_eq!(
@@ -146,11 +164,21 @@ fn selection_membership_and_admission_hide_names_with_the_same_unknown_refusal()
     let set = compose([contribution()], Bounds::default()).unwrap();
     let selected = set.select(["clapham.describe", "lists.compact"]).unwrap();
     assert_eq!(
-        names(describe(&set, &selected, PrincipalKind::Agent, json!({}))),
+        names(describe(
+            &set,
+            &selected,
+            &["lists:read", "lists:write"][..],
+            json!({})
+        )),
         ["clapham.describe"]
     );
     assert_eq!(
-        names(describe(&set, &selected, PrincipalKind::Human, json!({}))),
+        names(describe(
+            &set,
+            &selected,
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+            json!({})
+        )),
         ["clapham.describe", "lists.compact"]
     );
     let mut refusals = Vec::new();
@@ -164,7 +192,7 @@ fn selection_membership_and_admission_hide_names_with_the_same_unknown_refusal()
         let refusal = call(
             &set,
             &selected,
-            PrincipalKind::Agent,
+            &["lists:read", "lists:write"][..],
             "clapham.describe",
             json!({ "name": name }),
         )
@@ -186,8 +214,11 @@ fn a_custom_gate_checks_only_selected_candidates_and_hides_pending_operations() 
         [contribution()],
         Bounds::default(),
         ComposeOptions {
-            gate: Arc::new(move |principal: &Principal, operation: &Operation| {
-                assert_eq!(principal.kind, PrincipalKind::Agent);
+            gate: Arc::new(move |auth: &OAuthContext, operation: &Operation| {
+                assert_eq!(
+                    auth.scopes().iter().map(String::as_str).collect::<Vec<_>>(),
+                    vec!["lists:admin", "lists:read", "lists:write"]
+                );
                 recorded.lock().unwrap().push(operation.name.to_string());
                 if operation.name.as_str() == "lists.get" {
                     Admission::Pending
@@ -203,7 +234,12 @@ fn a_custom_gate_checks_only_selected_candidates_and_hides_pending_operations() 
         .select(["clapham.describe", "lists.compact", "lists.get"])
         .unwrap();
     assert_eq!(
-        names(describe(&set, &selected, PrincipalKind::Agent, json!({}))),
+        names(describe(
+            &set,
+            &selected,
+            &["lists:read", "lists:write", "lists:admin"][..],
+            json!({})
+        )),
         ["clapham.describe", "lists.compact"]
     );
     assert_eq!(
@@ -219,7 +255,7 @@ fn a_custom_gate_checks_only_selected_candidates_and_hides_pending_operations() 
     let refusal = call(
         &set,
         &selected,
-        PrincipalKind::Agent,
+        &["lists:read", "lists:write", "lists:admin"][..],
         "clapham.describe",
         json!({ "name": "lists.get" }),
     )
@@ -231,7 +267,7 @@ fn a_custom_gate_checks_only_selected_candidates_and_hides_pending_operations() 
     let refusal = call(
         &set,
         &selected,
-        PrincipalKind::Agent,
+        &["lists:read", "lists:write", "lists:admin"][..],
         "clapham.describe",
         json!({ "name": "clapham.version" }),
     )
@@ -248,7 +284,7 @@ fn discovery_rechecks_changing_gate_state_on_each_request() {
         [contribution()],
         Bounds::default(),
         ComposeOptions {
-            gate: Arc::new(move |_: &Principal, operation: &Operation| {
+            gate: Arc::new(move |_: &OAuthContext, operation: &Operation| {
                 if operation.name.as_str() == "lists.compact" && !state.load(Ordering::SeqCst) {
                     Admission::Deny
                 } else {
@@ -261,19 +297,29 @@ fn discovery_rechecks_changing_gate_state_on_each_request() {
     .unwrap();
     let selection = set.all();
     assert!(
-        !names(describe(&set, &selection, PrincipalKind::Agent, json!({})))
-            .contains(&"lists.compact".into())
+        !names(describe(
+            &set,
+            &selection,
+            &["lists:read", "lists:write", "lists:admin"][..],
+            json!({})
+        ))
+        .contains(&"lists.compact".into())
     );
     allowed.store(true, Ordering::SeqCst);
     assert!(
-        names(describe(&set, &selection, PrincipalKind::Agent, json!({})))
-            .contains(&"lists.compact".into())
+        names(describe(
+            &set,
+            &selection,
+            &["lists:read", "lists:write", "lists:admin"][..],
+            json!({})
+        ))
+        .contains(&"lists.compact".into())
     );
     assert_eq!(
         describe(
             &set,
             &selection,
-            PrincipalKind::Agent,
+            &["lists:read", "lists:write", "lists:admin"][..],
             json!({"name": "lists.compact"})
         )["name"],
         "lists.compact"
@@ -287,7 +333,7 @@ fn the_outer_gate_can_deny_or_defer_discovery_before_any_candidate_is_examined()
             [contribution()],
             Bounds::default(),
             ComposeOptions {
-                gate: Arc::new(move |_: &Principal, operation: &Operation| {
+                gate: Arc::new(move |_: &OAuthContext, operation: &Operation| {
                     assert_eq!(operation.name.as_str(), "clapham.describe");
                     decision
                 }),
@@ -298,7 +344,7 @@ fn the_outer_gate_can_deny_or_defer_discovery_before_any_candidate_is_examined()
         let refusal = call(
             &set,
             &set.all(),
-            PrincipalKind::Human,
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
             "clapham.describe",
             json!({}),
         )
@@ -321,9 +367,15 @@ fn built_ins_require_selection_and_accept_only_their_declared_inputs() {
     let selected = set.select(["lists.get"]).unwrap();
     for name in ["clapham.describe", "clapham.version"] {
         assert_eq!(
-            call(&set, &selected, PrincipalKind::Human, name, json!({}))
-                .unwrap_err()
-                .code,
+            call(
+                &set,
+                &selected,
+                &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+                name,
+                json!({})
+            )
+            .unwrap_err()
+            .code,
             "unknown_operation"
         );
     }
@@ -336,7 +388,7 @@ fn built_ins_require_selection_and_accept_only_their_declared_inputs() {
         let refusal = call(
             &set,
             &set.all(),
-            PrincipalKind::Human,
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
             "clapham.describe",
             input,
         )
@@ -348,7 +400,7 @@ fn built_ins_require_selection_and_accept_only_their_declared_inputs() {
         call(
             &set,
             &set.all(),
-            PrincipalKind::Human,
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
             "clapham.version",
             json!({"name": "lists.get"})
         )
@@ -376,7 +428,7 @@ fn version_reports_the_core_and_exact_application_metadata_from_composition() {
     let result = call(
         &set.clone(),
         &set.all(),
-        PrincipalKind::Agent,
+        &["lists:read", "lists:write"][..],
         "clapham.version",
         json!({}),
     )
@@ -394,7 +446,7 @@ fn version_reports_the_core_and_exact_application_metadata_from_composition() {
         call(
             &default,
             &default.all(),
-            PrincipalKind::Human,
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
             "clapham.version",
             json!({})
         )
@@ -513,7 +565,12 @@ fn discovery_accepts_the_exact_utf8_result_budget_and_refuses_one_byte_less() {
         })
     };
     let baseline = compose([contribution()], Bounds::default()).unwrap();
-    let result = describe(&baseline, &baseline.all(), PrincipalKind::Human, json!({}));
+    let result = describe(
+        &baseline,
+        &baseline.all(),
+        &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+        json!({}),
+    );
     let bytes = serde_json::to_vec(&result).unwrap().len();
     assert!(bytes >= 8192);
     for shortfall in [0, 1] {
@@ -529,7 +586,7 @@ fn discovery_accepts_the_exact_utf8_result_budget_and_refuses_one_byte_less() {
         let listing = call(
             &set,
             &set.all(),
-            PrincipalKind::Human,
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
             "clapham.describe",
             json!({}),
         );
@@ -544,7 +601,10 @@ fn discovery_accepts_the_exact_utf8_result_budget_and_refuses_one_byte_less() {
             assert!(!refusal.retryable);
             let refusal = block_on(set.get("clapham.describe").unwrap().invoke(Call::new(
                 "clapham.describe".parse().unwrap(),
-                Principal::new("list-reader", PrincipalKind::Human),
+                oauth_context(
+                    "list-reader",
+                    &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+                ),
                 json!({}),
             )))
             .unwrap_err();
@@ -555,7 +615,7 @@ fn discovery_accepts_the_exact_utf8_result_budget_and_refuses_one_byte_less() {
             describe(
                 &set,
                 &set.all(),
-                PrincipalKind::Human,
+                &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
                 json!({"name": "lists.get"})
             )["name"],
             "lists.get"
@@ -577,7 +637,7 @@ fn discovery_accepts_the_exact_utf8_result_budget_and_refuses_one_byte_less() {
             call(
                 &small,
                 &small.all(),
-                PrincipalKind::Human,
+                &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
                 "clapham.describe",
                 json!({"name": "lists.get"})
             )
@@ -601,9 +661,8 @@ fn the_default_message_budget_applies_after_visibility_filtering() {
         [contribution("lists"), contribution("items")],
         Bounds::default(),
         ComposeOptions {
-            gate: Arc::new(|principal: &Principal, operation: &Operation| {
-                if principal.kind == PrincipalKind::Agent && operation.name.as_str() == "items.get"
-                {
+            gate: Arc::new(|auth: &OAuthContext, operation: &Operation| {
+                if !auth.has_scope("lists:admin") && operation.name.as_str() == "items.get" {
                     Admission::Deny
                 } else {
                     Admission::Allow
@@ -623,7 +682,7 @@ fn the_default_message_budget_applies_after_visibility_filtering() {
         call(
             &set,
             &set.all(),
-            PrincipalKind::Human,
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
             "clapham.describe",
             json!({})
         )
@@ -632,14 +691,19 @@ fn the_default_message_budget_applies_after_visibility_filtering() {
         "result_too_large"
     );
     assert_eq!(
-        names(describe(&set, &set.all(), PrincipalKind::Agent, json!({}))),
+        names(describe(
+            &set,
+            &set.all(),
+            &["lists:read", "lists:write"][..],
+            json!({})
+        )),
         ["clapham.describe", "clapham.version", "lists.get"]
     );
     assert_eq!(
         describe(
             &set,
             &set.all(),
-            PrincipalKind::Human,
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
             json!({"name": "items.get"})
         )["name"],
         "items.get"
@@ -667,7 +731,7 @@ fn oversized_application_metadata_gets_a_declared_bounded_result_refusal() {
     let refusal = call(
         &set,
         &set.all(),
-        PrincipalKind::Human,
+        &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
         "clapham.version",
         json!({}),
     )
@@ -713,7 +777,7 @@ fn low_level_discovery_uses_the_whole_catalogue_but_still_filters_admission() {
     let set = compose([contribution()], Bounds::default()).unwrap();
     let outcome = block_on(set.get("clapham.describe").unwrap().invoke(Call::new(
         "clapham.describe".parse().unwrap(),
-        Principal::new("list-reader", PrincipalKind::Agent),
+        oauth_context("list-reader", &["lists:read", "lists:write"][..]),
         json!({}),
     )))
     .unwrap();
@@ -721,4 +785,13 @@ fn low_level_discovery_uses_the_whole_catalogue_but_still_filters_admission() {
         names(outcome.result.unwrap()),
         ["clapham.describe", "clapham.version", "lists.get"]
     );
+}
+
+fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthContext {
+    clapham::OAuthContext::from_verified(
+        "https://identity.example.com",
+        "https://lists.example.com",
+        subject,
+        scopes.iter().copied(),
+    )
 }

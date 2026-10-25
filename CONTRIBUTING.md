@@ -49,16 +49,16 @@ The command runs from any directory in the workspace and normalises line endings
 Check the minimum supported Rust versions with the committed lockfile:
 
 ```console
-cargo +1.85.0 check --locked -p clapham -p clapham-cli
-cargo +1.85.0 test --locked -p clapham -p clapham-cli
-cargo +1.85.0 test --locked -p clapham --features serde_json/preserve_order revision_
-cargo +1.88.0 test --locked -p clapham-mcp-server -p clapham-mcp-client -p clapham-conformance -p clapham-lists --all-features
+cargo +1.88.0 check --locked -p clapham -p clapham-cli
+cargo +1.88.0 test --locked -p clapham -p clapham-cli
+cargo +1.88.0 test --locked -p clapham --features serde_json/preserve_order revision_
+cargo +1.88.0 test --locked -p clapham-mcp-server -p clapham-mcp-client -p clapham-conformance -p clapham-lists -p clapham-typed --all-features
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features stdio
 cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features http
 ```
 
-Generate the public operation, refusal and catalogue schemas and the CLI output envelope
+Generate the public operation, refusal, configuration and catalogue schemas and the CLI output envelope
 with `cargo xtask schemas`. Review and commit changes to `crates/*/schemas/*.json`;
 `cargo xtask schemas --check` checks them without writing. The schemas use JSON Schema
 2020-12. Tests validate descriptors and refusals against the checked-in files.

@@ -7,7 +7,7 @@ use std::task::Context;
 
 use clapham::{
     Admission, Bounds, CallResult, Cancellation, Category, ComposeOptions, ComposedSet, Effect,
-    Evidence, Gate, Principal, PrincipalKind, RecordSink, Refusal, compose_with_options,
+    Evidence, Gate, RecordSink, Refusal, compose_with_options,
 };
 use clapham_conformance::{ChangeKind, List, ListChange, ListsGate, ListsHandle};
 use futures_executor::block_on;
@@ -28,16 +28,10 @@ fn fixture() -> (ListsHandle, ComposedSet) {
     (handle, set)
 }
 
-fn invoke(
-    set: &ComposedSet,
-    name: &str,
-    input: Value,
-    kind: PrincipalKind,
-    preview: bool,
-) -> CallResult {
+fn invoke(set: &ComposedSet, name: &str, input: Value, kind: &[&str], preview: bool) -> CallResult {
     block_on(set.call(
         &set.all(),
-        Principal::new("list-reader", kind),
+        oauth_context("list-reader", kind),
         name,
         input,
         RecordSink::default(),
@@ -47,10 +41,16 @@ fn invoke(
 }
 
 fn call(set: &ComposedSet, name: &str, input: Value) -> Value {
-    invoke(set, name, input, PrincipalKind::Human, false)
-        .unwrap()
-        .result
-        .unwrap()
+    invoke(
+        set,
+        name,
+        input,
+        &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+        false,
+    )
+    .unwrap()
+    .result
+    .unwrap()
 }
 
 fn list(value: Value) -> List {
@@ -101,16 +101,7 @@ fn all_rows_compose_with_the_effects_resources_positional_and_preview_metadata()
     ] {
         assert_eq!(set.get(name).unwrap().descriptor().effect, Effect::Mutation);
     }
-    assert_eq!(
-        set.get("lists.list")
-            .unwrap()
-            .descriptor()
-            .resource
-            .as_deref(),
-        Some("lists://")
-    );
     let get = set.get("lists.get").unwrap().descriptor();
-    assert_eq!(get.resource.as_deref(), Some("lists://{id}"));
     assert_eq!(get.positional, ["id"]);
     assert!(set.get("lists.create").unwrap().descriptor().preview);
     for name in ["lists.watch", "lists.export"] {
@@ -118,17 +109,13 @@ fn all_rows_compose_with_the_effects_resources_positional_and_preview_metadata()
     }
     for name in ["lists.compact", "lists.delete"] {
         let descriptor = set.get(name).unwrap().descriptor();
-        assert_eq!(
-            descriptor.principals,
-            [
-                PrincipalKind::Human,
-                PrincipalKind::Service,
-                PrincipalKind::System
-            ]
-        );
-        for kind in [PrincipalKind::Service, PrincipalKind::System] {
+        assert_eq!(descriptor.scopes, ["lists:admin"]);
+        for kind in [
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+        ] {
             assert_eq!(
-                ListsGate.admit(&Principal::new("list-reader", kind), descriptor),
+                ListsGate.admit(&oauth_context("list-reader", kind), descriptor),
                 Admission::Allow
             );
         }
@@ -154,7 +141,7 @@ fn list_and_get_return_detached_snapshots_and_a_declared_missing_refusal() {
         &set,
         "lists.get",
         json!({"id":"absent"}),
-        PrincipalKind::Human,
+        &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
         false,
     )
     .unwrap_err();
@@ -172,7 +159,7 @@ fn object_creation_preview_has_the_real_shape_without_committing_or_advancing_re
         &set,
         "lists.create",
         input.clone(),
-        PrincipalKind::Human,
+        &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
         true,
     )
     .unwrap();
@@ -183,7 +170,14 @@ fn object_creation_preview_has_the_real_shape_without_committing_or_advancing_re
     assert_eq!(preview.result, Some(created.clone()));
     assert_eq!(list(created).revision, 1);
     let before = handle.snapshot();
-    let refusal = invoke(&set, "lists.create", input, PrincipalKind::Human, false).unwrap_err();
+    let refusal = invoke(
+        &set,
+        "lists.create",
+        input,
+        &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+        false,
+    )
+    .unwrap_err();
     assert_eq!(refusal.code, "list_exists");
     assert_eq!(handle.snapshot(), before);
 }
@@ -196,7 +190,10 @@ fn a_held_fenced_rename_refuses_a_concurrent_change_and_preserves_the_new_state(
     let selection = set.all();
     let mut future = pin!(set.call(
         &selection,
-        Principal::new("list-reader", PrincipalKind::Human),
+        oauth_context(
+            "list-reader",
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..]
+        ),
         "lists.rename",
         json!({"id":"a","name":"Stale","revision":original.revision}),
         RecordSink::default(),
@@ -248,7 +245,7 @@ fn item_addition_and_tick_exercise_object_input_and_an_agent_denied_mutation() {
         &set,
         "items.add",
         input.clone(),
-        PrincipalKind::Agent,
+        &["lists:read", "lists:write"][..],
         false,
     )
     .unwrap();
@@ -257,9 +254,15 @@ fn item_addition_and_tick_exercise_object_input_and_an_agent_denied_mutation() {
         json!({"id":"one","text":"é","ticked":false})
     );
     assert_eq!(
-        invoke(&set, "items.add", input, PrincipalKind::Human, false)
-            .unwrap_err()
-            .code,
+        invoke(
+            &set,
+            "items.add",
+            input,
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+            false
+        )
+        .unwrap_err()
+        .code,
         "item_exists"
     );
     let before = handle.get("a").unwrap();
@@ -267,20 +270,20 @@ fn item_addition_and_tick_exercise_object_input_and_an_agent_denied_mutation() {
         set.get("items.tick")
             .unwrap()
             .descriptor()
-            .principals
-            .contains(&PrincipalKind::Agent)
+            .scopes
+            .contains(&"items:tick".to_owned())
     );
     let refusal = invoke(
         &set,
         "items.tick",
         json!({"list_id":"a","id":"one"}),
-        PrincipalKind::Agent,
+        &["lists:read", "lists:write"][..],
         false,
     )
     .unwrap_err();
     assert_eq!(
         (refusal.code.as_str(), refusal.evidence),
-        ("not_admitted", Evidence::NotDispatched)
+        ("insufficient_scope", Evidence::NotDispatched)
     );
     assert_eq!(handle.get("a"), Some(before.clone()));
     let ticked = list(call(&set, "items.tick", json!({"list_id":"a","id":"one"})));
@@ -295,7 +298,7 @@ fn item_addition_and_tick_exercise_object_input_and_an_agent_denied_mutation() {
             &set,
             "items.tick",
             json!({"list_id":"a","id":"missing"}),
-            PrincipalKind::Human,
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
             false
         )
         .unwrap_err()
@@ -317,10 +320,10 @@ fn administrative_compaction_removes_only_ticked_items_and_delete_is_destructive
         ("lists.delete", json!({"id":"a"})),
     ] {
         assert_eq!(
-            invoke(&set, name, input, PrincipalKind::Agent, false)
+            invoke(&set, name, input, &["lists:read", "lists:write"][..], false)
                 .unwrap_err()
                 .code,
-            "not_admitted"
+            "insufficient_scope"
         );
         assert_eq!(handle.snapshot(), before);
     }
@@ -346,7 +349,7 @@ fn administrative_compaction_removes_only_ticked_items_and_delete_is_destructive
             &set,
             "lists.delete",
             json!({"id":"a"}),
-            PrincipalKind::Human,
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
             false
         )
         .unwrap_err()
@@ -366,7 +369,7 @@ fn deletion_and_recreation_do_not_allow_an_old_revision_fence_to_match() {
         &set,
         "lists.rename",
         json!({"id":"a","name":"Stale","revision":original.revision}),
-        PrincipalKind::Human,
+        &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
         false,
     )
     .unwrap_err();
@@ -390,7 +393,10 @@ fn watches_follow_an_identity_through_deletion_and_recreation_until_cancelled() 
     let selection = set.all();
     let mut watching = pin!(set.call(
         &selection,
-        Principal::new("list-reader", PrincipalKind::Human),
+        oauth_context(
+            "list-reader",
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..]
+        ),
         "lists.watch",
         json!({"id":"a"}),
         sink,
@@ -484,7 +490,7 @@ fn rename_range_refusals_are_distinct_from_dispatcher_validation() {
             &set,
             "lists.rename",
             json!({"id":"a","name":"Invalid","revision":revision}),
-            PrincipalKind::Human,
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
             false,
         )
         .unwrap_err();
@@ -498,7 +504,7 @@ fn rename_range_refusals_are_distinct_from_dispatcher_validation() {
         &set,
         "lists.rename",
         json!({"id":"a","name":"Stale","revision":u64::MAX}),
-        PrincipalKind::Human,
+        &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
         false,
     )
     .unwrap_err();
@@ -520,7 +526,10 @@ fn dropping_an_unentered_hold_allows_it_to_be_rearmed() {
     let selection = set.all();
     let mut getting = pin!(set.call(
         &selection,
-        Principal::new("list-reader", PrincipalKind::Human),
+        oauth_context(
+            "list-reader",
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..]
+        ),
         "lists.get",
         json!({"id":"a"}),
         RecordSink::default(),
@@ -543,7 +552,14 @@ fn fault_exercises_the_undeclared_refusal_contract_without_changing_state() {
     let (handle, set) = fixture();
     handle.create_list("a", "First").unwrap();
     let before = handle.snapshot();
-    let refusal = invoke(&set, "lists.fault", json!({}), PrincipalKind::Human, false).unwrap_err();
+    let refusal = invoke(
+        &set,
+        "lists.fault",
+        json!({}),
+        &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+        false,
+    )
+    .unwrap_err();
     assert_eq!(
         (refusal.code.as_str(), refusal.category),
         ("undeclared_refusal", Category::Internal)
@@ -578,7 +594,10 @@ fn export_streams_its_held_snapshot_with_backpressure_before_returning_a_count()
     let selection = set.all();
     let mut future = pin!(set.call(
         &selection,
-        Principal::new("list-reader", PrincipalKind::Human),
+        oauth_context(
+            "list-reader",
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..]
+        ),
         "lists.export",
         json!({"id":"a"}),
         sink,
@@ -637,7 +656,10 @@ fn an_empty_export_returns_zero_and_a_sink_refusal_keeps_its_code_and_evidence()
     });
     let refusal = block_on(set.call(
         &set.all(),
-        Principal::new("list-reader", PrincipalKind::Human),
+        oauth_context(
+            "list-reader",
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+        ),
         "lists.export",
         json!({"id":"a"}),
         sink,
@@ -669,7 +691,10 @@ fn watch_subscribes_before_the_hold_delivers_live_changes_and_ends_on_cancellati
     let selection = set.all();
     let watching = set.call(
         &selection,
-        Principal::new("list-reader", PrincipalKind::Human),
+        oauth_context(
+            "list-reader",
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+        ),
         "lists.watch",
         json!({"id":"a"}),
         sink,
@@ -744,17 +769,20 @@ fn held_calls_are_one_shot_cancel_safe_and_denied_calls_do_not_consume_them() {
             &set,
             "items.tick",
             json!({"list_id":"a","id":"one"}),
-            PrincipalKind::Agent,
+            &["lists:read", "lists:write"][..],
             false
         )
         .unwrap_err()
         .code,
-        "not_admitted"
+        "insufficient_scope"
     );
     let selection = set.all();
     let mut future = pin!(set.call(
         &selection,
-        Principal::new("list-reader", PrincipalKind::Human),
+        oauth_context(
+            "list-reader",
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..]
+        ),
         "items.tick",
         json!({"list_id":"a","id":"one"}),
         RecordSink::default(),
@@ -785,7 +813,10 @@ fn cancellation_at_a_write_hold_changes_nothing_and_drops_the_release_receiver()
     let selection = set.all();
     let mut future = pin!(set.call(
         &selection,
-        Principal::new("list-reader", PrincipalKind::Human),
+        oauth_context(
+            "list-reader",
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..]
+        ),
         "lists.create",
         json!({"list":{"id":"a","name":"First"}}),
         RecordSink::default(),
@@ -817,7 +848,7 @@ fn input_failures_missing_lists_and_independent_sets_keep_the_same_contract() {
             &set,
             operation.name.as_str(),
             json!({"unexpected":true}),
-            PrincipalKind::Human,
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
             false,
         )
         .unwrap_err();
@@ -838,9 +869,15 @@ fn input_failures_missing_lists_and_independent_sets_keep_the_same_contract() {
         ("items.tick", json!({"list_id":"missing","id":"one"})),
     ] {
         assert_eq!(
-            invoke(&set, name, input, PrincipalKind::Human, false)
-                .unwrap_err()
-                .code,
+            invoke(
+                &set,
+                name,
+                input,
+                &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+                false
+            )
+            .unwrap_err()
+            .code,
             "list_not_found"
         );
     }
@@ -862,4 +899,13 @@ fn input_failures_missing_lists_and_independent_sets_keep_the_same_contract() {
         call(&other, "lists.get", json!({"id":"a"})),
         call(&set, "lists.get", json!({"id":"a"}))
     );
+}
+
+fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthContext {
+    clapham::OAuthContext::from_verified(
+        "https://identity.example.com",
+        "https://lists.example.com",
+        subject,
+        scopes.iter().copied(),
+    )
 }

@@ -5,7 +5,7 @@ mod process;
 
 use clapham::{
     Admission, Bounds, CallResult, Cancellation, ComposeOptions, ComposedSet, CompositionCode,
-    Contribution, ExecutionMode, Gate, Outcome, Principal, PrincipalKind, RecordSink, Refusal,
+    Contribution, ExecutionMode, Gate, OAuthContext, Outcome, RecordSink, Refusal,
     compose_with_options,
 };
 use serde_json::Value;
@@ -27,16 +27,19 @@ pub struct Case {
     pub operation: String,
     /// Input supplied unchanged through every front end.
     pub input: Value,
-    /// The caller authenticated by each host adapter, preserving both kind and identity.
-    pub principal: Principal,
+    /// The caller authenticated by each host adapter, preserving the verified subject and grant.
+    pub auth: OAuthContext,
 }
 impl Case {
-    /// A call by `human:human`; change `principal` to exercise another caller.
+    /// A call by `human:human`; change `auth` to exercise another caller.
     pub fn new(operation: impl Into<String>, input: Value) -> Self {
         Self {
             operation: operation.into(),
             input,
-            principal: Principal::new("human", PrincipalKind::Human),
+            auth: oauth_context(
+                "human",
+                &["lists:read", "lists:write", "lists:admin", "items:tick"],
+            ),
         }
     }
 }
@@ -48,7 +51,7 @@ pub struct Fixture {
     /// Finite cases, with at least one schema-valid input for every contributed operation.
     pub cases: Vec<Case>,
     /// A caller the scripted gate must refuse for every contributed operation, but admit to describe.
-    pub denied_principal: Principal,
+    pub denied_auth: OAuthContext,
     /// Bounds used by in-process compositions; external hosts must use the same profile.
     pub bounds: Bounds,
 }
@@ -61,7 +64,7 @@ impl Fixture {
         Self {
             factory: Arc::new(factory),
             cases,
-            denied_principal: Principal::new("denied", PrincipalKind::Agent),
+            denied_auth: oauth_context("denied", &["lists:read", "lists:write"]),
             bounds: Bounds::default(),
         }
     }
@@ -86,7 +89,7 @@ impl fmt::Debug for Fixture {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Fixture")
             .field("cases", &self.cases)
-            .field("denied_principal", &self.denied_principal)
+            .field("denied_auth", &self.denied_auth)
             .field("bounds", &self.bounds)
             .finish_non_exhaustive()
     }
@@ -159,6 +162,14 @@ pub trait FrontEnd: Send + Sync {
     fn binds_tools(&self) -> bool {
         false
     }
+    /// Native refusal when discovery hides a tool before local binding or parsing.
+    fn hidden_refusal_code(&self) -> Option<&str> {
+        if self.binds_tools() {
+            Some("mcp_selection")
+        } else {
+            None
+        }
+    }
     /// Describe and invoke once, recreating the fixture's state before this probe.
     fn observe<'a>(
         &'a self,
@@ -186,7 +197,7 @@ impl FrontEnd for InProcess {
     ) -> ObservationFuture<'a> {
         Box::pin(async move {
             let set = fixture.compose(gate)?;
-            let catalogue = describe(&set, &case.principal).await?;
+            let catalogue = describe(&set, &case.auth).await?;
             let frames = Arc::new(Mutex::new(Vec::new()));
             let records = {
                 let frames = frames.clone();
@@ -198,7 +209,7 @@ impl FrontEnd for InProcess {
             let result = set
                 .call(
                     &set.all(),
-                    case.principal.clone(),
+                    case.auth.clone(),
                     &case.operation,
                     case.input.clone(),
                     records,
@@ -223,11 +234,11 @@ fn terminal(result: CallResult) -> Frame {
         Err(refusal) => Frame::Refusal(refusal),
     }
 }
-async fn describe(set: &ComposedSet, principal: &Principal) -> Result<Vec<String>, Failure> {
+async fn describe(set: &ComposedSet, auth: &OAuthContext) -> Result<Vec<String>, Failure> {
     let outcome = set
         .call(
             &set.all(),
-            principal.clone(),
+            auth.clone(),
             "clapham.describe",
             serde_json::json!({}),
             RecordSink::default(),
@@ -286,7 +297,7 @@ fn compare(
     expected: &Observation,
     actual: &Observation,
     records: bool,
-    hidden_at_binding: bool,
+    hidden_at_binding: Option<&str>,
 ) -> Result<(), Failure> {
     let (expected_records, expected_result) = frames(expected)?;
     let (actual_records, actual_result) = frames(actual)?;
@@ -306,8 +317,8 @@ fn compare(
         // A hidden remote tool cannot be bound: the client refuses at selection, before dispatch.
         // Its native selection code differs from the server's gate refusal. Ordinary admitted
         // operation refusals are always compared field by field below.
-        if hidden_at_binding {
-            if actual.code != "mcp_selection"
+        if let Some(code) = hidden_at_binding {
+            if actual.code != code
                 || actual.category != clapham::Category::Usage
                 || actual.retryable
                 || actual.evidence != clapham::Evidence::NotDispatched
@@ -387,7 +398,7 @@ pub struct Report {
 ///
 /// Each operation needs a schema-valid finite case. Indefinite watches can use a terminal
 /// refusal case; finite streams prove record ordering. The scripted gate must admit describe
-/// and refuse `fixture.denied_principal` for each contributed operation.
+/// and refuse `fixture.denied_auth` for each contributed operation.
 pub async fn run(
     fixture: &Fixture,
     gate: Arc<dyn Gate>,
@@ -451,14 +462,14 @@ pub async fn run(
                         .is_ok()
             })
             .ok_or_else(|| Failure::new(format!("{} has no schema-valid case", operation.name)))?;
-        if gate.admit(&fixture.denied_principal, operation) == Admission::Allow {
+        if gate.admit(&fixture.denied_auth, operation) == Admission::Allow {
             return Err(Failure::new(format!(
                 "scripted gate does not refuse {}",
                 operation.name
             )));
         }
         let mut denied = case.clone();
-        denied.principal = fixture.denied_principal.clone();
+        denied.auth = fixture.denied_auth.clone();
         probes.push(denied);
     }
     for case in &fixture.cases {
@@ -500,11 +511,17 @@ pub async fn run(
                     &baseline,
                     &observation,
                     driver.carries_records(),
-                    driver.binds_tools()
-                        && !baseline.catalogue.contains(&case.operation)
-                        && refusal(frames(&baseline)?.1).is_some_and(|r| {
-                            matches!(r.code.as_str(), "not_admitted" | "admission_pending")
-                        }),
+                    driver.hidden_refusal_code().filter(|_| {
+                        !baseline.catalogue.contains(&case.operation)
+                            && refusal(frames(&baseline).expect("baseline frames").1).is_some_and(
+                                |r| {
+                                    matches!(
+                                        r.code.as_str(),
+                                        "not_admitted" | "admission_pending" | "insufficient_scope"
+                                    )
+                                },
+                            )
+                    }),
                 )
                 .map_err(|e| e.at(driver.name(), &case.operation))?;
                 if gated {
@@ -516,4 +533,13 @@ pub async fn run(
         }
     }
     Ok(report)
+}
+
+fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthContext {
+    clapham::OAuthContext::from_verified(
+        "https://identity.example.com",
+        "https://lists.example.com",
+        subject,
+        scopes.iter().copied(),
+    )
 }

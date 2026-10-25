@@ -22,7 +22,10 @@ async fn mcp_protocol_record_is_current() {
         },
     )
     .unwrap();
-    let server = HttpServer::new(set, support::authenticate).unwrap();
+    let server = HttpServer::new(set, support::authenticate)
+        .unwrap()
+        .resources(clapham_conformance::LIST_RESOURCES.iter().copied())
+        .unwrap();
     let tools = support::result(&server, "tools/list", json!({}), "Bearer human").await;
     let resources = support::result(
         &server,

@@ -72,10 +72,12 @@ pub(crate) fn result_data(mut outcome: Outcome) -> Frame {
     // Ordinary JSON results keep their declared shape. Preserve the complete
     // outcome when it carries additional content, an error or non-default evidence,
     // or distinguishes an absent structured result from an explicit JSON null.
-    if outcome.content.is_none() && !outcome.is_error && outcome.evidence == Evidence::Completed {
-        if let Some(result) = outcome.result.take() {
-            return Frame::Result(result);
-        }
+    if outcome.content.is_none()
+        && !outcome.is_error
+        && outcome.evidence == Evidence::Completed
+        && let Some(result) = outcome.result.take()
+    {
+        return Frame::Result(result);
     }
     Frame::Outcome(serde_json::to_value(outcome).expect("outcomes contain JSON values"))
 }

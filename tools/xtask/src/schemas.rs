@@ -6,6 +6,11 @@ use crate::Result;
 
 pub(crate) fn run(root: &Path, check: bool) -> Result<()> {
     for (crate_name, name, schema) in [
+        (
+            "clapham",
+            "configuration",
+            clapham::schema::configuration_schema(),
+        ),
         ("clapham", "operation", clapham::schema::operation_schema()),
         ("clapham", "refusal", clapham::schema::refusal_schema()),
         ("clapham", "catalogue", clapham::schema::catalogue_schema()),

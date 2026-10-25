@@ -1,0 +1,23 @@
+{
+  "oauth": {
+    "issuer": "https://identity.example.com",
+    "audience": "https://lists.example.com"
+  },
+  "sources": {
+    "lists": { "provider": "lists" },
+    "items": { "provider": "items" }
+  },
+  "operations": [
+    { "source": "lists", "name": "lists.list" },
+    { "source": "lists", "name": "lists.get" },
+    { "source": "lists", "name": "lists.create" },
+    { "source": "lists", "name": "lists.rename" },
+    { "source": "lists", "name": "lists.compact" },
+    { "source": "lists", "name": "lists.delete" },
+    { "source": "lists", "name": "lists.watch" },
+    { "source": "lists", "name": "lists.export" },
+    { "source": "lists", "name": "lists.busy" },
+    { "source": "lists", "name": "lists.fault" },
+    { "source": "items", "name": "items.add" }
+  ]
+}

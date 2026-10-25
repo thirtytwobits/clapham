@@ -1,113 +1,57 @@
-# Selections, admission and calls
+# Calls
 
-`set.select(["lists.read", "lists.append"])` creates an immutable selection of
-complete operation names. Unknown names refuse as `unknown_operation`; repeated
-names are deduplicated. `set.all()` selects every operation. Both expose
-descriptors in name order and a stable `revision()`.
+External adapters authenticate before constructing `OAuthContext`. Its issuer, audience,
+subject, client, scopes and extension claims come from trusted OAuth verification or
+introspection. The application retains account policy and object-specific access checks.
 
-A selection belongs to the set that created it and its clones. An independently
-composed set cannot use it, even when its descriptors and revision match. A revision
-identifies selected contract data; it is not an admission decision or a capability
-to dispatch against another set.
+The set runner checks selection, OAuth resource binding, required scopes, input schemas and
+conversion, host admission, preview/locality and typed resource policies before dispatch.
+Cancellation is checked before entry and before dispatch. Successful output is validated.
+The low-level operation invocation API is for trusted dispatch, not an external authority boundary.
 
-## Revisions for approval
+Resource policies receive typed input and verified authority. Discovery cannot evaluate
+resource checks requiring input; invocation must still pass those checks. Asynchronous policy
+cancellation is not-dispatched because the operation handler has not run.
 
-Selections digest selected descriptors in complete-name order. A contribution may
-add an opaque remote binding revision with `.with_binding_revision(revision)`.
-That revision participates only when the selection includes an operation from
-that contribution. The host must change it when the remote binding changes.
-Handlers, bounds, gates, execution modes and principals do not participate.
+Declared refusals retain their code; descriptor categories determine CLI exit codes.
+Undeclared handler refusals become `undeclared_refusal`, with original details and evidence.
+Typed conversion failures are dispatcher errors and retain `invalid_input` or `invalid_result`.
 
-Without remote bindings, the preimage and canonicalisation match the
-[composed-set revision](composition.md): an all-operation selection has the set's
-revision. With remote bindings, the preimage is `clapham.selection.v1`, a zero byte,
-then compact JSON with `operations` (the selected descriptor array) and `bindings`
-(an object mapping each selected remote namespace to its revision). Object keys
-are recursively sorted and array order is retained. SHA-256 produces the same
-`sha256:` lowercase hexadecimal form. Child-process tests compare revisions within
-one JSON map backend. Golden digests run with both the default map backend and
-`serde_json/preserve_order` in CI. A framing or canonicalisation change requires a
-new version prefix.
+Evidence records dispatch knowledge: `not_dispatched`, `completed`, `uncertain`. A completed
+response does not promise durable effects. In-flight cancellation and lost remote replies
+leave effects uncertain. Reconcile effects before issuing another mutation.
 
-## Gate and execution mode
+Records are delivered through an awaited sink. The operation HTTP adapter streams bounded
+NDJSON record frames followed by one outcome/refusal. Each record carries a one-use ticket.
+The CLI acknowledges with the same verified OAuth authority after its output sink accepts the
+record, and the producer waits for that acknowledgement. MCP uses its native final-result representation;
+explicit effect evidence is carried in result metadata.
 
-`Gate::admit(&Principal, &Operation)` returns `Admission::Allow`, `Deny` or `Pending`.
-`DefaultGate` admits the descriptor's principal kinds. The effect defaults therefore
-deny agents administrative and destructive operations; an explicit empty principal
-list admits nobody. A custom gate may override these defaults and is consulted after
-input validation unless the call was already cancelled on entry. Admission applies
-the same policy to previews and real calls; the gate does not receive the preview
-flag. Pending approval refuses without dispatch and may be retried. The host owns
-approval correlation; `Pending` provides no attempt identifier or approval payload.
-Catalogue discovery also queries the gate for visibility without attempting to run
-each candidate. Implementations must not enqueue or consume approvals during these
-policy queries. An admission check alone is not evidence of a call attempt or dispatch.
+Canonical SHA-256 revisions sort nested object keys and definition order. The framing domains
+are `clapham.composed-set.v1` and `clapham.selection.v1`, followed by a zero byte and canonical
+compact JSON. These identify contract data, not permission grants or completed effects.
 
-Supply a gate in `ComposeOptions` to `compose_with_options`. Its execution mode
-defaults to `ExecutionMode::InProcess`, which refuses daemon-local operations.
-A running daemon uses `ExecutionMode::Daemon` to serve both localities. Set clones
-share the gate and fixed execution mode. A gate can read synchronised policy state
-that the host updates when admission must change between calls.
+See [test evidence](contract.md) and [MCP](mcp.md).
 
-`Bounds::in_flight` and `waiting` are connection budgets for the MCP front ends.
-The core call runner does not queue calls or enforce connection concurrency.
+## Typed invocation
 
-## Call order and refusals
+A trusted host can call a typed operation using authority established by its OAuth middleware:
 
-`set.call(&selection, principal, name, input, sink, cancel, preview).await` returns
-`CallResult`, a result containing an `Outcome` or `Refusal`. An already-cancelled
-call returns `cancelled` before validation or admission. Otherwise, the checks run
-in this order: selection membership, input schema, gate, preview support, locality,
-cancellation again, handler, successful output schema. These are cancellation
-checkpoints; validation and admission are synchronous and are not interrupted while
-running. The handler receives the authenticated principal, its own operation name,
-input, sink, cancellation signal and preview flag.
+```rust
+use clapham::{ComposedSet, OAuthContext, Refusal, TypedOperation};
+use serde::{Deserialize, Serialize};
+use schemars::JsonSchema;
+#[derive(Deserialize, Serialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct CountInput {}
 
-| Code | Category | Condition |
-|---|---|---|
-| `unknown_operation` | `not_found` | Name outside the selection, or selection from another set |
-| `invalid_input` | `invalid_input` | Input fails its schema |
-| `not_admitted` | `refused` | Gate denies admission |
-| `admission_pending` | `refused` | Gate leaves approval pending; retryable |
-| `preview_unsupported` | `usage` | Preview requested for an operation without preview support |
-| `no_daemon` | `unavailable` | Daemon-local operation in an in-process host |
-| `invalid_result` | `internal` | Successful output fails its schema, including absent required output |
-| `undeclared_refusal` | `internal` | Handler returns a code absent from its descriptor; never retryable |
-| `cancelled` | `interrupted` | Cancellation before or during dispatch; retryable |
+async fn count_lists(
+    set: &ComposedSet,
+    authority: OAuthContext,
+    count: &TypedOperation<CountInput, u64>,
+) -> Result<u64, Refusal> {
+    count.call(set, authority, CountInput {}).await
+}
+```
 
-Pre-dispatch refusals carry `not_dispatched` evidence. In-flight cancellation carries
-`uncertain` evidence and drops the handler future; it cannot establish whether effects
-committed. If cancellation and completion are both ready at a poll, cancellation wins.
-Returned outcomes retain their evidence, including when output validation fails.
-
-A declared handler refusal keeps its code, message, details, retryability and evidence;
-its category is taken from the descriptor. An undeclared refusal is placed in the
-`details` of `undeclared_refusal`, preserving its evidence on the wrapper. The
-wrapper is not retryable, even when the original refusal is. Handler codes that
-resemble runner codes follow the same rule. Runner-generated refusals do not need
-declarations. Tool-reported error outcomes retain their error shape and are not
-validated as successful results.
-
-The asynchronous sink acknowledges each record before the handler proceeds, providing
-backpressure. Handlers must await sink delivery to preserve record order. A propagated
-sink refusal must be declared by the operation; if delivery failure leaves effects
-unresolved, it must carry `uncertain` evidence. Streaming cancellation tests hold and
-release explicit futures, without timers or retries.
-
-## Transport-generated refusals
-
-Transport refusals, like runner-generated refusals, do not require a contribution declaration.
-They describe delivery failures after the ordinary call runner has completed. A handler that
-returns a similarly named code still follows its descriptor's declared category and contract;
-the adapter does not reinterpret an existing refusal.
-
-| Code | Category | Condition |
-|---|---|---|
-| `result_too_large` | `usage` | MCP successful tool reply or resource outcome exceeds the connection's encoded response budget; evidence is `uncertain` |
-
-The MCP stdio adapter preserves existing refusal codes, even when the handler declares
-`result_too_large` under another category. An existing refusal or tool error reply that cannot
-fit closes the connection; it is not replaced with another refusal. Resource reads carry
-transport refusals in JSON resource contents. Replacement tool replies preserve the original
-response metadata. An oversized request ID or response envelope can still make delivery
-impossible, in which case the connection closes.
+`call_outcome` also preserves adapter content, error status and effect evidence.

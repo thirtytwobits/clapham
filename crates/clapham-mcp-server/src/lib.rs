@@ -3,7 +3,11 @@
 #[cfg(feature = "http")]
 mod http;
 #[cfg(feature = "http")]
-pub use http::{Authenticator, Credential, HttpServer};
+pub use http::{AuthenticationFuture, Authenticator, Credential, HttpServer};
+#[cfg(feature = "http")]
+mod oauth;
+#[cfg(feature = "http")]
+pub use oauth::OAuthIntrospector;
 
 mod mapping;
 mod resource;
@@ -13,7 +17,7 @@ mod stdio;
 use std::{borrow::Cow, sync::Arc};
 
 use clapham::{
-    Cancellation, Category, ComposedSet, Operation, Principal, RecordSink, Refusal, Selection,
+    Cancellation, Category, ComposedSet, OAuthContext, Operation, RecordSink, Refusal, Selection,
 };
 use rmcp::{
     ErrorData, ServerHandler,
@@ -23,6 +27,9 @@ use rmcp::{
 use serde::Serialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
+
+/// MCP tool metadata identifying an administrative operation.
+pub const EFFECT_META_KEY: &str = "io.github.thirtytwobits.clapham/effect";
 
 /// Request metadata key selecting a dry run.
 pub const PREVIEW_META_KEY: &str = "io.github.thirtytwobits.clapham/preview";
@@ -40,7 +47,7 @@ pub const REQUEST_META_KEYS: &[&str] = &[
 // stdio transport rechecks the exact encoded frame before writing any bytes.
 const ENVELOPE_RESERVE: usize = 1024;
 
-/// MCP 2026-07-28 over a selection, bound to one application-supplied principal.
+/// MCP 2026-07-28 over a selection, bound to one application-supplied auth.
 ///
 /// Clones share admission and execution state. Identity never comes from MCP input.
 #[derive(Debug, Clone)]
@@ -48,7 +55,8 @@ pub struct Server {
     set: ComposedSet,
     selection: Selection,
     discovery: Selection,
-    principal: Principal,
+    auth: OAuthContext,
+    resources: std::collections::BTreeMap<String, String>,
     slots: Option<Arc<tokio::sync::Semaphore>>,
     #[cfg(feature = "http")]
     http_failure: Option<Arc<std::sync::atomic::AtomicBool>>,
@@ -57,20 +65,32 @@ pub struct Server {
 impl Server {
     /// Expose all operations. Resource templates must use simple string variables
     /// (`lists://{id}`); unsupported forms and duplicate template shapes refuse configuration.
-    pub fn new(set: ComposedSet, principal: Principal) -> Result<Self, Refusal> {
+    pub fn new(set: ComposedSet, auth: OAuthContext) -> Result<Self, Refusal> {
         let selection = set.all();
         let slots = Arc::new(tokio::sync::Semaphore::new(set.bounds().in_flight));
         let server = Self {
             discovery: selection.clone(),
             selection,
             set,
-            principal,
+            auth,
+            resources: Default::default(),
             slots: Some(slots),
             #[cfg(feature = "http")]
             http_failure: None,
         };
         server.validate_resources()?;
         Ok(server)
+    }
+
+    /// Register MCP resource URI templates against query operations.
+    pub fn resources<I, N, U>(mut self, resources: I) -> Result<Self, Refusal>
+    where
+        I: IntoIterator<Item = (N, U)>,
+        N: Into<String>,
+        U: Into<String>,
+    {
+        register_resources(&self.set, &mut self.resources, resources)?;
+        Ok(self)
     }
 
     /// Replace the exposed selection with complete operation names from this set.
@@ -92,14 +112,14 @@ impl Server {
     }
 
     fn validate_resources(&self) -> Result<(), Refusal> {
-        validate_resources(&self.selection)
+        validate_resources(&self.selection, &self.resources)
     }
 
     // Named describes avoid forcing the complete catalogue into one core result.
     // The same gate filters discovery and dispatch, including custom admission policy.
     async fn catalogue(
         &self,
-        include: fn(&Operation) -> bool,
+        include: impl Fn(&Operation) -> bool,
     ) -> Result<Vec<Operation>, ErrorData> {
         let mut operations = Vec::new();
         for op in self.selection.operations().filter(|op| include(op)) {
@@ -107,7 +127,7 @@ impl Server {
                 .set
                 .call(
                     &self.discovery,
-                    self.principal.clone(),
+                    self.auth.clone(),
                     "clapham.describe",
                     json!({"name":op.name}),
                     RecordSink::default(),
@@ -140,7 +160,7 @@ impl Server {
         }
         let call = self.set.call(
             &self.selection,
-            self.principal.clone(),
+            self.auth.clone(),
             name,
             input,
             RecordSink::default(),
@@ -307,7 +327,10 @@ impl ServerHandler for Server {
         if !operations.is_empty() {
             capabilities.tools = self.get_info().capabilities.tools;
         }
-        if operations.iter().any(|op| op.resource.is_some()) {
+        if operations
+            .iter()
+            .any(|op| self.resources.contains_key(op.name.as_str()))
+        {
             capabilities.resources = self.get_info().capabilities.resources;
         }
         Ok(
@@ -370,7 +393,7 @@ impl ServerHandler for Server {
             .await;
         drop(permit);
         let result = match outcome {
-            Ok(outcome) => mapping::outcome(outcome),
+            Ok(outcome) => mapping::outcome(outcome).unwrap_or_else(mapping::refusal),
             Err(refusal) => mapping::refusal(refusal),
         };
         #[cfg(feature = "http")]
@@ -398,11 +421,11 @@ impl ServerHandler for Server {
         context: RequestContext<RoleServer>,
     ) -> Result<ListResourceTemplatesResult, ErrorData> {
         let templates = self
-            .catalogue(|op| op.resource.is_some())
+            .catalogue(|op| self.resources.contains_key(op.name.as_str()))
             .await?
             .iter()
             .filter_map(|op| {
-                op.resource.as_ref().map(|uri| {
+                self.resources.get(op.name.as_str()).map(|uri| {
                     let mut template = ResourceTemplate::new(uri.clone(), op.name.to_string())
                         .with_description(op.description.clone())
                         .with_mime_type("application/json");
@@ -425,12 +448,12 @@ impl ServerHandler for Server {
         context: RequestContext<RoleServer>,
     ) -> Result<ListResourcesResult, ErrorData> {
         let resources = self
-            .catalogue(|op| op.resource.is_some())
+            .catalogue(|op| self.resources.contains_key(op.name.as_str()))
             .await?
             .iter()
             .filter_map(|op| {
-                op.resource
-                    .as_ref()
+                self.resources
+                    .get(op.name.as_str())
                     .filter(|uri| !uri.contains('{'))
                     .map(|uri| {
                         let mut resource = Resource::new(uri.clone(), op.name.to_string())
@@ -454,17 +477,23 @@ impl ServerHandler for Server {
         request: ReadResourceRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<ReadResourceResponse, ErrorData> {
-        let operations = self.catalogue(|op| op.resource.is_some()).await?;
-        let exact = operations
-            .iter()
-            .any(|op| op.resource.as_deref() == Some(request.uri.as_str()));
+        let operations = self
+            .catalogue(|op| self.resources.contains_key(op.name.as_str()))
+            .await?;
+        let exact = operations.iter().any(|op| {
+            self.resources.get(op.name.as_str()).map(String::as_str) == Some(request.uri.as_str())
+        });
         let mut matched = None;
         for op in operations {
-            if exact && op.resource.as_deref() != Some(request.uri.as_str()) {
+            if exact
+                && self.resources.get(op.name.as_str()).map(String::as_str)
+                    != Some(request.uri.as_str())
+            {
                 continue;
             }
-            if op.resource.is_some() {
-                let template = resource::Template::parse(&op).map_err(protocol_refusal)?;
+            if self.resources.contains_key(op.name.as_str()) {
+                let template = resource::Template::parse(&op, &self.resources[op.name.as_str()])
+                    .map_err(protocol_refusal)?;
                 if let Some(input) = template.bind(&request.uri) {
                     if matched.is_some() {
                         return Err(ErrorData::invalid_params("ambiguous resource URI", None));
@@ -530,11 +559,14 @@ fn resource_result(value: Value, uri: &str) -> ReadResourceResult {
     .with_cache_scope(CacheScope::Private)
 }
 
-fn validate_resources(selection: &Selection) -> Result<(), Refusal> {
+fn validate_resources(
+    selection: &Selection,
+    resources: &std::collections::BTreeMap<String, String>,
+) -> Result<(), Refusal> {
     let mut templates = std::collections::BTreeSet::new();
     for op in selection.operations() {
-        if op.resource.is_some() {
-            let template = resource::Template::parse(op)?;
+        if let Some(uri) = resources.get(op.name.as_str()) {
+            let template = resource::Template::parse(op, uri)?;
             if !templates.insert(template.shape().to_vec()) {
                 return Err(configuration(
                     "two operations use the same resource template shape",
@@ -542,5 +574,34 @@ fn validate_resources(selection: &Selection) -> Result<(), Refusal> {
             }
         }
     }
+    Ok(())
+}
+
+fn register_resources<I, N, U>(
+    set: &ComposedSet,
+    current: &mut std::collections::BTreeMap<String, String>,
+    resources: I,
+) -> Result<(), Refusal>
+where
+    I: IntoIterator<Item = (N, U)>,
+    N: Into<String>,
+    U: Into<String>,
+{
+    let mut registered = current.clone();
+    for (name, uri) in resources {
+        let name = name.into();
+        let uri = uri.into();
+        if set.get(&name).is_none()
+            || uri.is_empty()
+            || uri.len() > set.bounds().message_bytes
+            || registered.insert(name, uri).is_some()
+        {
+            return Err(configuration(
+                "unknown, duplicate or oversized resource registration",
+            ));
+        }
+    }
+    validate_resources(&set.all(), &registered)?;
+    *current = registered;
     Ok(())
 }

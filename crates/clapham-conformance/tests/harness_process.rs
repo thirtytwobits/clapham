@@ -13,7 +13,7 @@ fn driver(flags: &[&str]) -> ProcessFrontEnd {
 async fn tools_list_leaks_and_cross_page_duplicates_fail_even_when_describe_is_correct() {
     let fixture = lists_fixture();
     let mut case = Case::new("lists.get", json!({"id":"tasks"}));
-    case.principal = fixture.denied_principal.clone();
+    case.auth = fixture.denied_auth.clone();
     for flag in ["--leak", "--duplicate"] {
         let error = driver(&[flag])
             .observe(&fixture, lists_gate(), &case)
