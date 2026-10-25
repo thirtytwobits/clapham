@@ -1,16 +1,40 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.0]
 
-### Changes
+### Breaking
 
-- Transport-independent typed Rust operations with generated schemas and internal wire conversion.
-- Declarative JSON and typed Rust configuration through one atomic composition path, including
-  loading JSON and extending it programmatically.
-- OAuth token introspection, mandatory scopes and typed application resource policies.
-- An authenticated server-backed CLI with ordered record streaming and explicit effect evidence.
-- Native rmcp content types in adapters and opaque content in the operation core.
-- Updated conformance coverage, schemas, API snapshots and a Rust 1.88 minimum.
+Operations are defined with typed Rust inputs, outputs and handlers, and authority comes from
+verified OAuth grants. `docs/contract.md` records the revised guarantees C01 to C12.
+
+- Principals are removed: `Principal`, `PrincipalKind`, effect-derived admission defaults,
+  `clapham_cli::process_principal` and the CLI `--as` flag. `Call::new`, `Cli::new` and
+  `Server::new` take an `OAuthContext`; `Invocation` no longer carries a principal.
+- Admission enforces the OAuth resource binding, every required scope and application resource
+  policies. Discovery checks operation-level authority; calls also check resource access.
+- `Authenticator::authenticate` is asynchronous and returns an `OAuthContext`.
+  `McpSelection::principals` is replaced by `McpSelection::scopes`.
+- `clapham::ContentBlock` is removed. The operation core carries opaque content; the MCP
+  adapters use rmcp's native content types.
+- The CLI runs against the authenticated service through a `Backend` instead of in-process.
+- `clapham` and `clapham-cli` require Rust 1.88.
+
+### Added
+
+- `TypedOperation` and `TypedOutcome`, which generate schemas and wire conversion from Serde and
+  schemars types. Conversion failures are reported separately from application refusals.
+- `Configuration`, one atomic composition path for declarative JSON, Rust builders and JSON
+  extended programmatically, with a published configuration schema.
+- `OAuthIntrospector` for bounded RFC 7662 token introspection, `ScopeGate` and
+  `ResourcePolicy`. Token acquisition, refresh and credential storage remain host responsibilities.
+- `HttpBackend` for the CLI, with bounded record streaming, one-use authenticated
+  acknowledgements, cancellation and effect evidence.
+- A typed-operation example and OAuth conformance coverage.
+
+### Documentation
+
+[API reference for 0.2.0](https://thirtytwobits.github.io/clapham/v0.2.0/) covers all five library
+crates with all features enabled.
 
 ## [0.1.1]
 
