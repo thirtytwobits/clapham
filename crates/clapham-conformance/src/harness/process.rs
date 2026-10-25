@@ -1,5 +1,6 @@
 use super::*;
 use clapham_mcp_client::{McpConfig, McpConnection, McpHttpOptions, McpSelection};
+use clapham_mcp_server::{ACKNOWLEDGE_REQUEST, RECORD_NOTIFICATION, RECORDS_EXTENSION};
 use serde_json::json;
 use std::{collections::BTreeMap, ffi::OsString, path::PathBuf, process::Stdio};
 use tokio::{
@@ -81,7 +82,7 @@ impl FrontEnd for ProcessFrontEnd {
         self.kind.name()
     }
     fn carries_records(&self) -> bool {
-        self.kind == ProcessKind::CommandLine
+        true
     }
     fn binds_tools(&self) -> bool {
         matches!(self.kind, ProcessKind::BoundStdio | ProcessKind::BoundHttp)
@@ -116,19 +117,16 @@ impl FrontEnd for ProcessFrontEnd {
                     let catalogue = names(&catalogue.result()?["structuredContent"])?;
                     let tools = host.tools(&case.auth, &fixture.bounds).await?;
                     check_tools(&catalogue, &tools)?;
-                    let result = host
-                        .request(
-                            "tools/call",
-                            json!({"name":case.operation,"arguments":case.input}),
-                            &case.auth,
-                        )
-                        .await?;
+                    let (records, result) =
+                        host.call(&case.operation, &case.input, &case.auth).await?;
+                    let mut frames: Vec<_> = records.into_iter().map(Frame::Record).collect();
+                    frames.push(match result {
+                        HostReply::Result(value) => Frame::Outcome(mcp_outcome(value)?),
+                        HostReply::Refusal(refusal) => Frame::Refusal(refusal),
+                    });
                     Observation {
                         catalogue,
-                        frames: vec![match result {
-                            HostReply::Result(value) => Frame::Outcome(mcp_outcome(value)?),
-                            HostReply::Refusal(refusal) => Frame::Refusal(refusal),
-                        }],
+                        frames,
                         exit_code: None,
                     }
                 }
@@ -433,6 +431,145 @@ impl Host {
             .map(HostReply::Result)
             .ok_or_else(|| Failure::new("MCP response has no result"))
     }
+    /// Call a tool under the records extension, acknowledging each record as it arrives.
+    async fn call(
+        &mut self,
+        name: &str,
+        input: &Value,
+        caller: &OAuthContext,
+    ) -> Result<(Vec<Value>, HostReply), Failure> {
+        self.id += 1;
+        let id = self.id;
+        let token = format!("conformance-{id}");
+        let request = json!({"jsonrpc":"2.0","id":id,"method":"tools/call","params":{
+            "name":name,"arguments":input,"_meta":records_meta(Some(&token))}});
+        let mut records = Vec::new();
+        let response = if let Some(endpoint) = self.endpoint.clone() {
+            let response = self
+                .post(&endpoint, &request, caller)
+                .send()
+                .await
+                .map_err(|e| Failure::new(e.to_string()))?;
+            if matches!(response.status().as_u16(), 401 | 403) {
+                let refusal = response
+                    .json::<Refusal>()
+                    .await
+                    .map_err(|e| Failure::new(e.to_string()))?;
+                return Ok((records, HostReply::Refusal(refusal)));
+            }
+            let mut response = response
+                .error_for_status()
+                .map_err(|e| Failure::new(e.to_string()))?;
+            let streams = response
+                .headers()
+                .get("content-type")
+                .and_then(|value| value.to_str().ok())
+                .is_some_and(|value| value.starts_with("text/event-stream"));
+            if !streams {
+                response
+                    .json()
+                    .await
+                    .map_err(|e| Failure::new(e.to_string()))?
+            } else {
+                let mut buffer = Vec::new();
+                loop {
+                    let message = next_event(&mut response, &mut buffer)
+                        .await?
+                        .ok_or_else(|| Failure::new("SSE reply ended before its result"))?;
+                    if message.get("method").is_none() {
+                        break message;
+                    }
+                    if let Some(sequence) = record(&message, &token, &mut records)? {
+                        self.id += 1;
+                        let acknowledgement = acknowledgement(self.id, &token, sequence);
+                        let reply: Value = self
+                            .post(&endpoint, &acknowledgement, caller)
+                            .send()
+                            .await
+                            .and_then(reqwest::Response::error_for_status)
+                            .map_err(|e| Failure::new(e.to_string()))?
+                            .json()
+                            .await
+                            .map_err(|e| Failure::new(e.to_string()))?;
+                        if reply.get("result").is_none() {
+                            return Err(Failure::new(format!("acknowledgement refused: {reply}")));
+                        }
+                    }
+                }
+            }
+        } else {
+            self.write(&request).await?;
+            // An acknowledgement's reply may follow the result it released.
+            let mut acknowledging = BTreeSet::new();
+            let mut result = None;
+            while result.is_none() || !acknowledging.is_empty() {
+                let message = self.read().await?;
+                if message.get("method").is_some() {
+                    if let Some(sequence) = record(&message, &token, &mut records)? {
+                        self.id += 1;
+                        acknowledging.insert(self.id);
+                        self.write(&acknowledgement(self.id, &token, sequence))
+                            .await?;
+                    }
+                } else if message["id"] == id {
+                    result = Some(message);
+                } else if let Some(acknowledged) = message["id"].as_u64()
+                    && acknowledging.remove(&acknowledged)
+                {
+                    if message.get("result").is_none() {
+                        return Err(Failure::new(format!("acknowledgement refused: {message}")));
+                    }
+                } else {
+                    return Err(Failure::new(format!("unexpected MCP message: {message}")));
+                }
+            }
+            result.expect("loop ends with a result")
+        };
+        if response["jsonrpc"] != "2.0" || response["id"] != id || response.get("error").is_some() {
+            return Err(Failure::new(format!("unexpected MCP response: {response}")));
+        }
+        let result = response
+            .get("result")
+            .cloned()
+            .ok_or_else(|| Failure::new("MCP response has no result"))?;
+        Ok((records, HostReply::Result(result)))
+    }
+    fn post(
+        &self,
+        endpoint: &str,
+        message: &Value,
+        caller: &OAuthContext,
+    ) -> reqwest::RequestBuilder {
+        let mut send = self
+            .client
+            .as_ref()
+            .unwrap()
+            .post(endpoint)
+            .bearer_auth(auth(caller))
+            .header("mcp-protocol-version", "2026-07-28")
+            .header("mcp-method", message["method"].as_str().unwrap_or_default())
+            .header("accept", "application/json, text/event-stream");
+        if let Some(name) = message["params"].get("name").and_then(Value::as_str) {
+            send = send.header("mcp-name", name);
+        }
+        send.json(message)
+    }
+    async fn write(&mut self, message: &Value) -> Result<(), Failure> {
+        let input = self
+            .input
+            .as_mut()
+            .ok_or_else(|| Failure::new("missing host stdin"))?;
+        input.write_all(format!("{message}\n").as_bytes()).await?;
+        input.flush().await?;
+        Ok(())
+    }
+    async fn read(&mut self) -> Result<Value, Failure> {
+        let mut line = String::new();
+        if self.output.as_mut().unwrap().read_line(&mut line).await? == 0 {
+            return Err(Failure::new("MCP host closed before its response"));
+        }
+        Ok(serde_json::from_str(&line)?)
+    }
     async fn finish(mut self) -> Result<(), Failure> {
         if let Some(mut input) = self.input.take() {
             input.shutdown().await?;
@@ -456,6 +593,63 @@ impl Host {
             ));
         }
         Ok(())
+    }
+}
+fn records_meta(token: Option<&str>) -> Value {
+    let mut meta = json!({"io.modelcontextprotocol/protocolVersion":"2026-07-28",
+        "io.modelcontextprotocol/clientCapabilities":{"extensions":{RECORDS_EXTENSION:{}}}});
+    if let Some(token) = token {
+        meta[RECORDS_EXTENSION] = json!(token);
+    }
+    meta
+}
+fn acknowledgement(id: u64, token: &str, sequence: u64) -> Value {
+    json!({"jsonrpc":"2.0","id":id,"method":ACKNOWLEDGE_REQUEST,
+        "params":{"token":token,"sequence":sequence,"_meta":records_meta(None)}})
+}
+/// The next record's sequence, after checking its token and order; `None` for any other
+/// notification.
+fn record(message: &Value, token: &str, records: &mut Vec<Value>) -> Result<Option<u64>, Failure> {
+    if !notification(message) || message["method"] != RECORD_NOTIFICATION {
+        return Ok(None);
+    }
+    let params = &message["params"];
+    let sequence = records.len() as u64 + 1;
+    if params["token"] != token || params["sequence"] != sequence || params.get("record").is_none()
+    {
+        return Err(Failure::new(format!("record out of order: {message}")));
+    }
+    records.push(params["record"].clone());
+    Ok(Some(sequence))
+}
+/// The next JSON-RPC message in an SSE reply, or `None` when the reply ends.
+async fn next_event(
+    response: &mut reqwest::Response,
+    buffer: &mut Vec<u8>,
+) -> Result<Option<Value>, Failure> {
+    loop {
+        if let Some(end) = buffer.windows(2).position(|pair| pair == b"\n\n") {
+            let event: Vec<u8> = buffer.drain(..end + 2).collect();
+            let event =
+                std::str::from_utf8(&event).map_err(|_| Failure::new("SSE event is not UTF-8"))?;
+            let data: Vec<&str> = event
+                .lines()
+                .filter_map(|line| line.strip_prefix("data:"))
+                .map(|data| data.strip_prefix(' ').unwrap_or(data))
+                .collect();
+            if !data.is_empty() {
+                return Ok(Some(serde_json::from_str(&data.join("\n"))?));
+            }
+            continue;
+        }
+        let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(|e| Failure::new(e.to_string()))?
+        else {
+            return Ok(None);
+        };
+        buffer.extend_from_slice(&chunk);
     }
 }
 fn notification(message: &Value) -> bool {
@@ -530,6 +724,14 @@ async fn bound(
             .as_ref()
             .ok_or_else(|| Failure::new("remote describe returned no result"))?,
     )?;
+    let frames = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let records = {
+        let frames = frames.clone();
+        RecordSink::new(move |record| {
+            frames.lock().unwrap().push(Frame::Record(record));
+            async { Ok(()) }
+        })
+    };
     let mut selection = McpSelection::new(&case.operation);
     selection.alias = Some("call".into());
     selection.scopes = case.auth.scopes().iter().cloned().collect();
@@ -550,16 +752,18 @@ async fn bound(
                 case.auth.clone(),
                 "remote.call",
                 case.input.clone(),
-                RecordSink::default(),
+                records,
                 Cancellation::new(),
                 false,
             )
             .await
         }
     };
+    let mut frames = std::mem::take(&mut *frames.lock().unwrap());
+    frames.push(terminal(result));
     Ok(Observation {
         catalogue: names,
-        frames: vec![terminal(result)],
+        frames,
         exit_code: None,
     })
 }

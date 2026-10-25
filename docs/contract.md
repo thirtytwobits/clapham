@@ -150,10 +150,15 @@ Adapters own native content types and carry opaque content through the core. Too
 errors remain outcomes and do not undergo successful-output validation. Records are awaited
 in order before one terminal result. Operation HTTP uses bounded NDJSON frames and acknowledges
 record delivery through one-use tickets bound to verified OAuth authority. Producers wait
-for the client sink to accept and acknowledge each record. Disconnect cancels work. MCP returns the final
-result; its progress notifications are distinct from record delivery. If an outcome
-fits the core bound but its stream envelope exceeds it, HTTP sends `result_too_large` with
-uncertain evidence. An oversized existing domain refusal closes the stream.
+for the client sink to accept and acknowledge each record. Disconnect cancels work. MCP
+carries records under the records extension: one notification per record on the call's
+response stream, acknowledged by a request bound to the grant that began the call.
+Acknowledgements are admitted outside the request limits; repeating the last is accepted, and
+the client cancels on one it cannot confirm. A record notification over the message bound
+refuses the call with `result_too_large` and uncertain evidence. A client without the
+extension receives the final result alone. If an outcome fits the core bound but its stream
+envelope exceeds it, HTTP sends `result_too_large` with uncertain evidence. An oversized
+existing domain refusal closes the stream.
 
 Evidence: [call type tests](../crates/clapham/tests/call_types.rs),
 `ordered_content_keeps_all_block_kinds_and_binary_payloads_without_fetching` and
@@ -164,7 +169,31 @@ Evidence: [call type tests](../crates/clapham/tests/call_types.rs),
 `verified_grants_scopes_resource_policies_and_cli_records_share_one_runner`,
 `native_http_records_wait_for_client_acknowledgement_and_disconnect_cancels_dispatch` and
 `native_http_client_rejects_missing_duplicate_truncated_and_oversized_terminals` and
-`oversized_terminal_outcomes_report_the_size_error_without_rewriting_domain_refusals`.
+`oversized_terminal_outcomes_report_the_size_error_without_rewriting_domain_refusals`;
+[MCP records tests](../crates/clapham-conformance/tests/mcp_records.rs),
+`records_arrive_in_order_each_acknowledged_before_the_result_over_stdio`,
+`records_stream_before_the_result_while_the_call_holds_every_permit_over_http`,
+`a_client_without_the_extension_receives_the_result_alone_over_stdio`,
+`acknowledgements_are_idempotent_and_bound_to_the_record_sent_over_stdio`,
+`acknowledgements_from_another_grant_are_refused_over_http`,
+`the_acknowledgement_path_answers_nothing_else_over_http`,
+`an_oversized_record_refuses_the_call_with_uncertain_evidence`,
+`cancelling_a_call_awaiting_acknowledgement_drops_its_handler_over_stdio` and
+`closing_the_stream_cancels_a_call_awaiting_acknowledgement_over_http`;
+[client records tests](../crates/clapham-mcp-client/tests/records.rs),
+`a_streaming_tool_passes_records_to_the_sink_and_acknowledges_each_after_it`,
+`a_refused_acknowledgement_cancels_the_call_with_uncertain_evidence`,
+`a_sink_refusal_cancels_the_call_without_acknowledging`,
+`a_record_out_of_sequence_cancels_the_call` and
+`a_lost_acknowledgement_reply_is_repeated_over_http`;
+[rmcp server facts](../crates/clapham-mcp-server/src/rmcp_facts.rs),
+`held_call_notifications_precede_its_result_in_order_over_stdio`,
+`held_call_notifications_precede_its_result_in_order_over_stateless_http`,
+`custom_requests_reach_the_handler_while_a_call_is_held_over_stdio` and
+`custom_requests_reach_the_handler_while_a_call_is_held_over_stateless_http`;
+[rmcp client facts](../crates/clapham-mcp-client/tests/rmcp_facts.rs),
+`custom_notifications_during_a_call_reach_the_client_handler` and
+`custom_notification_handlers_are_not_ordered_with_one_another`.
 
 ## C09: Discovery respects authority
 

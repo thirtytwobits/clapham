@@ -9,7 +9,17 @@ use rmcp::{
     transport::{Transport, common::client_side_sse::SseRetryPolicy, streamable_http_client::*},
 };
 use sse_stream::{Error as SseError, Sse, SseStream};
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+    time::Duration,
+};
+
+// SSE field names, separators and an event id around one JSON-RPC message.
+const EVENT_FRAMING: usize = 256;
 
 /// Endpoint and host-resolved bearer credential. Debug formatting intentionally omits both.
 pub struct McpHttpOptions {
@@ -108,13 +118,16 @@ impl BoundedHttp {
         Ok(response)
     }
     fn stream(&self, response: reqwest::Response) -> BoxStream<'static, Result<Sse, SseError>> {
-        let limit = self.limit;
         let state = self.state.clone();
-        // The entire response is bounded, which also bounds each event before SSE parsing.
+        // A response may carry one bounded event beyond the notifications already admitted,
+        // which bounds each event before SSE parsing and keeps keep-alive comments from
+        // growing it while records stream. Notifications draw on the connection's budgets.
+        let allowance = Arc::new(AtomicUsize::new(self.limit + EVENT_FRAMING));
+        let admitted = allowance.clone();
         let bytes = response.bytes_stream().scan(0usize, move |count, chunk| {
             let result = chunk.map_err(|_| McpError::Transport).and_then(|chunk| {
                 *count = count.saturating_add(chunk.len());
-                if *count > limit {
+                if *count > admitted.load(Ordering::SeqCst) {
                     Err(McpError::Limit)
                 } else {
                     Ok(chunk)
@@ -133,11 +146,12 @@ impl BoundedHttp {
                 if let Some(data) = &mut event.data
                     && let Ok(mut value) = serde_json::from_str::<serde_json::Value>(data)
                 {
-                    if value.get("method").is_some()
-                        && let Err(error) = state.charge_incoming_bytes(data.len())
-                    {
-                        state.fail(error.clone());
-                        return Err(SseError::Body(Box::new(error)));
+                    if value.get("method").is_some() {
+                        if let Err(error) = state.charge_incoming_bytes(data.len()) {
+                            state.fail(error.clone());
+                            return Err(SseError::Body(Box::new(error)));
+                        }
+                        allowance.fetch_add(data.len() + EVENT_FRAMING, Ordering::SeqCst);
                     }
                     state.requests.prepare(&mut value);
                     *data = value.to_string();
@@ -308,8 +322,9 @@ impl McpConnection {
         transport_config.auth_header = options.bearer_token;
         transport_config.reinit_on_expired_session = false;
         transport_config.retry_config = Arc::new(NoRetry);
-        transport_config.max_concurrent_requests = config.bounds.in_flight;
-        transport_config.channel_buffer_capacity = config.bounds.in_flight;
+        // Each operation in flight may also acknowledge a record.
+        transport_config.max_concurrent_requests = 2 * config.bounds.in_flight;
+        transport_config.channel_buffer_capacity = 2 * config.bounds.in_flight;
         transport_config.max_sse_event_size = config.bounds.message_bytes;
         transport_config.control_request_timeout = config.operation_timeout;
         let transport = Guard {

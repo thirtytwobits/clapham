@@ -1,6 +1,10 @@
 //! Copyright (c) Scott A Dixon
 //! Connection lifecycle, admission limits and dispatch certainty.
-use crate::{McpCatalogue, binding::Published};
+use crate::{
+    McpCatalogue,
+    binding::Published,
+    records::{RECORD_NOTIFICATION, Routes},
+};
 use rmcp::{
     ClientHandler, RoleClient,
     model::*,
@@ -210,7 +214,9 @@ impl State {
     }
 }
 
-pub(crate) struct Handler;
+pub(crate) struct Handler {
+    routes: Arc<Routes>,
+}
 #[allow(deprecated)]
 impl ClientHandler for Handler {
     async fn list_roots(
@@ -231,9 +237,18 @@ impl ClientHandler for Handler {
         ))
     }
     async fn on_tool_list_changed(&self, _: NotificationContext<RoleClient>) {}
+    async fn on_custom_notification(
+        &self,
+        notification: CustomNotification,
+        _: NotificationContext<RoleClient>,
+    ) {
+        if notification.method == RECORD_NOTIFICATION {
+            self.routes.deliver(notification);
+        }
+    }
     fn get_info(&self) -> ClientConfig {
         ClientConfig::new(
-            ClientCapabilities::default(),
+            crate::records::capabilities(),
             Implementation::new("clapham-mcp-client", env!("CARGO_PKG_VERSION")),
         )
     }
@@ -243,6 +258,7 @@ pub(crate) struct Inner {
     pub service: RunningService<RoleClient, Handler>,
     pub config: McpConfig,
     pub state: Arc<State>,
+    pub routes: Arc<Routes>,
     pub active: Semaphore,
     pub admitted: Semaphore,
     pub discovery: tokio::sync::Mutex<()>,
@@ -265,10 +281,13 @@ impl McpConnection {
         config: McpConfig,
         state: Arc<State>,
     ) -> Result<Self, McpError> {
+        let routes = Arc::new(Routes::default());
         let service = tokio::time::timeout(
             config.operation_timeout,
             rmcp::service::serve_client_with_lifecycle_and_ct(
-                Handler,
+                Handler {
+                    routes: routes.clone(),
+                },
                 transport,
                 ClientLifecycleMode::Discover {
                     preferred_versions: vec![ProtocolVersion::V_2026_07_28],
@@ -299,6 +318,7 @@ impl McpConnection {
             config,
             service,
             state,
+            routes,
             discovery: tokio::sync::Mutex::new(()),
             published: Mutex::new(None),
             revision: AtomicU64::new(0),

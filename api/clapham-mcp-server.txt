@@ -56,7 +56,7 @@ impl<V, T> ppv_lite86::types::VZip<V> for clapham_mcp_server::Credential where V
 pub fn clapham_mcp_server::Credential::vzip(self) -> V
 pub struct clapham_mcp_server::HttpServer
 impl clapham_mcp_server::HttpServer
-pub async fn clapham_mcp_server::HttpServer::handle<B>(&self, request: http::request::Request<B>) -> http::response::Response<http_body_util::full::Full<bytes::bytes::Bytes>> where B: http_body::Body<Data = bytes::bytes::Bytes> + core::marker::Send + 'static, <B as http_body::Body>::Error: core::fmt::Display
+pub async fn clapham_mcp_server::HttpServer::handle<B>(&self, request: http::request::Request<B>) -> http::response::Response<http_body_util::combinators::box_body::BoxBody<bytes::bytes::Bytes, core::convert::Infallible>> where B: http_body::Body<Data = bytes::bytes::Bytes> + core::marker::Send + 'static, <B as http_body::Body>::Error: core::fmt::Display
 pub fn clapham_mcp_server::HttpServer::new(set: clapham::composition::ComposedSet, authenticator: impl clapham_mcp_server::Authenticator) -> core::result::Result<Self, clapham::refusal::Refusal>
 pub fn clapham_mcp_server::HttpServer::resources<I, N, U>(self, resources: I) -> core::result::Result<Self, clapham::refusal::Refusal> where I: core::iter::traits::collect::IntoIterator<Item = (N, U)>, N: core::convert::Into<alloc::string::String>, U: core::convert::Into<alloc::string::String>
 pub fn clapham_mcp_server::HttpServer::select<I, S>(self, names: I) -> core::result::Result<Self, clapham::refusal::Refusal> where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::AsRef<str>
@@ -73,7 +73,7 @@ pub fn clapham_mcp_server::HttpServer::fmt(&self, formatter: &mut core::fmt::For
 impl<B> tower_service::Service<http::request::Request<B>> for clapham_mcp_server::HttpServer where B: http_body::Body<Data = bytes::bytes::Bytes> + core::marker::Send + 'static, <B as http_body::Body>::Error: core::fmt::Display
 pub type clapham_mcp_server::HttpServer::Error = core::convert::Infallible
 pub type clapham_mcp_server::HttpServer::Future = core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::result::Result<<clapham_mcp_server::HttpServer as tower_service::Service<http::request::Request<B>>>::Response, <clapham_mcp_server::HttpServer as tower_service::Service<http::request::Request<B>>>::Error>> + core::marker::Send)>>
-pub type clapham_mcp_server::HttpServer::Response = http::response::Response<http_body_util::full::Full<bytes::bytes::Bytes>>
+pub type clapham_mcp_server::HttpServer::Response = http::response::Response<http_body_util::combinators::box_body::BoxBody<bytes::bytes::Bytes, core::convert::Infallible>>
 pub fn clapham_mcp_server::HttpServer::call(&mut self, request: http::request::Request<B>) -> Self::Future
 pub fn clapham_mcp_server::HttpServer::poll_ready(&mut self, _: &mut core::task::wake::Context<'_>) -> core::task::poll::Poll<core::result::Result<(), Self::Error>>
 impl !core::marker::Freeze for clapham_mcp_server::HttpServer
@@ -200,6 +200,7 @@ pub fn clapham_mcp_server::Server::get_tool(&self, name: &str) -> core::option::
 pub async fn clapham_mcp_server::Server::list_resource_templates(&self, request: core::option::Option<rmcp::model::PaginatedRequestParams>, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::ListResourceTemplatesResult, rmcp::model::ErrorData>
 pub async fn clapham_mcp_server::Server::list_resources(&self, request: core::option::Option<rmcp::model::PaginatedRequestParams>, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::ListResourcesResult, rmcp::model::ErrorData>
 pub async fn clapham_mcp_server::Server::list_tools(&self, request: core::option::Option<rmcp::model::PaginatedRequestParams>, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::ListToolsResult, rmcp::model::ErrorData>
+pub async fn clapham_mcp_server::Server::on_custom_request(&self, request: rmcp::model::CustomRequest, _: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::CustomResult, rmcp::model::ErrorData>
 pub async fn clapham_mcp_server::Server::read_resource(&self, request: rmcp::model::ReadResourceRequestParams, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::mrtr::ReadResourceResponse, rmcp::model::ErrorData>
 pub fn clapham_mcp_server::Server::supported_protocol_versions(&self) -> alloc::borrow::Cow<'static, [rmcp::model::ProtocolVersion]>
 impl core::marker::Freeze for clapham_mcp_server::Server
@@ -259,8 +260,11 @@ pub type clapham_mcp_server::Server::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_server::Server where T: ?core::marker::Sized
 impl<V, T> ppv_lite86::types::VZip<V> for clapham_mcp_server::Server where V: ppv_lite86::types::MultiLane<T>
 pub fn clapham_mcp_server::Server::vzip(self) -> V
+pub const clapham_mcp_server::ACKNOWLEDGE_REQUEST: &str
 pub const clapham_mcp_server::EFFECT_META_KEY: &str
 pub const clapham_mcp_server::PREVIEW_META_KEY: &str
+pub const clapham_mcp_server::RECORDS_EXTENSION: &str
+pub const clapham_mcp_server::RECORD_NOTIFICATION: &str
 pub const clapham_mcp_server::REQUEST_META_KEYS: &[&str]
 pub trait clapham_mcp_server::Authenticator: core::marker::Send + core::marker::Sync + 'static
 pub fn clapham_mcp_server::Authenticator::authenticate<'a>(&'a self, credential: &'a clapham_mcp_server::Credential) -> clapham_mcp_server::AuthenticationFuture<'a>

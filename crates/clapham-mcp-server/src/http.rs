@@ -15,12 +15,17 @@ use clapham::{Category, ComposedSet, Evidence, OAuthContext, Refusal, Selection}
 use http::{Request, Response, StatusCode, header};
 use http_body::Body;
 use http_body_util::{BodyExt, Empty, Full, Limited, combinators::BoxBody};
-use rmcp::transport::streamable_http_server::{
-    StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
+use rmcp::{
+    ErrorData,
+    model::{CustomRequest, CustomResult, ProtocolVersion, ServerCapabilities, ServerConfig},
+    service::{RequestContext, RoleServer},
+    transport::streamable_http_server::{
+        StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
+    },
 };
-use tokio::sync::Semaphore;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
-use crate::{Server, register_resources, validate_resources};
+use crate::{ACKNOWLEDGE_REQUEST, Server, register_resources, validate_resources};
 
 /// An opaque HTTP Authorization value. Debug output never prints its contents.
 ///
@@ -91,6 +96,7 @@ pub struct HttpServer {
     outstanding: Arc<Semaphore>,
     authenticating: Arc<Semaphore>,
     acknowledgements: Arc<std::sync::Mutex<calls::Acknowledgements>>,
+    deliveries: Arc<crate::records::Deliveries>,
     executing: Arc<Semaphore>,
     authentication_challenge: Option<http::HeaderValue>,
     metadata_path: Option<String>,
@@ -150,6 +156,7 @@ impl HttpServer {
             outstanding: Arc::new(Semaphore::new(bounds.in_flight + bounds.waiting)),
             authenticating: Arc::new(Semaphore::new(bounds.in_flight + bounds.waiting)),
             acknowledgements: Default::default(),
+            deliveries: Default::default(),
             executing: Arc::new(Semaphore::new(bounds.in_flight)),
             authentication_challenge: Some(challenge),
             metadata_path,
@@ -260,13 +267,17 @@ impl HttpServer {
             .enforce_origin_validation()
     }
 
-    /// Handle one request using rmcp's stateless server transport, returning a
-    /// bounded JSON response. HTTP admission happens before body consumption.
+    /// Handle one request using rmcp's stateless server transport. HTTP admission
+    /// happens before body consumption.
     ///
     /// Unmapped credentials receive 401, malformed credentials 400, and an exhausted
-    /// queue 503. Body limits and MCP header validation are enforced by rmcp. Replies
-    /// that cannot fit without changing an existing refusal produce HTTP 500.
-    pub async fn handle<B>(&self, request: Request<B>) -> Response<Full<Bytes>>
+    /// queue 503. Body limits and MCP header validation are enforced by rmcp. A JSON
+    /// reply is bounded as a whole. An SSE reply streams as rmcp writes it, each event
+    /// bounded, and holds the request's queue and execution permits until it ends. A JSON
+    /// reply that cannot fit without changing an existing refusal produces HTTP 500; an
+    /// SSE reply closes instead. Record acknowledgements are admitted outside the request
+    /// queue and execution permits, and answer nothing else.
+    pub async fn handle<B>(&self, request: Request<B>) -> Response<BoxBody<Bytes, Infallible>>
     where
         B: Body<Data = Bytes> + Send + 'static,
         B::Error: fmt::Display,
@@ -288,7 +299,7 @@ impl HttpServer {
         *probe.headers_mut() = request.headers().clone();
         let checked = validator.handle(probe).await;
         if checked.status() != StatusCode::METHOD_NOT_ALLOWED {
-            return bounded_response(checked, limit, false).await;
+            return calls::full(bounded_response(checked, limit, false).await);
         }
 
         let mut authorization = request.headers().get_all(header::AUTHORIZATION).iter();
@@ -297,38 +308,50 @@ impl HttpServer {
             (Some(value), None) => match value.to_str() {
                 Ok(value) => Credential::new(value),
                 Err(_) => {
-                    return refusal_response(
+                    return calls::full(refusal_response(
                         StatusCode::BAD_REQUEST,
                         "invalid_credential",
                         Category::InvalidInput,
                         "the Authorization field is malformed",
-                    );
+                    ));
                 }
             },
             _ => {
-                return refusal_response(
+                return calls::full(refusal_response(
                     StatusCode::BAD_REQUEST,
                     "invalid_credential",
                     Category::InvalidInput,
                     "multiple Authorization fields are not permitted",
-                );
+                ));
             }
         };
-        let Ok(_outstanding) = self.outstanding.try_acquire() else {
-            return refusal_response(
-                StatusCode::SERVICE_UNAVAILABLE,
-                "server_busy",
-                Category::Unavailable,
-                "the HTTP request queue is full",
-            );
+        let method = request
+            .headers()
+            .get("mcp-method")
+            .and_then(|value| value.to_str().ok());
+        let acknowledgement = method == Some(ACKNOWLEDGE_REQUEST);
+        let tool_call = method == Some("tools/call");
+        // A streaming call holding every permit waits for its acknowledgements.
+        let outstanding = if acknowledgement {
+            None
+        } else {
+            let Ok(outstanding) = self.outstanding.clone().try_acquire_owned() else {
+                return calls::full(refusal_response(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "server_busy",
+                    Category::Unavailable,
+                    "the HTTP request queue is full",
+                ));
+            };
+            Some(outstanding)
         };
         let Ok(authentication) = self.authenticating.try_acquire() else {
-            return refusal_response(
+            return calls::full(refusal_response(
                 StatusCode::SERVICE_UNAVAILABLE,
                 "server_busy",
                 Category::Unavailable,
                 "authentication queue is full",
-            );
+            ));
         };
         let Some(auth) = self
             .authenticator
@@ -351,25 +374,37 @@ impl HttpServer {
                     .headers_mut()
                     .insert(header::WWW_AUTHENTICATE, challenge.clone());
             }
-            return response;
+            return calls::full(response);
         };
+        if acknowledgement {
+            // The authentication permit bounds concurrent acknowledgements.
+            let acknowledging = Acknowledging {
+                deliveries: self.deliveries.clone(),
+                auth,
+            };
+            let service = StreamableHttpService::new(
+                move || Ok(acknowledging.clone()),
+                Arc::new(LocalSessionManager::default()),
+                config,
+            );
+            let response = bounded_response(service.handle(request).await, limit, false).await;
+            drop(authentication);
+            return calls::full(response);
+        }
         drop(authentication);
-        if request
-            .headers()
-            .get("mcp-method")
-            .and_then(|value| value.to_str().ok())
-            == Some("tools/call")
+        if tool_call
             && let Some(name) = request
                 .headers()
                 .get("mcp-name")
                 .and_then(|value| value.to_str().ok())
             && let Some(response) = self.scope_challenge(&auth, name)
         {
-            return response;
+            return calls::full(response);
         }
-        let _executing = self
+        let executing = self
             .executing
-            .acquire()
+            .clone()
+            .acquire_owned()
             .await
             .expect("private semaphore remains open");
         let failure = Arc::new(AtomicBool::new(false));
@@ -381,6 +416,7 @@ impl HttpServer {
             resources: self.resources.clone(),
             // The outer HTTP execution permit covers this entire request.
             slots: None,
+            deliveries: self.deliveries.clone(),
             http_failure: Some(failure.clone()),
         };
         let service = StreamableHttpService::new(
@@ -389,7 +425,115 @@ impl HttpServer {
             config,
         );
         let response = service.handle(request).await;
-        bounded_response(response, limit, failure.load(Ordering::Acquire)).await
+        let streams = response
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok())
+            .is_some_and(|value| value.starts_with("text/event-stream"));
+        if streams {
+            return response.map(|body| {
+                Events {
+                    body,
+                    pending: Vec::new(),
+                    scanned: 0,
+                    limit,
+                    failure,
+                    closed: false,
+                    _permits: (outstanding, executing),
+                }
+                .boxed()
+            });
+        }
+        calls::full(bounded_response(response, limit, failure.load(Ordering::Acquire)).await)
+    }
+}
+
+/// The handler behind an acknowledgement admitted outside the request limits. It
+/// answers record acknowledgements and nothing else.
+#[derive(Clone)]
+struct Acknowledging {
+    deliveries: Arc<crate::records::Deliveries>,
+    auth: OAuthContext,
+}
+
+impl rmcp::ServerHandler for Acknowledging {
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(ServerCapabilities::default())
+            .with_protocol_version(ProtocolVersion::V_2026_07_28)
+    }
+
+    fn supported_protocol_versions(&self) -> std::borrow::Cow<'static, [ProtocolVersion]> {
+        std::borrow::Cow::Owned(vec![ProtocolVersion::V_2026_07_28])
+    }
+
+    async fn on_custom_request(
+        &self,
+        request: CustomRequest,
+        _: RequestContext<RoleServer>,
+    ) -> Result<CustomResult, ErrorData> {
+        crate::records::acknowledge(&self.deliveries, &self.auth, request)
+    }
+}
+
+// SSE field names, separators and an event id around one JSON-RPC message.
+const EVENT_FRAMING: usize = 256;
+
+/// An SSE reply passed on event by event as rmcp writes it. An event that cannot fit
+/// `bounds.message_bytes` with its framing, or a reply whose budget failed, closes the
+/// stream. The request's permits live as long as the stream.
+struct Events {
+    body: BoxBody<Bytes, Infallible>,
+    pending: Vec<u8>,
+    scanned: usize,
+    limit: usize,
+    failure: Arc<AtomicBool>,
+    closed: bool,
+    _permits: (Option<OwnedSemaphorePermit>, OwnedSemaphorePermit),
+}
+
+impl Body for Events {
+    type Data = Bytes;
+    type Error = Infallible;
+
+    fn poll_frame(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Option<Result<http_body::Frame<Bytes>, Infallible>>> {
+        let events = &mut *self;
+        loop {
+            if events.closed {
+                return Poll::Ready(None);
+            }
+            let start = events.scanned.saturating_sub(1);
+            if let Some(end) = events.pending[start..]
+                .windows(2)
+                .position(|pair| pair == b"\n\n")
+                .map(|offset| start + offset + 2)
+            {
+                if end > events.limit + EVENT_FRAMING || events.failure.load(Ordering::Acquire) {
+                    events.closed = true;
+                    continue;
+                }
+                let event: Vec<u8> = events.pending.drain(..end).collect();
+                events.scanned = 0;
+                return Poll::Ready(Some(Ok(http_body::Frame::data(Bytes::from(event)))));
+            }
+            events.scanned = events.pending.len();
+            if events.pending.len() > events.limit + EVENT_FRAMING {
+                events.closed = true;
+                continue;
+            }
+            match std::pin::Pin::new(&mut events.body).poll_frame(cx) {
+                Poll::Ready(Some(Ok(frame))) => {
+                    if let Ok(data) = frame.into_data() {
+                        events.pending.extend_from_slice(&data);
+                    }
+                }
+                Poll::Ready(Some(Err(never))) => match never {},
+                Poll::Ready(None) => events.closed = true,
+                Poll::Pending => return Poll::Pending,
+            }
+        }
     }
 }
 
@@ -398,7 +542,7 @@ where
     B: Body<Data = Bytes> + Send + 'static,
     B::Error: fmt::Display,
 {
-    type Response = Response<Full<Bytes>>;
+    type Response = Response<BoxBody<Bytes, Infallible>>;
     type Error = Infallible;
     type Future =
         std::pin::Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;

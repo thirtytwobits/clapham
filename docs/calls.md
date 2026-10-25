@@ -24,8 +24,9 @@ leave effects uncertain. Reconcile effects before issuing another mutation.
 Records are delivered through an awaited sink. The operation HTTP adapter streams bounded
 NDJSON record frames followed by one outcome/refusal. Each record carries a one-use ticket.
 The CLI acknowledges with the same verified OAuth authority after its output sink accepts the
-record, and the producer waits for that acknowledgement. MCP uses its native final-result representation;
-explicit effect evidence is carried in result metadata.
+record, and the producer waits for that acknowledgement. MCP carries records under the
+[records extension](mcp.md#records-extension); explicit effect evidence is carried in result
+metadata.
 
 Canonical SHA-256 revisions sort nested object keys and definition order. The framing domains
 are `clapham.composed-set.v1` and `clapham.selection.v1`, followed by a zero byte and canonical

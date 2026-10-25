@@ -42,6 +42,10 @@ Results use `Outcome`, ordered content and `Evidence`; adapter errors map to bou
 `Refusal` codes. A tool-reported `isError` remains an outcome. Dropping an invocation requests
 cancellation, and uncertain effects are never replayed automatically.
 
+A remote tool that streams under the records extension passes each record to the call's sink and
+acknowledges it after the sink accepts it. An acknowledgement the client cannot confirm cancels
+the call with uncertain evidence.
+
 See the [client contract](../../docs/mcp.md#remote-connections)
 for refusal mappings and transport limits, and the
 [operation guarantees](../../docs/contract.md)

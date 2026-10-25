@@ -47,6 +47,8 @@ impl<T> alloc::borrow::ToOwned for clapham_conformance::ChangeKind where T: core
 pub type clapham_conformance::ChangeKind::Owned = T
 pub fn clapham_conformance::ChangeKind::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::ChangeKind::to_owned(&self) -> T
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::ChangeKind where T: core::clone::Clone
+pub fn clapham_conformance::ChangeKind::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::ChangeKind where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::ChangeKind::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::ChangeKind where T: ?core::marker::Sized
@@ -70,6 +72,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::ChangeKind
 impl<T> typenum::type_operators::Same for clapham_conformance::ChangeKind
 pub type clapham_conformance::ChangeKind::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::ChangeKind where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::ChangeKind where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::ChangeKind::vzip(self) -> V
 pub enum clapham_conformance::Frame
 pub clapham_conformance::Frame::CliResult(serde_json::value::Value)
 pub clapham_conformance::Frame::Outcome(clapham::call::Outcome)
@@ -103,6 +107,8 @@ impl<T> alloc::borrow::ToOwned for clapham_conformance::Frame where T: core::clo
 pub type clapham_conformance::Frame::Owned = T
 pub fn clapham_conformance::Frame::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::Frame::to_owned(&self) -> T
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::Frame where T: core::clone::Clone
+pub fn clapham_conformance::Frame::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::Frame where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::Frame::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::Frame where T: ?core::marker::Sized
@@ -123,6 +129,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Frame
 impl<T> typenum::type_operators::Same for clapham_conformance::Frame
 pub type clapham_conformance::Frame::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Frame where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::Frame where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::Frame::vzip(self) -> V
 pub enum clapham_conformance::ProcessKind
 pub clapham_conformance::ProcessKind::BoundHttp
 pub clapham_conformance::ProcessKind::BoundStdio
@@ -161,6 +169,8 @@ impl<T> alloc::borrow::ToOwned for clapham_conformance::ProcessKind where T: cor
 pub type clapham_conformance::ProcessKind::Owned = T
 pub fn clapham_conformance::ProcessKind::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::ProcessKind::to_owned(&self) -> T
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::ProcessKind where T: core::clone::Clone
+pub fn clapham_conformance::ProcessKind::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::ProcessKind where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::ProcessKind::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::ProcessKind where T: ?core::marker::Sized
@@ -183,6 +193,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::ProcessKind
 impl<T> typenum::type_operators::Same for clapham_conformance::ProcessKind
 pub type clapham_conformance::ProcessKind::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::ProcessKind where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::ProcessKind where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::ProcessKind::vzip(self) -> V
 pub struct clapham_conformance::Case
 pub clapham_conformance::Case::auth: clapham::auth::OAuthContext
 pub clapham_conformance::Case::input: serde_json::value::Value
@@ -214,6 +226,8 @@ impl<T> alloc::borrow::ToOwned for clapham_conformance::Case where T: core::clon
 pub type clapham_conformance::Case::Owned = T
 pub fn clapham_conformance::Case::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::Case::to_owned(&self) -> T
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::Case where T: core::clone::Clone
+pub fn clapham_conformance::Case::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::Case where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::Case::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::Case where T: ?core::marker::Sized
@@ -234,6 +248,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Case
 impl<T> typenum::type_operators::Same for clapham_conformance::Case
 pub type clapham_conformance::Case::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Case where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::Case where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::Case::vzip(self) -> V
 pub struct clapham_conformance::Failure(_)
 impl clapham_conformance::Failure
 pub fn clapham_conformance::Failure::new(message: impl core::convert::Into<alloc::string::String>) -> Self
@@ -277,6 +293,8 @@ pub fn clapham_conformance::Failure::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::Failure::to_owned(&self) -> T
 impl<T> alloc::string::ToString for clapham_conformance::Failure where T: core::fmt::Display + ?core::marker::Sized
 pub fn clapham_conformance::Failure::to_string(&self) -> alloc::string::String
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::Failure where T: core::clone::Clone
+pub fn clapham_conformance::Failure::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::Failure where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::Failure::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::Failure where T: ?core::marker::Sized
@@ -297,6 +315,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Failure
 impl<T> typenum::type_operators::Same for clapham_conformance::Failure
 pub type clapham_conformance::Failure::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Failure where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::Failure where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::Failure::vzip(self) -> V
 pub struct clapham_conformance::Fixture
 pub clapham_conformance::Fixture::bounds: clapham::bounds::Bounds
 pub clapham_conformance::Fixture::cases: alloc::vec::Vec<clapham_conformance::Case>
@@ -329,6 +349,8 @@ impl<T> alloc::borrow::ToOwned for clapham_conformance::Fixture where T: core::c
 pub type clapham_conformance::Fixture::Owned = T
 pub fn clapham_conformance::Fixture::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::Fixture::to_owned(&self) -> T
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::Fixture where T: core::clone::Clone
+pub fn clapham_conformance::Fixture::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::Fixture where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::Fixture::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::Fixture where T: ?core::marker::Sized
@@ -349,6 +371,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Fixture
 impl<T> typenum::type_operators::Same for clapham_conformance::Fixture
 pub type clapham_conformance::Fixture::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Fixture where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::Fixture where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::Fixture::vzip(self) -> V
 pub struct clapham_conformance::HeldCall
 impl clapham_conformance::HeldCall
 pub async fn clapham_conformance::HeldCall::entered(&mut self) -> bool
@@ -388,6 +412,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::HeldCall
 impl<T> typenum::type_operators::Same for clapham_conformance::HeldCall
 pub type clapham_conformance::HeldCall::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::HeldCall where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::HeldCall where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::HeldCall::vzip(self) -> V
 pub struct clapham_conformance::InProcess
 impl clapham_conformance::FrontEnd for clapham_conformance::InProcess
 pub fn clapham_conformance::InProcess::carries_records(&self) -> bool
@@ -419,6 +445,8 @@ impl<T> alloc::borrow::ToOwned for clapham_conformance::InProcess where T: core:
 pub type clapham_conformance::InProcess::Owned = T
 pub fn clapham_conformance::InProcess::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::InProcess::to_owned(&self) -> T
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::InProcess where T: core::clone::Clone
+pub fn clapham_conformance::InProcess::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::InProcess where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::InProcess::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::InProcess where T: ?core::marker::Sized
@@ -441,6 +469,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::InProcess
 impl<T> typenum::type_operators::Same for clapham_conformance::InProcess
 pub type clapham_conformance::InProcess::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::InProcess where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::InProcess where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::InProcess::vzip(self) -> V
 pub struct clapham_conformance::Item
 pub clapham_conformance::Item::id: alloc::string::String
 pub clapham_conformance::Item::text: alloc::string::String
@@ -485,6 +515,8 @@ impl<T> alloc::borrow::ToOwned for clapham_conformance::Item where T: core::clon
 pub type clapham_conformance::Item::Owned = T
 pub fn clapham_conformance::Item::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::Item::to_owned(&self) -> T
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::Item where T: core::clone::Clone
+pub fn clapham_conformance::Item::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::Item where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::Item::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::Item where T: ?core::marker::Sized
@@ -506,6 +538,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Item
 impl<T> typenum::type_operators::Same for clapham_conformance::Item
 pub type clapham_conformance::Item::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Item where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::Item where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::Item::vzip(self) -> V
 pub struct clapham_conformance::List
 pub clapham_conformance::List::id: alloc::string::String
 pub clapham_conformance::List::items: alloc::vec::Vec<clapham_conformance::Item>
@@ -551,6 +585,8 @@ impl<T> alloc::borrow::ToOwned for clapham_conformance::List where T: core::clon
 pub type clapham_conformance::List::Owned = T
 pub fn clapham_conformance::List::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::List::to_owned(&self) -> T
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::List where T: core::clone::Clone
+pub fn clapham_conformance::List::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::List where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::List::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::List where T: ?core::marker::Sized
@@ -572,6 +608,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::List
 impl<T> typenum::type_operators::Same for clapham_conformance::List
 pub type clapham_conformance::List::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::List where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::List where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::List::vzip(self) -> V
 pub struct clapham_conformance::ListChange
 pub clapham_conformance::ListChange::kind: clapham_conformance::ChangeKind
 pub clapham_conformance::ListChange::list: clapham_conformance::List
@@ -615,6 +653,8 @@ impl<T> alloc::borrow::ToOwned for clapham_conformance::ListChange where T: core
 pub type clapham_conformance::ListChange::Owned = T
 pub fn clapham_conformance::ListChange::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::ListChange::to_owned(&self) -> T
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::ListChange where T: core::clone::Clone
+pub fn clapham_conformance::ListChange::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::ListChange where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::ListChange::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::ListChange where T: ?core::marker::Sized
@@ -636,6 +676,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::ListChange
 impl<T> typenum::type_operators::Same for clapham_conformance::ListChange
 pub type clapham_conformance::ListChange::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::ListChange where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::ListChange where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::ListChange::vzip(self) -> V
 pub struct clapham_conformance::ListsGate
 impl clapham::gate::Gate for clapham_conformance::ListsGate
 pub fn clapham_conformance::ListsGate::admit(&self, auth: &clapham::auth::OAuthContext, operation: &clapham::operation::Operation) -> clapham::gate::Admission
@@ -667,6 +709,8 @@ impl<T> alloc::borrow::ToOwned for clapham_conformance::ListsGate where T: core:
 pub type clapham_conformance::ListsGate::Owned = T
 pub fn clapham_conformance::ListsGate::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::ListsGate::to_owned(&self) -> T
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::ListsGate where T: core::clone::Clone
+pub fn clapham_conformance::ListsGate::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::ListsGate where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::ListsGate::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::ListsGate where T: ?core::marker::Sized
@@ -689,6 +733,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::ListsGate
 impl<T> typenum::type_operators::Same for clapham_conformance::ListsGate
 pub type clapham_conformance::ListsGate::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::ListsGate where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::ListsGate where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::ListsGate::vzip(self) -> V
 pub struct clapham_conformance::ListsHandle(_)
 impl clapham_conformance::ListsHandle
 pub fn clapham_conformance::ListsHandle::add_item(&self, list_id: &str, id: impl core::convert::Into<alloc::string::String>, text: impl core::convert::Into<alloc::string::String>) -> core::result::Result<clapham_conformance::List, clapham::refusal::Refusal>
@@ -727,6 +773,8 @@ impl<T> alloc::borrow::ToOwned for clapham_conformance::ListsHandle where T: cor
 pub type clapham_conformance::ListsHandle::Owned = T
 pub fn clapham_conformance::ListsHandle::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::ListsHandle::to_owned(&self) -> T
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::ListsHandle where T: core::clone::Clone
+pub fn clapham_conformance::ListsHandle::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::ListsHandle where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::ListsHandle::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::ListsHandle where T: ?core::marker::Sized
@@ -747,6 +795,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::ListsHandle
 impl<T> typenum::type_operators::Same for clapham_conformance::ListsHandle
 pub type clapham_conformance::ListsHandle::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::ListsHandle where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::ListsHandle where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::ListsHandle::vzip(self) -> V
 pub struct clapham_conformance::Observation
 pub clapham_conformance::Observation::catalogue: alloc::vec::Vec<alloc::string::String>
 pub clapham_conformance::Observation::exit_code: core::option::Option<i32>
@@ -779,6 +829,8 @@ impl<T> alloc::borrow::ToOwned for clapham_conformance::Observation where T: cor
 pub type clapham_conformance::Observation::Owned = T
 pub fn clapham_conformance::Observation::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::Observation::to_owned(&self) -> T
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::Observation where T: core::clone::Clone
+pub fn clapham_conformance::Observation::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::Observation where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::Observation::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::Observation where T: ?core::marker::Sized
@@ -799,6 +851,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Observation
 impl<T> typenum::type_operators::Same for clapham_conformance::Observation
 pub type clapham_conformance::Observation::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Observation where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::Observation where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::Observation::vzip(self) -> V
 pub struct clapham_conformance::Process
 pub clapham_conformance::Process::args: alloc::vec::Vec<std::ffi::os_str::OsString>
 pub clapham_conformance::Process::env: alloc::collections::btree::map::BTreeMap<std::ffi::os_str::OsString, std::ffi::os_str::OsString>
@@ -830,6 +884,8 @@ impl<T> alloc::borrow::ToOwned for clapham_conformance::Process where T: core::c
 pub type clapham_conformance::Process::Owned = T
 pub fn clapham_conformance::Process::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::Process::to_owned(&self) -> T
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::Process where T: core::clone::Clone
+pub fn clapham_conformance::Process::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::Process where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::Process::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::Process where T: ?core::marker::Sized
@@ -850,6 +906,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Process
 impl<T> typenum::type_operators::Same for clapham_conformance::Process
 pub type clapham_conformance::Process::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Process where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::Process where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::Process::vzip(self) -> V
 pub struct clapham_conformance::ProcessFrontEnd
 impl clapham_conformance::ProcessFrontEnd
 pub fn clapham_conformance::ProcessFrontEnd::new(kind: clapham_conformance::ProcessKind, process: clapham_conformance::Process) -> Self
@@ -884,6 +942,8 @@ impl<T> alloc::borrow::ToOwned for clapham_conformance::ProcessFrontEnd where T:
 pub type clapham_conformance::ProcessFrontEnd::Owned = T
 pub fn clapham_conformance::ProcessFrontEnd::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::ProcessFrontEnd::to_owned(&self) -> T
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::ProcessFrontEnd where T: core::clone::Clone
+pub fn clapham_conformance::ProcessFrontEnd::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::ProcessFrontEnd where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::ProcessFrontEnd::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::ProcessFrontEnd where T: ?core::marker::Sized
@@ -904,6 +964,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::ProcessFron
 impl<T> typenum::type_operators::Same for clapham_conformance::ProcessFrontEnd
 pub type clapham_conformance::ProcessFrontEnd::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::ProcessFrontEnd where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::ProcessFrontEnd where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::ProcessFrontEnd::vzip(self) -> V
 pub struct clapham_conformance::Report
 pub clapham_conformance::Report::calls: usize
 pub clapham_conformance::Report::cases: usize
@@ -941,6 +1003,8 @@ impl<T> alloc::borrow::ToOwned for clapham_conformance::Report where T: core::cl
 pub type clapham_conformance::Report::Owned = T
 pub fn clapham_conformance::Report::clone_into(&self, target: &mut T)
 pub fn clapham_conformance::Report::to_owned(&self) -> T
+impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_conformance::Report where T: core::clone::Clone
+pub fn clapham_conformance::Report::from_ref(input: &T) -> T
 impl<T> core::any::Any for clapham_conformance::Report where T: 'static + ?core::marker::Sized
 pub fn clapham_conformance::Report::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_conformance::Report where T: ?core::marker::Sized
@@ -961,6 +1025,8 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Report
 impl<T> typenum::type_operators::Same for clapham_conformance::Report
 pub type clapham_conformance::Report::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Report where T: ?core::marker::Sized
+impl<V, T> ppv_lite86::types::VZip<V> for clapham_conformance::Report where V: ppv_lite86::types::MultiLane<T>
+pub fn clapham_conformance::Report::vzip(self) -> V
 pub const clapham_conformance::LIST_RESOURCES: &[(&str, &str)]
 pub trait clapham_conformance::FrontEnd: core::marker::Send + core::marker::Sync
 pub fn clapham_conformance::FrontEnd::binds_tools(&self) -> bool

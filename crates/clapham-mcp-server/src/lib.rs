@@ -10,6 +10,8 @@ mod oauth;
 pub use oauth::OAuthIntrospector;
 
 mod mapping;
+mod records;
+pub use records::{ACKNOWLEDGE_REQUEST, RECORD_NOTIFICATION, RECORDS_EXTENSION};
 mod resource;
 #[cfg(all(test, feature = "stdio", feature = "http"))]
 mod rmcp_facts;
@@ -36,10 +38,11 @@ pub const EFFECT_META_KEY: &str = "io.github.thirtytwobits.clapham/effect";
 /// Request metadata key selecting a dry run.
 pub const PREVIEW_META_KEY: &str = "io.github.thirtytwobits.clapham/preview";
 
-/// Published protocol, client identity and preview metadata keys used by the server.
+/// Published protocol, client identity, preview and records metadata keys used by the server.
 /// The conformance wire record takes its request-key contract from this list.
 pub const REQUEST_META_KEYS: &[&str] = &[
     PREVIEW_META_KEY,
+    RECORDS_EXTENSION,
     "io.modelcontextprotocol/clientCapabilities",
     "io.modelcontextprotocol/clientInfo",
     "io.modelcontextprotocol/protocolVersion",
@@ -60,6 +63,7 @@ pub struct Server {
     auth: OAuthContext,
     resources: std::collections::BTreeMap<String, String>,
     slots: Option<Arc<tokio::sync::Semaphore>>,
+    deliveries: Arc<records::Deliveries>,
     #[cfg(feature = "http")]
     http_failure: Option<Arc<std::sync::atomic::AtomicBool>>,
 }
@@ -77,6 +81,7 @@ impl Server {
             auth,
             resources: Default::default(),
             slots: Some(slots),
+            deliveries: Default::default(),
             #[cfg(feature = "http")]
             http_failure: None,
         };
@@ -149,23 +154,37 @@ impl Server {
         Ok(operations)
     }
 
+    /// Run one call. With a records token, records reach the client under the records
+    /// extension; without one they are discarded and the client receives the result alone.
     async fn invoke(
         &self,
         name: &str,
         input: Value,
         preview: bool,
+        token: Option<&str>,
         context: &RequestContext<RoleServer>,
     ) -> clapham::CallResult {
         let cancel = Cancellation::new();
         if context.ct.is_cancelled() {
             cancel.cancel();
         }
+        let records = match token {
+            // The newline after a stdio frame is outside the encoded notification.
+            Some(token) => records::sink(
+                self.deliveries.clone(),
+                token.to_owned(),
+                context.peer.clone(),
+                cancel.clone(),
+                self.set.bounds().message_bytes.saturating_sub(1),
+            ),
+            None => RecordSink::default(),
+        };
         let call = self.set.call(
             &self.selection,
             self.auth.clone(),
             name,
             input,
-            RecordSink::default(),
+            records,
             cancel.clone(),
             preview,
         );
@@ -309,14 +328,14 @@ impl Server {
 
 impl ServerHandler for Server {
     fn get_info(&self) -> ServerConfig {
-        ServerConfig::new(
-            ServerCapabilities::builder()
-                .enable_tools()
-                .enable_resources()
-                .build(),
-        )
-        .with_protocol_version(ProtocolVersion::V_2026_07_28)
-        .with_server_info(Implementation::new("clapham", env!("CARGO_PKG_VERSION")))
+        let mut capabilities = ServerCapabilities::builder()
+            .enable_tools()
+            .enable_resources()
+            .build();
+        capabilities.extensions = Some(records_extension());
+        ServerConfig::new(capabilities)
+            .with_protocol_version(ProtocolVersion::V_2026_07_28)
+            .with_server_info(Implementation::new("clapham", env!("CARGO_PKG_VERSION")))
     }
 
     fn supported_protocol_versions(&self) -> Cow<'static, [ProtocolVersion]> {
@@ -326,6 +345,7 @@ impl ServerHandler for Server {
     async fn discover(&self, _: RequestContext<RoleServer>) -> Result<DiscoverResult, ErrorData> {
         let operations = self.catalogue(|_| true).await?;
         let mut capabilities = ServerCapabilities::default();
+        capabilities.extensions = Some(records_extension());
         if !operations.is_empty() {
             capabilities.tools = self.get_info().capabilities.tools;
         }
@@ -384,16 +404,27 @@ impl ServerHandler for Server {
                 ));
             }
         };
+        let token = records::token(&context)?;
+        let registration = match &token {
+            Some(token) => {
+                Some(self.deliveries.register(token, &self.auth).ok_or_else(|| {
+                    ErrorData::invalid_params("the records token is in use", None)
+                })?)
+            }
+            None => None,
+        };
         let permit = self.execution_permit(&context).await?;
         let outcome = self
             .invoke(
                 &request.name,
                 Value::Object(request.arguments.unwrap_or_default()),
                 preview,
+                token.as_deref(),
                 &context,
             )
             .await;
         drop(permit);
+        drop(registration);
         let result = match outcome {
             Ok(outcome) => mapping::outcome(outcome).unwrap_or_else(mapping::refusal),
             Err(refusal) => mapping::refusal(refusal),
@@ -415,6 +446,14 @@ impl ServerHandler for Server {
             result
         };
         Ok(result.into())
+    }
+
+    async fn on_custom_request(
+        &self,
+        request: CustomRequest,
+        _: RequestContext<RoleServer>,
+    ) -> Result<CustomResult, ErrorData> {
+        records::acknowledge(&self.deliveries, &self.auth, request)
     }
 
     async fn list_resource_templates(
@@ -508,7 +547,7 @@ impl ServerHandler for Server {
             matched.ok_or_else(|| ErrorData::resource_not_found("resource not found", None))?;
         let _permit = self.execution_permit(&context).await?;
         let outcome = self
-            .invoke(&name, Value::Object(input), false, &context)
+            .invoke(&name, Value::Object(input), false, None, &context)
             .await;
         // Resource reads have no tool-error union. Preserve refusals as JSON, and
         // retain the full Outcome when a plain result would discard semantics.
@@ -540,6 +579,10 @@ impl ServerHandler for Server {
         )
         .into())
     }
+}
+
+fn records_extension() -> ExtensionCapabilities {
+    ExtensionCapabilities::from([(RECORDS_EXTENSION.to_owned(), JsonObject::new())])
 }
 
 fn configuration(message: impl Into<String>) -> Refusal {

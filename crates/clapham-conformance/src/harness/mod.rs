@@ -156,7 +156,7 @@ pub type ObservationFuture<'a> =
 pub trait FrontEnd: Send + Sync {
     /// A unique name in a harness run.
     fn name(&self) -> &str;
-    /// Whether this front end carries records (in-process and the CLI in 0.1.0).
+    /// Whether this front end carries records.
     fn carries_records(&self) -> bool;
     /// Whether hidden operations refuse at remote binding selection rather than call admission.
     fn binds_tools(&self) -> bool {

@@ -92,6 +92,7 @@
         "tests/mcp_client.rs",
         "tests/mcp_http.rs",
         "tests/mcp_protocol.rs",
+        "tests/mcp_records.rs",
         "tests/mcp_stdio.rs",
         "tests/oauth_operations.rs",
         "tests/support/cli_fixture.rs",
@@ -114,10 +115,12 @@
         "src/connection.rs",
         "src/http.rs",
         "src/lib.rs",
+        "src/records.rs",
         "src/stdio.rs",
         "src/wire.rs",
         "tests/contracts.rs",
         "tests/http.rs",
+        "tests/records.rs",
         "tests/rmcp_facts.rs",
         "tests/support/mod.rs"
       ]
@@ -137,6 +140,7 @@
         "src/lib.rs",
         "src/mapping.rs",
         "src/oauth.rs",
+        "src/records.rs",
         "src/resource.rs",
         "src/rmcp_facts.rs",
         "src/stdio.rs"

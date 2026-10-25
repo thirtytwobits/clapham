@@ -20,6 +20,42 @@ refusals retain their codes in structured tool errors. Native rmcp content block
 the adapters; the core carries opaque content. Explicit effect evidence is carried in result
 metadata under `io.github.thirtytwobits.clapham/evidence`.
 
+`HttpServer::handle` bounds a JSON reply as a whole. It streams an SSE reply as rmcp writes it,
+each event bounded, and holds the request's queue and execution permits until the stream ends.
+
+## Records extension
+
+The records extension, `io.github.thirtytwobits.clapham/records`, carries a streaming
+operation's records over MCP. The server declares it in its `server/discover` capabilities and
+the client in each request's client capabilities. A tool whose operation streams carries `true`
+under the extension identifier in its `_meta`.
+
+- A client that declares the extension sends a records token in the `tools/call` request's
+  `_meta` under the extension identifier. A token in use by an in-flight call refuses the call
+  with `-32602`.
+- The server sends each record as an `io.github.thirtytwobits.clapham/record` notification on
+  the call's response stream, with params `{token, sequence, record}` and `sequence` from 1,
+  then the final result.
+- The client acknowledges each record with an `io.github.thirtytwobits.clapham/acknowledge`
+  request, with params `{token, sequence}`, after its sink accepts the record. The server sends
+  the next record only after the acknowledgement. Only the grant that began the call may
+  acknowledge its records. Repeating the acknowledgement of the record last accepted succeeds
+  while the call is in flight.
+- Acknowledgements are admitted outside the request queue and execution permits, and over stdio
+  outside the active-request and lifetime counts. Over Streamable HTTP, a request whose
+  `Mcp-Method` names the acknowledgement answers nothing else.
+- The client repeats an acknowledgement once after a transport failure. An acknowledgement it
+  cannot confirm, a sink refusal or a record out of sequence cancels the call with uncertain
+  evidence.
+- A record notification over `bounds.message_bytes` refuses the call with `result_too_large`
+  and uncertain evidence; an unacknowledged record refuses it with `record_delivery_failed`.
+  Closing the response stream, or `notifications/cancelled` over stdio, cancels the call.
+- A client that does not declare the extension, or sends no token, receives the final result
+  alone.
+
+The client bounds an SSE reply to one event beyond the notifications it has admitted. Records
+count against the connection's `bounds.notifications`.
+
 ## Operation HTTP and CLI
 
 The non-MCP HTTP interface uses the same authenticator and runner:

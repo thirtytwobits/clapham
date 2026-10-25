@@ -71,7 +71,7 @@ impl Drop for Records {
     }
 }
 
-fn full(response: Response<Full<Bytes>>) -> Response<BoxBody<Bytes, Infallible>> {
+pub(super) fn full(response: Response<Full<Bytes>>) -> Response<BoxBody<Bytes, Infallible>> {
     response.map(BodyExt::boxed)
 }
 

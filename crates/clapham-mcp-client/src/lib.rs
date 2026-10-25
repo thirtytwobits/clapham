@@ -4,6 +4,7 @@ mod binding;
 mod connection;
 #[cfg(feature = "http")]
 mod http;
+mod records;
 #[cfg(feature = "stdio")]
 mod stdio;
 mod wire;
