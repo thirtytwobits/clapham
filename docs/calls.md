@@ -22,12 +22,10 @@ Evidence records dispatch knowledge: `not_dispatched`, `completed`, `uncertain`.
 response does not promise durable effects. In-flight cancellation and lost remote replies
 leave effects uncertain. Reconcile effects before issuing another mutation.
 
-Records are delivered through an awaited sink. The operation HTTP adapter streams bounded
-NDJSON record frames followed by one outcome/refusal. Each record carries a one-use ticket.
-The CLI acknowledges with the same verified OAuth authority after its output sink accepts the
-record, and the producer waits for that acknowledgement. MCP carries records under the
-[records extension](mcp.md#records-extension); explicit effect evidence is carried in result
-metadata.
+Records are delivered through an awaited sink. MCP carries them under the
+[records extension](mcp.md#records-extension): the client acknowledges each with the verified
+OAuth grant that began the call after its sink accepts it, and the producer waits for that
+acknowledgement. Explicit effect evidence is carried in result metadata.
 
 Canonical SHA-256 revisions sort nested object keys and definition order. The framing domains
 are `clapham.composed-set.v1` and `clapham.selection.v1`, followed by a zero byte and canonical

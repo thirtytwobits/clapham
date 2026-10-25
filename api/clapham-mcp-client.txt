@@ -2,6 +2,7 @@ pub mod clapham_mcp_client
 pub enum clapham_mcp_client::McpError
 pub clapham_mcp_client::McpError::Busy
 pub clapham_mcp_client::McpError::Configuration
+pub clapham_mcp_client::McpError::Forbidden
 pub clapham_mcp_client::McpError::Invocation(i32)
 pub clapham_mcp_client::McpError::Limit
 pub clapham_mcp_client::McpError::Protocol
@@ -9,6 +10,7 @@ pub clapham_mcp_client::McpError::Selection
 pub clapham_mcp_client::McpError::Stale
 pub clapham_mcp_client::McpError::Timeout
 pub clapham_mcp_client::McpError::Transport
+pub clapham_mcp_client::McpError::Unauthenticated
 pub clapham_mcp_client::McpError::UnsupportedInteraction
 impl clapham_mcp_client::McpError
 pub fn clapham_mcp_client::McpError::refusal(&self, evidence: clapham::call::Evidence) -> clapham::refusal::Refusal
@@ -113,6 +115,7 @@ pub clapham_mcp_client::McpConfig::operation_timeout: core::time::Duration
 pub clapham_mcp_client::McpConfig::server_id: alloc::string::String
 impl clapham_mcp_client::McpConfig
 pub fn clapham_mcp_client::McpConfig::new(server_id: impl core::convert::Into<alloc::string::String>, credential_scope_revision: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn clapham_mcp_client::McpConfig::operator(server_id: impl core::convert::Into<alloc::string::String>, credential_scope_revision: impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for clapham_mcp_client::McpConfig
 pub fn clapham_mcp_client::McpConfig::clone(&self) -> clapham_mcp_client::McpConfig
 impl core::fmt::Debug for clapham_mcp_client::McpConfig
@@ -159,12 +162,16 @@ pub type clapham_mcp_client::McpConfig::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_client::McpConfig where T: ?core::marker::Sized
 pub struct clapham_mcp_client::McpConnection(_)
 impl clapham_mcp_client::McpConnection
+pub async fn clapham_mcp_client::McpConnection::call_tool(&self, name: &str, arguments: rmcp::model::JsonObject, meta: rmcp::model::JsonObject, records: clapham::call::RecordSink) -> core::result::Result<clapham::call::Outcome, clapham::refusal::Refusal>
+impl clapham_mcp_client::McpConnection
 pub fn clapham_mcp_client::McpConnection::close(&self)
 pub fn clapham_mcp_client::McpConnection::credential_scope_revision(&self) -> &str
 pub async fn clapham_mcp_client::McpConnection::discover(&self) -> core::result::Result<clapham_mcp_client::McpCatalogue, clapham_mcp_client::McpError>
 pub fn clapham_mcp_client::McpConnection::server_id(&self) -> &str
 impl clapham_mcp_client::McpConnection
 pub async fn clapham_mcp_client::McpConnection::http(options: clapham_mcp_client::McpHttpOptions, config: clapham_mcp_client::McpConfig) -> core::result::Result<Self, clapham_mcp_client::McpError>
+impl clapham_mcp_client::McpConnection
+pub async fn clapham_mcp_client::McpConnection::operations(&self) -> core::result::Result<alloc::vec::Vec<clapham::operation::Operation>, clapham_mcp_client::McpError>
 impl clapham_mcp_client::McpConnection
 pub async fn clapham_mcp_client::McpConnection::stdio<R, W>(reader: R, writer: W, shutdown: tokio_util::sync::cancellation_token::CancellationToken, config: clapham_mcp_client::McpConfig) -> core::result::Result<Self, clapham_mcp_client::McpError> where R: tokio::io::async_read::AsyncRead + core::marker::Unpin + core::marker::Send + 'static, W: tokio::io::async_write::AsyncWrite + core::marker::Unpin + core::marker::Send + 'static
 impl core::clone::Clone for clapham_mcp_client::McpConnection

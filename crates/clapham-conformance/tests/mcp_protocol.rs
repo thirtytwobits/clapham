@@ -7,7 +7,9 @@ use std::{fs, path::PathBuf, sync::Arc};
 
 use clapham::{Bounds, ComposeOptions};
 use clapham_conformance::{ListsGate, ListsHandle};
-use clapham_mcp_server::{ACKNOWLEDGE_REQUEST, HttpServer, RECORDS_EXTENSION, REQUEST_META_KEYS};
+use clapham_mcp_server::{
+    ACKNOWLEDGE_REQUEST, CATALOGUE_EXTENSION, HttpServer, RECORDS_EXTENSION, REQUEST_META_KEYS,
+};
 use http_body_util::BodyExt;
 use serde_json::{Value, json};
 
@@ -90,13 +92,34 @@ async fn mcp_protocol_record_is_current() {
     )
     .await;
     let discovery = support::result(&server, "server/discover", json!({}), "Bearer human").await;
+    let described = support::result(
+        &server,
+        "tools/call",
+        json!({"name":"clapham.describe","arguments":{}}),
+        "Bearer human",
+    )
+    .await;
+    let result_meta_keys: Vec<&String> = described["_meta"].as_object().unwrap().keys().collect();
+    let refused = support::result(
+        &server,
+        "tools/call",
+        json!({"name":"lists.unknown","arguments":{}}),
+        "Bearer human",
+    )
+    .await;
+    let refusal_meta_keys: Vec<&String> = refused["_meta"].as_object().unwrap().keys().collect();
+    let catalogue = support::result(&server, CATALOGUE_EXTENSION, json!({}), "Bearer human").await;
+    let catalogue_keys: Vec<&String> = catalogue.as_object().unwrap().keys().collect();
     let record = json!({
         "protocolVersions":discovery["supportedVersions"],
         "extensions":discovery["capabilities"]["extensions"],
         "records":records(&server).await,
+        "catalogue":{"method":CATALOGUE_EXTENSION,"params":["cursor"],"result":catalogue_keys},
         "tools":tools["tools"],
         "resourceTemplates":resources["resourceTemplates"],
         "requestMetaKeys":REQUEST_META_KEYS,
+        "resultMetaKeys":result_meta_keys,
+        "refusalMetaKeys":refusal_meta_keys,
     });
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("records/mcp-protocol.json");
     let mut record = record;

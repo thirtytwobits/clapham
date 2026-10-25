@@ -5,7 +5,7 @@ use futures_util::{StreamExt, stream::BoxStream};
 use http::{HeaderName, HeaderValue};
 use rmcp::{
     RoleClient,
-    model::{ClientJsonRpcMessage, ServerJsonRpcMessage},
+    model::{ClientJsonRpcMessage, ClientRequest, ServerJsonRpcMessage},
     transport::{Transport, common::client_side_sse::SseRetryPolicy, streamable_http_client::*},
 };
 use sse_stream::{Error as SseError, Sse, SseStream};
@@ -49,9 +49,39 @@ struct BoundedHttp {
     timeout: Duration,
     state: Arc<State>,
 }
-type HttpError = StreamableHttpError<McpError>;
+/// An HTTP failure, with the structured refusal a Clapham server gave for it. Only a caller
+/// that reads a server's refusals unchanged, such as the CLI's direct calls, receives it.
+#[derive(Debug, thiserror::Error)]
+#[error("{error}")]
+pub(crate) struct Fault {
+    pub(crate) error: McpError,
+    pub(crate) refusal: Option<Box<clapham::Refusal>>,
+}
+impl From<McpError> for Fault {
+    fn from(error: McpError) -> Self {
+        Self {
+            error,
+            refusal: None,
+        }
+    }
+}
+pub(crate) type HttpError = StreamableHttpError<Fault>;
 fn error(e: McpError) -> HttpError {
-    StreamableHttpError::Client(e)
+    StreamableHttpError::Client(e.into())
+}
+/// The structured refusal in a bounded response body, if there is one.
+async fn server_refusal(
+    mut response: reqwest::Response,
+    limit: usize,
+) -> Option<Box<clapham::Refusal>> {
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await.ok()? {
+        if chunk.len() > limit.saturating_sub(bytes.len()) {
+            return None;
+        }
+        bytes.extend_from_slice(&chunk);
+    }
+    serde_json::from_slice(&bytes).ok().map(Box::new)
 }
 fn media_type(response: &reqwest::Response, expected: &str) -> bool {
     response
@@ -87,13 +117,15 @@ impl BoundedHttp {
         session: Option<&str>,
         auth: Option<String>,
         headers: HashMap<HeaderName, HeaderValue>,
+        // A tool call, whose record stream may outlive the request deadline.
+        call: bool,
     ) -> reqwest::RequestBuilder {
         let persistent = method == reqwest::Method::GET;
         let mut request = self
             .client
             .request(method, uri)
             .header("accept", "application/json, text/event-stream");
-        if !persistent {
+        if !persistent && !call {
             request = request.timeout(self.timeout);
         }
         if let Some(session) = session {
@@ -107,15 +139,47 @@ impl BoundedHttp {
         }
         request
     }
+    /// The POST carrying `message`. A tool call is bounded by its invocation deadline or its
+    /// caller, so it has no request deadline of its own.
+    fn post(
+        &self,
+        uri: &str,
+        session: Option<&str>,
+        auth: Option<String>,
+        headers: HashMap<HeaderName, HeaderValue>,
+        message: &ClientJsonRpcMessage,
+        body: Vec<u8>,
+    ) -> reqwest::RequestBuilder {
+        let call = matches!(message, ClientJsonRpcMessage::Request(request)
+            if matches!(request.request, ClientRequest::CallToolRequest(_)));
+        self.request(reqwest::Method::POST, uri, session, auth, headers, call)
+            .header("content-type", "application/json")
+            .body(body)
+    }
     async fn send(&self, request: reqwest::RequestBuilder) -> Result<reqwest::Response, HttpError> {
         let response = request
             .send()
             .await
             .map_err(|_| error(McpError::Transport))?;
-        if !response.status().is_success() {
-            return Err(error(McpError::Transport));
+        let status = response.status();
+        if status.is_success() {
+            return Ok(response);
         }
-        Ok(response)
+        // An unaccepted credential ends the connection; a scope challenge or a full queue
+        // refuses this request alone, before dispatch.
+        let error = match status {
+            reqwest::StatusCode::UNAUTHORIZED => McpError::Unauthenticated,
+            reqwest::StatusCode::FORBIDDEN => McpError::Forbidden,
+            reqwest::StatusCode::SERVICE_UNAVAILABLE => McpError::Busy,
+            _ => McpError::Transport,
+        };
+        if error == McpError::Unauthenticated {
+            self.state.fail(error.clone());
+        }
+        Err(StreamableHttpError::Client(Fault {
+            error,
+            refusal: server_refusal(response, self.limit).await,
+        }))
     }
     fn stream(&self, response: reqwest::Response) -> BoxStream<'static, Result<Sse, SseError>> {
         let state = self.state.clone();
@@ -156,7 +220,11 @@ impl BoundedHttp {
                     && let Ok(mut value) = serde_json::from_str::<serde_json::Value>(data)
                 {
                     if value.get("method").is_some() {
-                        if let Err(error) = state.charge_incoming_bytes(data.len()) {
+                        let paced = value["method"] == crate::records::RECORD_NOTIFICATION
+                            && value["params"]["token"]
+                                .as_str()
+                                .is_some_and(|token| state.routes.awaits(token));
+                        if !paced && let Err(error) = state.charge_incoming_bytes(data.len()) {
                             state.fail(error.clone());
                             return Err(SseError::Body(Box::new(error)));
                         }
@@ -215,7 +283,7 @@ impl EventBoundaries {
     }
 }
 impl StreamableHttpClient for BoundedHttp {
-    type Error = McpError;
+    type Error = Fault;
     async fn post_message(
         &self,
         uri: Arc<str>,
@@ -232,17 +300,7 @@ impl StreamableHttpClient for BoundedHttp {
         let result = async {
             let body = wire::encode(&message, self.limit).map_err(error)?;
             let response = self
-                .send(
-                    self.request(
-                        reqwest::Method::POST,
-                        &uri,
-                        session_id.as_deref(),
-                        auth,
-                        headers,
-                    )
-                    .header("content-type", "application/json")
-                    .body(body),
-                )
+                .send(self.post(&uri, session_id.as_deref(), auth, headers, &message, body))
                 .await?;
             if matches!(response.status().as_u16(), 202 | 204) {
                 return Ok(StreamableHttpPostResponse::Accepted);
@@ -294,8 +352,15 @@ impl StreamableHttpClient for BoundedHttp {
         auth: Option<String>,
         headers: HashMap<HeaderName, HeaderValue>,
     ) -> Result<(), HttpError> {
-        self.send(self.request(reqwest::Method::DELETE, &uri, Some(&session), auth, headers))
-            .await?;
+        self.send(self.request(
+            reqwest::Method::DELETE,
+            &uri,
+            Some(&session),
+            auth,
+            headers,
+            false,
+        ))
+        .await?;
         Ok(())
     }
     async fn get_stream(
@@ -312,6 +377,7 @@ impl StreamableHttpClient for BoundedHttp {
             session.as_deref(),
             auth,
             headers,
+            false,
         );
         if let Some(last) = last {
             request = request.header("last-event-id", last);
@@ -495,6 +561,33 @@ mod tests {
         task.abort();
     }
 
+    #[test]
+    fn a_tool_call_post_has_no_request_deadline() {
+        let backend = backend();
+        let deadline = |message: serde_json::Value| {
+            let message = serde_json::from_value(message).unwrap();
+            backend
+                .post(
+                    "http://127.0.0.1/mcp",
+                    None,
+                    None,
+                    HashMap::new(),
+                    &message,
+                    Vec::new(),
+                )
+                .build()
+                .unwrap()
+                .timeout()
+                .copied()
+        };
+        let call = serde_json::json!({"jsonrpc":"2.0","id":1,"method":"tools/call",
+            "params":{"name":"export","arguments":{}}});
+        let ping = serde_json::json!({"jsonrpc":"2.0","id":2,"method":"ping"});
+        // The call is bounded by its invocation deadline or its caller instead.
+        assert_eq!(deadline(call), None);
+        assert_eq!(deadline(ping), Some(backend.timeout));
+    }
+
     #[tokio::test]
     async fn persistent_sse_keeps_the_whole_response_byte_bound() {
         // Every individual event is small; keep-alive comments still consume body bytes.
@@ -604,7 +697,10 @@ mod tests {
             } else {
                 assert!(matches!(
                     response,
-                    Err(StreamableHttpError::Client(McpError::Limit))
+                    Err(StreamableHttpError::Client(Fault {
+                        error: McpError::Limit,
+                        ..
+                    }))
                 ));
             }
             assert_eq!(backend.state.check(), Err(McpError::Limit));
@@ -688,12 +784,18 @@ mod tests {
             if body {
                 assert!(matches!(
                     error,
-                    StreamableHttpError::Client(McpError::Transport)
+                    StreamableHttpError::Client(Fault {
+                        error: McpError::Transport,
+                        ..
+                    })
                 ));
             } else {
                 assert!(matches!(
                     error,
-                    StreamableHttpError::Client(McpError::Timeout)
+                    StreamableHttpError::Client(Fault {
+                        error: McpError::Timeout,
+                        ..
+                    })
                 ));
             }
             tokio::time::resume();

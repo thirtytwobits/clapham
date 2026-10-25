@@ -1,7 +1,7 @@
 //! Typed operations, programmatic composition and an OAuth-authenticated generated CLI.
 
 use clapham::{Bounds, Call, Configuration, Contribution, Effect, Exposure, TypedOperation};
-use clapham_cli::{Cli, HttpBackend};
+use clapham_cli::{Cli, McpBackend};
 use clapham_mcp_server::{HttpServer, OAuthIntrospector};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -46,11 +46,11 @@ async fn main() -> Result<ExitCode> {
         axum::serve(listener, server.into_router()).await?;
         Ok(ExitCode::SUCCESS)
     } else {
-        let backend = HttpBackend::new(
+        let backend = McpBackend::http(
             std::env::var("CLAPHAM_ENDPOINT")?,
             std::env::var("CLAPHAM_ACCESS_TOKEN")?,
-            Bounds::default(),
-        )?;
+        )
+        .await?;
         let cli = Cli::connect("lists", backend, Bounds::default()).await?;
         Ok(ExitCode::from(cli.run().await))
     }

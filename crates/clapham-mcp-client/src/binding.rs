@@ -5,7 +5,7 @@ use clapham::{
     Call, Category, Contribution, Effect, Evidence, Handler, HandlerFuture, Locality, Operation,
     OperationName, Outcome, Refusal,
 };
-use rmcp::{model::*, service::ServiceError};
+use rmcp::model::*;
 use serde_json::{Value, json};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -387,6 +387,8 @@ fn remote_refusals() -> BTreeMap<String, Category> {
         McpError::Stale,
         McpError::Selection,
         McpError::Busy,
+        McpError::Unauthenticated,
+        McpError::Forbidden,
         McpError::UnsupportedInteraction,
     ]
     .into_iter()
@@ -458,123 +460,16 @@ impl Remote {
             .as_object()
             .cloned()
             .ok_or_else(|| refused(McpError::Selection))?;
-        let mut route = self.connection.0.routes.open();
-        let mut meta = RequestMetaObject::new();
-        meta.insert(records::RECORDS_EXTENSION.into(), json!(route.token));
-        let mut params = CallToolRequestParams::new(name.clone()).with_arguments(arguments);
-        params.meta = Some(meta);
-        // Reserve room for the SDK's per-request metadata and JSON-RPC envelope.
-        wire::encode(
-            &params,
-            self.connection
-                .0
-                .config
-                .bounds
-                .message_bytes
-                .saturating_sub(crate::connection::REQUEST_ENVELOPE_RESERVE),
-        )
-        .map_err(refused)?;
-        let _ticket = self
-            .connection
-            .0
-            .admitted
-            .try_acquire()
-            .map_err(|_| refused(McpError::Busy))?;
-        let _active = timeout_at(deadline, self.connection.0.active.acquire())
+        self.connection
+            .invoke(
+                name,
+                arguments,
+                JsonObject::new(),
+                &call.records,
+                Some(deadline),
+                false,
+                || self.check(),
+            )
             .await
-            .map_err(|_| refused(McpError::Timeout))?
-            .map_err(|_| refused(McpError::Transport))?;
-        self.check().map_err(refused)?;
-        let peer = self.connection.0.service.peer().clone();
-        // Dropping the reply future cancels the call.
-        let reply = peer.call_tool_once(params);
-        tokio::pin!(reply);
-        let streaming = async {
-            let mut expected = 1;
-            loop {
-                tokio::select! {
-                    biased;
-                    response = &mut reply => return Ok(response),
-                    Some((sequence, record)) = route.records.recv() => {
-                        if sequence != expected {
-                            return Err(McpError::Protocol.refusal(Evidence::Uncertain));
-                        }
-                        expected += 1;
-                        call.records.send(record).await?;
-                        // The result is authoritative: it can arrive while the reply to
-                        // the acknowledgement that released it is still outstanding.
-                        let acknowledged = records::acknowledge(&peer, &route.token, sequence);
-                        tokio::pin!(acknowledged);
-                        tokio::select! {
-                            biased;
-                            response = &mut reply => return Ok(response),
-                            acknowledged = &mut acknowledged => if let Err(error) = acknowledged {
-                                // An acknowledgement that cannot be confirmed cancels the
-                                // call, unless its result has already arrived.
-                                if let Some(response) = futures_util::FutureExt::now_or_never(&mut reply) {
-                                    return Ok(response);
-                                }
-                                return Err(error.refusal(Evidence::Uncertain));
-                            },
-                        }
-                    }
-                }
-            }
-        };
-        let response = match timeout_at(deadline, streaming).await {
-            Err(_) => return Err(McpError::Timeout.refusal(Evidence::Uncertain)),
-            Ok(Err(refusal)) => return Err(refusal),
-            Ok(Ok(response)) => response,
-        };
-        let response = match response {
-            Err(error) => {
-                let outcome = if matches!(
-                    error,
-                    ServiceError::McpError(_) | ServiceError::UnexpectedResponse
-                ) {
-                    Evidence::Completed
-                } else {
-                    Evidence::Uncertain
-                };
-                let error = self
-                    .connection
-                    .0
-                    .state
-                    .check()
-                    .err()
-                    .unwrap_or_else(|| McpError::from_service(error));
-                return Err(error.refusal(outcome));
-            }
-            Ok(response) => response,
-        };
-        match response {
-            CallToolResponse::Complete(result) => {
-                convert(result).map_err(|e| e.refusal(Evidence::Completed))
-            }
-            _ => Err(McpError::UnsupportedInteraction.refusal(Evidence::Uncertain)),
-        }
     }
-}
-fn convert(result: CallToolResult) -> Result<Outcome, McpError> {
-    let evidence = result
-        .meta
-        .as_ref()
-        .and_then(|meta| meta.get("io.github.thirtytwobits.clapham/evidence"))
-        .cloned()
-        .map(serde_json::from_value)
-        .transpose()
-        .map_err(|_| McpError::Protocol)?
-        .unwrap_or(Evidence::Completed);
-    let blocks = result
-        .content
-        .into_iter()
-        .map(serde_json::to_value)
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|_| McpError::Protocol)?;
-    Ok(Outcome {
-        content: Some(blocks),
-        result: result.structured_content,
-        is_error: result.is_error.unwrap_or(false),
-        evidence,
-    })
 }

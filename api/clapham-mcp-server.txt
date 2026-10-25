@@ -64,7 +64,6 @@ pub fn clapham_mcp_server::HttpServer::with_allowed_hosts<I, S>(self, hosts: I) 
 pub fn clapham_mcp_server::HttpServer::with_allowed_origins<I, S>(self, origins: I) -> Self where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::Into<alloc::string::String>
 pub fn clapham_mcp_server::HttpServer::with_authentication_challenge(self, challenge: http::header::value::HeaderValue) -> Self
 impl clapham_mcp_server::HttpServer
-pub async fn clapham_mcp_server::HttpServer::handle_operations<B>(&self, request: http::request::Request<B>) -> http::response::Response<http_body_util::combinators::box_body::BoxBody<bytes::bytes::Bytes, core::convert::Infallible>> where B: http_body::Body<Data = bytes::bytes::Bytes> + core::marker::Send + 'static, <B as http_body::Body>::Error: core::fmt::Display
 pub fn clapham_mcp_server::HttpServer::into_router(self) -> axum::routing::Router
 impl core::clone::Clone for clapham_mcp_server::HttpServer
 pub fn clapham_mcp_server::HttpServer::clone(&self) -> clapham_mcp_server::HttpServer
@@ -200,7 +199,7 @@ pub fn clapham_mcp_server::Server::get_tool(&self, name: &str) -> core::option::
 pub async fn clapham_mcp_server::Server::list_resource_templates(&self, request: core::option::Option<rmcp::model::PaginatedRequestParams>, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::ListResourceTemplatesResult, rmcp::model::ErrorData>
 pub async fn clapham_mcp_server::Server::list_resources(&self, request: core::option::Option<rmcp::model::PaginatedRequestParams>, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::ListResourcesResult, rmcp::model::ErrorData>
 pub async fn clapham_mcp_server::Server::list_tools(&self, request: core::option::Option<rmcp::model::PaginatedRequestParams>, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::ListToolsResult, rmcp::model::ErrorData>
-pub async fn clapham_mcp_server::Server::on_custom_request(&self, request: rmcp::model::CustomRequest, _: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::CustomResult, rmcp::model::ErrorData>
+pub async fn clapham_mcp_server::Server::on_custom_request(&self, request: rmcp::model::CustomRequest, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::CustomResult, rmcp::model::ErrorData>
 pub async fn clapham_mcp_server::Server::read_resource(&self, request: rmcp::model::ReadResourceRequestParams, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::mrtr::ReadResourceResponse, rmcp::model::ErrorData>
 pub fn clapham_mcp_server::Server::supported_protocol_versions(&self) -> alloc::borrow::Cow<'static, [rmcp::model::ProtocolVersion]>
 impl core::marker::Freeze for clapham_mcp_server::Server
@@ -261,6 +260,7 @@ impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusi
 impl<V, T> ppv_lite86::types::VZip<V> for clapham_mcp_server::Server where V: ppv_lite86::types::MultiLane<T>
 pub fn clapham_mcp_server::Server::vzip(self) -> V
 pub const clapham_mcp_server::ACKNOWLEDGE_REQUEST: &str
+pub const clapham_mcp_server::CATALOGUE_EXTENSION: &str
 pub const clapham_mcp_server::EFFECT_META_KEY: &str
 pub const clapham_mcp_server::PREVIEW_META_KEY: &str
 pub const clapham_mcp_server::RECORDS_EXTENSION: &str

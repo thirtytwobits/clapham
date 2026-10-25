@@ -1,5 +1,15 @@
 {
+  "catalogue": {
+    "method": "io.github.thirtytwobits.clapham/catalogue",
+    "params": [
+      "cursor"
+    ],
+    "result": [
+      "operations"
+    ]
+  },
   "extensions": {
+    "io.github.thirtytwobits.clapham/catalogue": {},
     "io.github.thirtytwobits.clapham/records": {}
   },
   "protocolVersions": [
@@ -24,6 +34,9 @@
     },
     "tokenMetaKey": "io.github.thirtytwobits.clapham/records"
   },
+  "refusalMetaKeys": [
+    "io.github.thirtytwobits.clapham/refusal"
+  ],
   "requestMetaKeys": [
     "io.github.thirtytwobits.clapham/preview",
     "io.github.thirtytwobits.clapham/records",
@@ -44,6 +57,10 @@
       "name": "lists.list",
       "uriTemplate": "lists://"
     }
+  ],
+  "resultMetaKeys": [
+    "io.github.thirtytwobits.clapham/absent",
+    "io.github.thirtytwobits.clapham/evidence"
   ],
   "tools": [
     {

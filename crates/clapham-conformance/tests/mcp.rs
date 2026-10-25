@@ -7,7 +7,7 @@ use clapham::{
     compose_with_options,
 };
 use clapham_conformance::{ListsGate, ListsHandle};
-use clapham_mcp_server::Server;
+use clapham_mcp_server::{CATALOGUE_EXTENSION, Server};
 use serde_json::{Value, json};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader, DuplexStream, ReadHalf, WriteHalf};
 
@@ -136,6 +136,37 @@ async fn selection_limits_tools_resources_and_direct_calls_without_exposing_desc
     assert_eq!(got["structuredContent"]["id"], "tasks");
     let missing = wire.result(5, "resources/list", json!({})).await;
     assert_eq!(missing["resources"], json!([]));
+    wire.close().await;
+}
+
+#[tokio::test]
+async fn the_catalogue_extension_lists_the_selection_without_exposing_describe() {
+    let names = |result: &Value| {
+        result["operations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|operation| operation["name"].as_str().unwrap().to_owned())
+            .collect::<Vec<_>>()
+    };
+    let (_, server) = fixture();
+    let mut wire = Wire::new(server);
+    let tools = wire.result(1, "tools/list", json!({})).await;
+    let catalogue = wire.result(2, CATALOGUE_EXTENSION, json!({})).await;
+    assert!(catalogue.get("nextCursor").is_none());
+    let listed: Vec<_> = tools["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|tool| tool["name"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(names(&catalogue), listed);
+    wire.close().await;
+    let (_, server) = fixture();
+    let mut wire = Wire::new(server.select(["lists.get"]).unwrap());
+    let catalogue = wire.result(1, CATALOGUE_EXTENSION, json!({})).await;
+    assert_eq!(names(&catalogue), ["lists.get"]);
+    assert_eq!(catalogue["operations"][0]["positional"], json!(["id"]));
     wire.close().await;
 }
 

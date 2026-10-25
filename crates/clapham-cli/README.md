@@ -3,19 +3,20 @@
 A schema-derived command line for an authenticated operation service. Requires Rust 1.88.
 
 `Cli::connect` discovers the operations visible to the connection's OAuth grant and builds
-commands, argument binding, help and completions. `HttpBackend` calls the operation HTTP
-interface using a token supplied by the application's OAuth client or credential store.
+commands, argument binding, help and completions. `McpBackend` calls the daemon's MCP server,
+over Streamable HTTP with a token supplied by the application's OAuth client or credential
+store, or over the standard streams of a daemon the host launched.
 
 ```no_run
 use clapham::Bounds;
-use clapham_cli::{Cli, HttpBackend};
+use clapham_cli::{Cli, McpBackend};
 
 # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-let backend = HttpBackend::new(
+let backend = McpBackend::http(
     std::env::var("CLAPHAM_ENDPOINT")?,
     std::env::var("CLAPHAM_ACCESS_TOKEN")?,
-    Bounds::default(),
-)?;
+)
+.await?;
 let cli = Cli::connect("lists", backend, Bounds::default()).await?;
 let exit_code = cli.run().await;
 # let _ = exit_code;
@@ -37,9 +38,9 @@ support. Timeouts cancel the invocation; a lost remote response leaves effects u
 HTTP redirects and retries are disabled. Endpoint URLs require HTTPS, except for loopback
 HTTP development. Token values are omitted from debug output.
 
-The operation interface delivers ordered records before one terminal outcome or refusal.
-Record delivery is awaited and flushed before acknowledgement. Disconnect cancels the server
-call. Human output uses fields/tables on terminals; piped output uses versioned NDJSON
+The daemon delivers ordered records under the records extension before one terminal outcome
+or refusal. Record delivery is awaited and flushed before acknowledgement. Cancelling closes
+the call's response stream, or sends `notifications/cancelled` over stdio. Human output uses fields/tables on terminals; piped output uses versioned NDJSON
 `{v:1,kind:operation_name,data:value}` frames. Domain refusal codes and categories are retained,
 and categories determine exit codes. Custom renderers affect human output only.
 

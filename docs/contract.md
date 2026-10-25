@@ -45,9 +45,7 @@ Evidence: [core permission tests](../crates/clapham/tests/configuration.rs),
 [introspection tests](../crates/clapham-mcp-server/src/oauth.rs),
 `introspected_authority_checks_activity_issuer_audience_and_validity`;
 [HTTP/CLI integration](../crates/clapham-conformance/tests/oauth_operations.rs),
-`verified_grants_scopes_resource_policies_and_cli_records_share_one_runner`,
-`native_http_records_wait_for_client_acknowledgement_and_disconnect_cancels_dispatch` and
-`native_http_client_rejects_missing_duplicate_truncated_and_oversized_terminals` and
+`verified_grants_scopes_resource_policies_and_cli_records_share_one_runner` and
 `oversized_terminal_outcomes_report_the_size_error_without_rewriting_domain_refusals`.
 
 ## C03: One atomic configuration path
@@ -109,7 +107,7 @@ Evidence: [call tests](../crates/clapham/tests/calls.rs),
 `policy_input_conversion_failure_remains_a_dispatcher_error`;
 [HTTP authority tests](../crates/clapham-conformance/tests/mcp_http.rs),
 `http_requires_an_explicit_oauth_resource_binding` and
-`mismatched_verified_authority_is_rejected_by_both_http_interfaces`.
+`mismatched_verified_authority_is_rejected`.
 
 ## C06: Refusals retain contributor codes
 
@@ -153,18 +151,19 @@ Evidence: [composition tests](../crates/clapham/tests/composition.rs),
 Absent structured output differs from JSON null; absent content differs from an empty list.
 Adapters own native content types and carry opaque content through the core. Tool-reported
 errors remain outcomes and do not undergo successful-output validation. Records are awaited
-in order before one terminal result. Operation HTTP uses bounded NDJSON frames and acknowledges
-record delivery through one-use tickets bound to verified OAuth authority. Producers wait
-for the client sink to accept and acknowledge each record. Disconnect cancels work. MCP
-carries records under the records extension: one notification per record on the call's
-response stream, acknowledged by a request bound to the grant that began the call.
+in order before one terminal result. MCP carries records under the records extension: one
+notification per record on the call's response stream, acknowledged by a request bound to the
+grant that began the call. Producers wait for the client sink to accept and acknowledge each
+record. Closing the response stream cancels work. Tool-result metadata names absent outcome
+fields and marks refusals, so MCP preserves absent content, an absent result and an error
+outcome whose result has a refusal's shape.
 Acknowledgements are admitted outside the request limits; repeating the last is accepted, and
 the client cancels on one it cannot confirm. The record sink refuses a notification over
 the message bound with `result_too_large` and an unacknowledged record with
 `record_delivery_failed`, both with uncertain evidence, and a handler that returns the
 refusal carries it unchanged (C06). A client without the extension receives the final result
-alone. If an outcome fits the core bound but its stream envelope exceeds it, HTTP sends `result_too_large` with uncertain evidence. An oversized
-existing domain refusal closes the stream.
+alone. An outcome over the message bound becomes `result_too_large` with uncertain evidence;
+an oversized existing domain refusal fails the reply instead of changing its code.
 
 Evidence: [call type tests](../crates/clapham/tests/call_types.rs),
 `ordered_content_keeps_all_block_kinds_and_binary_payloads_without_fetching` and
@@ -172,10 +171,13 @@ Evidence: [call type tests](../crates/clapham/tests/call_types.rs),
 [call tests](../crates/clapham/tests/calls.rs),
 `streaming_records_arrive_in_order_before_the_result_with_backpressure`;
 [HTTP/CLI integration](../crates/clapham-conformance/tests/oauth_operations.rs),
-`verified_grants_scopes_resource_policies_and_cli_records_share_one_runner`,
-`native_http_records_wait_for_client_acknowledgement_and_disconnect_cancels_dispatch` and
-`native_http_client_rejects_missing_duplicate_truncated_and_oversized_terminals` and
+`verified_grants_scopes_resource_policies_and_cli_records_share_one_runner` and
 `oversized_terminal_outcomes_report_the_size_error_without_rewriting_domain_refusals`;
+[CLI over MCP](../crates/clapham-conformance/tests/cli_mcp.rs),
+`the_cli_receives_the_outcome_the_operation_returned_over_http_and_stdio`;
+[result mapping](../crates/clapham-mcp-server/src/mapping.rs),
+`outcomes_name_their_absent_fields_in_result_metadata` and
+`refusal_results_are_marked_apart_from_error_outcomes`;
 [MCP records tests](../crates/clapham-conformance/tests/mcp_records.rs),
 `records_arrive_in_order_each_acknowledged_before_the_result_over_stdio`,
 `records_stream_before_the_result_while_the_call_holds_every_permit_over_http`,
@@ -217,10 +219,16 @@ Evidence: [built-in tests](../crates/clapham/tests/builtins.rs),
 
 ## C10: Adapters preserve the call boundary
 
-The server-backed CLI derives commands and input binding from admitted descriptors. It sends
-operation arguments and preview, not authority claims. Whole-object JSON and property arguments
-cannot be mixed. Confirmation and unsupported-preview parsing precede stdin reads. Human output
-uses fields/tables; pipes use versioned NDJSON. HTTP disables redirects and retries. Trusted
+The server-backed CLI derives commands and input binding from admitted descriptors. Against a
+daemon it is Clapham's MCP client, over Streamable HTTP or stdio: it reads the admitted
+catalogue through the catalogue extension, whether or not the daemon's selection exposes
+`clapham.describe`, and sends operation arguments
+as `tools/call` arguments and a dry run as preview metadata, not authority claims, and
+cancelling closes the call's response stream. A credential the daemon does not accept refuses
+as `mcp_unauthenticated`; the daemon's refusal before dispatch, such as `insufficient_scope`
+or `server_busy`, reaches the CLI unchanged. Whole-object JSON and property arguments cannot be mixed.
+Confirmation and unsupported-preview parsing precede stdin reads. Human output uses
+fields/tables; pipes use versioned NDJSON. HTTP disables redirects and retries. Trusted
 in-process CLI embedding requires host-verified authority.
 
 MCP tools/resources use rmcp and the shared runner. HTTP authenticates each request before
@@ -231,10 +239,18 @@ Evidence: [CLI tests](../crates/clapham-cli/tests/tree.rs),
 `json_cannot_mix_with_positionals_and_unknown_arguments_are_usage`;
 [execution tests](../crates/clapham-cli/tests/execution.rs),
 `confirmations_and_dry_runs_are_checked_before_stdin_is_read`;
+[CLI over MCP](../crates/clapham-conformance/tests/cli_mcp.rs),
+`the_cli_discovers_a_selection_that_does_not_expose_describe`,
+`a_scope_refusal_reaches_the_cli_unchanged_over_http_and_stdio`,
+`a_busy_daemons_refusal_reaches_the_cli_unchanged`,
+`a_cli_dry_run_reaches_the_daemon_as_preview_metadata`,
+`cancelling_a_cli_call_drops_the_daemons_handler_over_http` and
+`cancelling_a_cli_call_drops_the_daemons_handler_over_stdio`;
 [HTTP tests](../crates/clapham-conformance/tests/mcp_http.rs),
 `unmapped_credentials_are_refused_before_body_or_gate_or_handler` and
 `concurrent_requests_keep_their_own_authenticated_auths`;
 [MCP tests](../crates/clapham-conformance/tests/mcp.rs),
+`the_catalogue_extension_lists_the_selection_without_exposing_describe` and
 `oversized_refusal_closes_instead_of_changing_its_code`.
 
 ## C11: Remote bindings fence definitions and effects
@@ -243,19 +259,35 @@ The host establishes audience-appropriate upstream credentials and explicit loca
 requirements. Remote hints cannot grant permissions. Bindings pin selected definitions and
 credential scope. Notifications and failed refreshes invalidate stale bindings. Lost replies
 and invocation deadlines are uncertain. Reconnecting does not replay effects. Remote domain
-refusals remain structured tool-error outcomes with their original codes.
+refusals remain structured tool-error outcomes with their original codes. Records paced by
+acknowledgement are outside the connection's lifetime notification and byte budgets; one sent
+ahead of its acknowledgement is counted. A direct call has no deadline: its caller bounds it.
+A server's HTTP refusal before dispatch is `mcp_forbidden` for missing scopes or `mcp_busy`
+for a full queue, with not-dispatched evidence, for a binding; its structured refusal reaches
+a direct call unchanged, as does a tool result the server marks as a refusal. An abandoned
+catalogue read closes its connection.
 
 Evidence: [client tests](../crates/clapham-mcp-client/tests/contracts.rs),
 `effects_describe_behaviour_without_granting_or_removing_oauth_scopes`,
 `notifications_and_refresh_guard_pinned_definitions`,
 `binding_and_selection_revisions_fence_metadata_and_credentials`,
 `applied_effect_with_lost_reply_is_uncertain_and_never_replayed` and
-`discovery_bounds_and_failed_refresh_invalidate_existing_bindings`.
+`discovery_bounds_and_failed_refresh_invalidate_existing_bindings`;
+[client records tests](../crates/clapham-mcp-client/tests/records.rs),
+`a_direct_call_streams_records_without_spending_the_notification_budget`,
+`records_sent_ahead_of_their_acknowledgement_spend_the_notification_budget` and
+`an_abandoned_catalogue_read_closes_the_connection`;
+[client HTTP tests](../crates/clapham-mcp-client/src/http.rs),
+`a_tool_call_post_has_no_request_deadline`;
+[client HTTP integration](../crates/clapham-mcp-client/tests/http.rs),
+`an_unaccepted_credential_refuses_the_connection_as_unauthenticated` and
+`a_refusal_before_dispatch_is_bounded_for_bindings_and_unchanged_for_direct_calls`.
 
 ## C12: Cross-adapter conformance
 
 Fresh fixtures compare results, refusals, exit codes, visibility and ordered records.
-The reference executable runs all six front ends, including the HTTP-backed CLI. An operation
+The reference executable runs all seven front ends, including the CLI against its daemon over
+MCP Streamable HTTP and stdio. An operation
 hidden before CLI parsing fails as `usage`; one hidden before remote binding fails as
 `mcp_selection`. Visible-operation domain refusal fields are compared unchanged.
 

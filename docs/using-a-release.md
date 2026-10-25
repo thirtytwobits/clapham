@@ -5,7 +5,7 @@ all required Clapham crates, and commit the consumer's Cargo.lock. All libraries
 Rust 1.88; repository gates use Rust 1.99.0.
 
 The core operation model has no MCP dependency. Add `clapham-cli` for generated command lines,
-`clapham-mcp-server` for MCP/operation HTTP and `clapham-mcp-client` for remote contributions.
+`clapham-mcp-server` for MCP and `clapham-mcp-client` for remote contributions.
 MCP transport features are `stdio` and `http`; both are enabled by default.
 
 Use `clapham-conformance` as a development dependency to compare fresh application fixtures

@@ -237,56 +237,6 @@ impl<T> tracing::instrument::WithSubscriber for clapham_cli::Cli
 impl<T> typenum::type_operators::Same for clapham_cli::Cli
 pub type clapham_cli::Cli::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_cli::Cli where T: ?core::marker::Sized
-pub struct clapham_cli::HttpBackend
-impl clapham_cli::HttpBackend
-pub fn clapham_cli::HttpBackend::new(endpoint: impl core::convert::Into<alloc::string::String>, token: impl core::convert::Into<alloc::string::String>, bounds: clapham::bounds::Bounds) -> core::result::Result<Self, clapham::refusal::Refusal>
-impl clapham_cli::Backend for clapham_cli::HttpBackend
-pub fn clapham_cli::HttpBackend::call(&self, invocation: clapham_cli::Invocation, records: clapham::call::RecordSink, cancel: clapham::call::Cancellation) -> clapham_cli::BackendFuture<'_, clapham::call::Outcome>
-pub fn clapham_cli::HttpBackend::catalogue(&self) -> clapham_cli::BackendFuture<'_, alloc::vec::Vec<clapham::operation::Operation>>
-impl core::clone::Clone for clapham_cli::HttpBackend
-pub fn clapham_cli::HttpBackend::clone(&self) -> clapham_cli::HttpBackend
-impl core::fmt::Debug for clapham_cli::HttpBackend
-pub fn clapham_cli::HttpBackend::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-impl core::marker::Freeze for clapham_cli::HttpBackend
-impl core::marker::Send for clapham_cli::HttpBackend
-impl core::marker::Sync for clapham_cli::HttpBackend
-impl core::marker::Unpin for clapham_cli::HttpBackend
-impl !core::panic::unwind_safe::RefUnwindSafe for clapham_cli::HttpBackend
-impl !core::panic::unwind_safe::UnwindSafe for clapham_cli::HttpBackend
-impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_cli::HttpBackend where ST: ?core::marker::Sized, DT: ?core::marker::Sized
-impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_cli::HttpBackend where ST: ?core::marker::Sized, DT: ?core::marker::Sized
-impl<T, U> core::convert::Into<U> for clapham_cli::HttpBackend where U: core::convert::From<T>
-pub fn clapham_cli::HttpBackend::into(self) -> U
-impl<T, U> core::convert::TryFrom<U> for clapham_cli::HttpBackend where U: core::convert::Into<T>
-pub type clapham_cli::HttpBackend::Error = core::convert::Infallible
-pub fn clapham_cli::HttpBackend::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
-impl<T, U> core::convert::TryInto<U> for clapham_cli::HttpBackend where U: core::convert::TryFrom<T>
-pub type clapham_cli::HttpBackend::Error = <U as core::convert::TryFrom<T>>::Error
-pub fn clapham_cli::HttpBackend::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
-impl<T> alloc::borrow::ToOwned for clapham_cli::HttpBackend where T: core::clone::Clone
-pub type clapham_cli::HttpBackend::Owned = T
-pub fn clapham_cli::HttpBackend::clone_into(&self, target: &mut T)
-pub fn clapham_cli::HttpBackend::to_owned(&self) -> T
-impl<T> core::any::Any for clapham_cli::HttpBackend where T: 'static + ?core::marker::Sized
-pub fn clapham_cli::HttpBackend::type_id(&self) -> core::any::TypeId
-impl<T> core::borrow::Borrow<T> for clapham_cli::HttpBackend where T: ?core::marker::Sized
-pub fn clapham_cli::HttpBackend::borrow(&self) -> &T
-impl<T> core::borrow::BorrowMut<T> for clapham_cli::HttpBackend where T: ?core::marker::Sized
-pub fn clapham_cli::HttpBackend::borrow_mut(&mut self) -> &mut T
-impl<T> core::clone::CloneToUninit for clapham_cli::HttpBackend where T: core::clone::Clone
-pub unsafe fn clapham_cli::HttpBackend::clone_to_uninit(&self, dest: *mut u8)
-impl<T> core::convert::From<T> for clapham_cli::HttpBackend
-pub fn clapham_cli::HttpBackend::from(t: T) -> T
-impl<T> dyn_clone::DynClone for clapham_cli::HttpBackend where T: core::clone::Clone
-pub fn clapham_cli::HttpBackend::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
-impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_cli::HttpBackend where T: ?core::marker::Sized
-pub fn clapham_cli::HttpBackend::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
-pub fn clapham_cli::HttpBackend::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
-impl<T> tracing::instrument::Instrument for clapham_cli::HttpBackend
-impl<T> tracing::instrument::WithSubscriber for clapham_cli::HttpBackend
-impl<T> typenum::type_operators::Same for clapham_cli::HttpBackend
-pub type clapham_cli::HttpBackend::Output = T
-impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_cli::HttpBackend where T: ?core::marker::Sized
 pub struct clapham_cli::Invocation
 pub clapham_cli::Invocation::input: serde_json::value::Value
 pub clapham_cli::Invocation::name: alloc::string::String
@@ -343,6 +293,58 @@ impl<T> tracing::instrument::WithSubscriber for clapham_cli::Invocation
 impl<T> typenum::type_operators::Same for clapham_cli::Invocation
 pub type clapham_cli::Invocation::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_cli::Invocation where T: ?core::marker::Sized
+pub struct clapham_cli::McpBackend
+impl clapham_cli::McpBackend
+pub async fn clapham_cli::McpBackend::http(endpoint: impl core::convert::Into<alloc::string::String>, token: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, clapham::refusal::Refusal>
+pub fn clapham_cli::McpBackend::new(connection: clapham_mcp_client::connection::McpConnection) -> Self
+pub async fn clapham_cli::McpBackend::stdio<R, W>(reader: R, writer: W) -> core::result::Result<Self, clapham::refusal::Refusal> where R: tokio::io::async_read::AsyncRead + core::marker::Unpin + core::marker::Send + 'static, W: tokio::io::async_write::AsyncWrite + core::marker::Unpin + core::marker::Send + 'static
+impl clapham_cli::Backend for clapham_cli::McpBackend
+pub fn clapham_cli::McpBackend::call(&self, invocation: clapham_cli::Invocation, records: clapham::call::RecordSink, cancel: clapham::call::Cancellation) -> clapham_cli::BackendFuture<'_, clapham::call::Outcome>
+pub fn clapham_cli::McpBackend::catalogue(&self) -> clapham_cli::BackendFuture<'_, alloc::vec::Vec<clapham::operation::Operation>>
+impl core::clone::Clone for clapham_cli::McpBackend
+pub fn clapham_cli::McpBackend::clone(&self) -> clapham_cli::McpBackend
+impl core::fmt::Debug for clapham_cli::McpBackend
+pub fn clapham_cli::McpBackend::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Freeze for clapham_cli::McpBackend
+impl core::marker::Send for clapham_cli::McpBackend
+impl core::marker::Sync for clapham_cli::McpBackend
+impl core::marker::Unpin for clapham_cli::McpBackend
+impl !core::panic::unwind_safe::RefUnwindSafe for clapham_cli::McpBackend
+impl !core::panic::unwind_safe::UnwindSafe for clapham_cli::McpBackend
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_cli::McpBackend where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_cli::McpBackend where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_cli::McpBackend where U: core::convert::From<T>
+pub fn clapham_cli::McpBackend::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_cli::McpBackend where U: core::convert::Into<T>
+pub type clapham_cli::McpBackend::Error = core::convert::Infallible
+pub fn clapham_cli::McpBackend::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+impl<T, U> core::convert::TryInto<U> for clapham_cli::McpBackend where U: core::convert::TryFrom<T>
+pub type clapham_cli::McpBackend::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_cli::McpBackend::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_cli::McpBackend where T: core::clone::Clone
+pub type clapham_cli::McpBackend::Owned = T
+pub fn clapham_cli::McpBackend::clone_into(&self, target: &mut T)
+pub fn clapham_cli::McpBackend::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_cli::McpBackend where T: 'static + ?core::marker::Sized
+pub fn clapham_cli::McpBackend::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_cli::McpBackend where T: ?core::marker::Sized
+pub fn clapham_cli::McpBackend::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_cli::McpBackend where T: ?core::marker::Sized
+pub fn clapham_cli::McpBackend::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_cli::McpBackend where T: core::clone::Clone
+pub unsafe fn clapham_cli::McpBackend::clone_to_uninit(&self, dest: *mut u8)
+impl<T> core::convert::From<T> for clapham_cli::McpBackend
+pub fn clapham_cli::McpBackend::from(t: T) -> T
+impl<T> dyn_clone::DynClone for clapham_cli::McpBackend where T: core::clone::Clone
+pub fn clapham_cli::McpBackend::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_cli::McpBackend where T: ?core::marker::Sized
+pub fn clapham_cli::McpBackend::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_cli::McpBackend::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_cli::McpBackend
+impl<T> tracing::instrument::WithSubscriber for clapham_cli::McpBackend
+impl<T> typenum::type_operators::Same for clapham_cli::McpBackend
+pub type clapham_cli::McpBackend::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_cli::McpBackend where T: ?core::marker::Sized
 pub struct clapham_cli::OutputOptions
 pub clapham_cli::OutputOptions::format: clapham_cli::Format
 pub clapham_cli::OutputOptions::raw: bool
@@ -404,9 +406,9 @@ impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusi
 pub trait clapham_cli::Backend: core::marker::Send + core::marker::Sync + core::fmt::Debug
 pub fn clapham_cli::Backend::call(&self, invocation: clapham_cli::Invocation, records: clapham::call::RecordSink, cancel: clapham::call::Cancellation) -> clapham_cli::BackendFuture<'_, clapham::call::Outcome>
 pub fn clapham_cli::Backend::catalogue(&self) -> clapham_cli::BackendFuture<'_, alloc::vec::Vec<clapham::operation::Operation>>
-impl clapham_cli::Backend for clapham_cli::HttpBackend
-pub fn clapham_cli::HttpBackend::call(&self, invocation: clapham_cli::Invocation, records: clapham::call::RecordSink, cancel: clapham::call::Cancellation) -> clapham_cli::BackendFuture<'_, clapham::call::Outcome>
-pub fn clapham_cli::HttpBackend::catalogue(&self) -> clapham_cli::BackendFuture<'_, alloc::vec::Vec<clapham::operation::Operation>>
+impl clapham_cli::Backend for clapham_cli::McpBackend
+pub fn clapham_cli::McpBackend::call(&self, invocation: clapham_cli::Invocation, records: clapham::call::RecordSink, cancel: clapham::call::Cancellation) -> clapham_cli::BackendFuture<'_, clapham::call::Outcome>
+pub fn clapham_cli::McpBackend::catalogue(&self) -> clapham_cli::BackendFuture<'_, alloc::vec::Vec<clapham::operation::Operation>>
 pub fn clapham_cli::envelope_schema() -> schemars::schema::Schema
 pub fn clapham_cli::write_refusal(refusal: &clapham::refusal::Refusal, stderr: impl std::io::Write) -> u8
 pub type clapham_cli::BackendFuture<'a, T> = core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::result::Result<T, clapham::refusal::Refusal>> + core::marker::Send + 'a)>>

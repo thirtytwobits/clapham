@@ -39,7 +39,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 The [typed executable](../../examples/typed/src/main.rs) serves this query through authenticated
-MCP and operation HTTP, and supplies its generated CLI. It uses `clapham-cli`,
+MCP, and supplies its generated CLI. It uses `clapham-cli`,
 `clapham-mcp-server`, `serde`, `schemars`, Tokio and axum. With an OAuth authorisation server
 configured as described in the [application guide](../../docs/composing.md), start the server
 and call the generated command:

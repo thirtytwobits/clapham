@@ -50,13 +50,36 @@ pub(crate) fn tool(op: &Operation, schema_bytes: usize) -> Result<Tool, ErrorDat
     Ok(tool)
 }
 
+/// Tool-result metadata marking a refusal, as distinct from a tool-reported error outcome
+/// whose result may have any shape.
+pub(crate) const REFUSAL_META_KEY: &str = "io.github.thirtytwobits.clapham/refusal";
+
 pub(crate) fn refusal(refusal: Refusal) -> CallToolResult {
     let mut result = CallToolResult::error(vec![ContentBlock::text(refusal.message.clone())]);
     result.structured_content = Some(serde_json::to_value(refusal).expect("refusals serialize"));
+    result.meta = Some(
+        json!({REFUSAL_META_KEY: true})
+            .as_object()
+            .expect("metadata object")
+            .clone()
+            .into(),
+    );
     result
 }
 
+/// Tool-result metadata naming the outcome fields that are absent: `content`, whose absence
+/// MCP's required content list cannot express, and `result`, whose absence differs from a
+/// JSON null result.
+pub(crate) const ABSENT_META_KEY: &str = "io.github.thirtytwobits.clapham/absent";
+
 pub(crate) fn outcome(outcome: Outcome) -> Result<CallToolResult, Refusal> {
+    let absent: Vec<&str> = [
+        ("content", outcome.content.is_none()),
+        ("result", outcome.result.is_none()),
+    ]
+    .into_iter()
+    .filter_map(|(field, absent)| absent.then_some(field))
+    .collect();
     let mut result = CallToolResult::success(
         outcome
             .content
@@ -72,11 +95,14 @@ pub(crate) fn outcome(outcome: Outcome) -> Result<CallToolResult, Refusal> {
     result.structured_content = outcome.result;
     result.is_error = Some(outcome.is_error);
     result.meta = Some(
-        serde_json::json!({"io.github.thirtytwobits.clapham/evidence": outcome.evidence})
-            .as_object()
-            .expect("metadata object")
-            .clone()
-            .into(),
+        serde_json::json!({
+            "io.github.thirtytwobits.clapham/evidence": outcome.evidence,
+            ABSENT_META_KEY: absent,
+        })
+        .as_object()
+        .expect("metadata object")
+        .clone()
+        .into(),
     );
     Ok(result)
 }
@@ -116,6 +142,37 @@ pub(crate) fn too_large() -> Refusal {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn refusal_results_are_marked_apart_from_error_outcomes() {
+        let marked =
+            |result: CallToolResult| serde_json::to_value(result).unwrap()["_meta"].clone();
+        let refused = Refusal::new("upstream_refused", Category::Refused, "Refused upstream.");
+        assert_eq!(marked(refusal(refused.clone()))[REFUSAL_META_KEY], true);
+        // An error outcome whose result has a refusal's shape stays an outcome.
+        let mut reported = Outcome::new(serde_json::to_value(refused).unwrap());
+        reported.is_error = true;
+        assert!(
+            marked(outcome(reported).unwrap())
+                .get(REFUSAL_META_KEY)
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn outcomes_name_their_absent_fields_in_result_metadata() {
+        let present = |outcome: Outcome| {
+            let result = serde_json::to_value(super::outcome(outcome).unwrap()).unwrap();
+            result["_meta"][ABSENT_META_KEY].clone()
+        };
+        let mut explicit = Outcome::new(Value::Null);
+        explicit.content = Some(Vec::new());
+        assert_eq!(present(explicit), json!([]));
+        assert_eq!(present(Outcome::new(json!(2))), json!(["content"]));
+        let mut empty = Outcome::new(json!(2));
+        empty.result = None;
+        assert_eq!(present(empty), json!(["content", "result"]));
+    }
     #[test]
     fn every_effect_maps_to_native_rmcp_annotations_and_metadata() {
         for effect in [

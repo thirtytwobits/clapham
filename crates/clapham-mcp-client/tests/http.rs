@@ -208,3 +208,118 @@ async fn startup_distinguishes_unavailable_endpoints_from_invalid_responses() {
         task.abort();
     }
 }
+
+#[tokio::test]
+async fn an_unaccepted_credential_refuses_the_connection_as_unauthenticated() {
+    let app = Router::new().route("/mcp", post(|| async { StatusCode::UNAUTHORIZED }));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}/mcp", listener.local_addr().unwrap());
+    let task = tokio::spawn(async {
+        axum::serve(listener, app).await.unwrap();
+    });
+    let error = McpConnection::http(
+        McpHttpOptions::new(endpoint),
+        McpConfig::new("remote", "scope"),
+    )
+    .await
+    .err()
+    .unwrap();
+    assert_eq!(error, McpError::Unauthenticated);
+    let refusal = error.refusal(Evidence::NotDispatched);
+    assert_eq!(
+        (refusal.code.as_str(), refusal.category),
+        ("mcp_unauthenticated", clapham::Category::Refused)
+    );
+    task.abort();
+}
+
+/// A server that refuses every call before dispatch with `status` and a structured refusal.
+fn refusing(status: StatusCode, code: &'static str, category: &'static str) -> Router {
+    Router::new().route(
+        "/mcp",
+        post(move |Json(request): Json<Value>| async move {
+            let reply =
+                |result: Value| Json(json!({"jsonrpc":"2.0","id":request["id"],"result":result}));
+            match request["method"].as_str().unwrap() {
+                "server/discover" => reply(json!({"resultType":"complete",
+                    "supportedVersions":["2026-07-28"],"capabilities":{"tools":{}},
+                    "ttlMs":0,"cacheScope":"private"}))
+                .into_response(),
+                "tools/list" => reply(json!({"tools":[{"name":"write","description":"Write",
+                    "inputSchema":{"type":"object"}}]}))
+                .into_response(),
+                "tools/call" => (
+                    status,
+                    [("content-type", "application/json")],
+                    json!({"code":code,"category":category,"message":"refused before dispatch",
+                        "details":{"reason":code},"retryable":false,"evidence":"not_dispatched"})
+                    .to_string(),
+                )
+                    .into_response(),
+                _ => StatusCode::ACCEPTED.into_response(),
+            }
+        }),
+    )
+}
+
+#[tokio::test]
+async fn a_refusal_before_dispatch_is_bounded_for_bindings_and_unchanged_for_direct_calls() {
+    for (status, code, category, bounded_code) in [
+        (
+            StatusCode::FORBIDDEN,
+            "insufficient_scope",
+            "refused",
+            "mcp_forbidden",
+        ),
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "server_busy",
+            "unavailable",
+            "mcp_busy",
+        ),
+    ] {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let endpoint = format!("http://{}/mcp", listener.local_addr().unwrap());
+        let app = refusing(status, code, category);
+        let task = tokio::spawn(async {
+            axum::serve(listener, app).await.unwrap();
+        });
+        let connection = McpConnection::http(
+            McpHttpOptions::new(endpoint),
+            McpConfig::new("remote", "scope"),
+        )
+        .await
+        .unwrap();
+        let binding = connection
+            .discover()
+            .await
+            .unwrap()
+            .bind(vec![McpSelection::new("write")])
+            .unwrap();
+        let bounded = binding
+            .executor()
+            .call(support::call("remote.write", json!({})))
+            .await
+            .unwrap_err();
+        assert_eq!(
+            (bounded.code.as_str(), bounded.evidence),
+            (bounded_code, Evidence::NotDispatched)
+        );
+        assert!(bounded.details.is_none());
+        let direct = connection
+            .call_tool(
+                "write",
+                serde_json::Map::new(),
+                serde_json::Map::new(),
+                Default::default(),
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(direct.code, code);
+        assert_eq!(direct.evidence, Evidence::NotDispatched);
+        assert_eq!(direct.details, Some(json!({"reason":code})));
+        // A refusal for one request leaves the connection usable.
+        connection.discover().await.unwrap();
+        task.abort();
+    }
+}
