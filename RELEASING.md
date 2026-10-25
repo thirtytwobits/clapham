@@ -13,8 +13,8 @@ security contact and exact Cargo package inventories for the five library crates
 3. Review the diff, including each reported package inventory change, and open a pull request.
 4. Run `tools/release.py gates`. Review generated schema, wire and API changes; merge only after
    CI passes.
-5. On `main`, run `tools/release.py tag`. The tag workflow reruns the CI gate and
-   creates a **draft** release. If the workflow fails, rerun it for the existing tag; do not
+5. On `main`, run `tools/release.py tag`. The tag workflow requires CI to have passed on
+   `main` for the tagged commit and creates a **draft** release. If the workflow fails, rerun it for the existing tag; do not
    move a pushed tag.
 6. Review the draft's tag, commit and notes in GitHub, then publish it by hand. Publication
    deploys the version's API reference to [GitHub Pages](https://thirtytwobits.github.io/clapham/).

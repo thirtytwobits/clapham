@@ -16,14 +16,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  gate:
-    uses: ./.github/workflows/ci.yml
-
   draft:
-    needs: gate
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     permissions:
+      actions: read
       contents: write
     env:
       RELEASE_TAG: ${{ github.ref_name }}
@@ -37,6 +34,16 @@ jobs:
         run: |
           if ! git merge-base --is-ancestor HEAD origin/main; then
             echo "::error::The tagged commit must belong to main."
+            exit 1
+          fi
+      - name: Require CI to have passed on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          passed=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --event push --branch main \
+            --commit "$GITHUB_SHA" --status success --json databaseId --jq length)
+          if test "$passed" -eq 0; then
+            echo "::error::CI has not passed on main for $GITHUB_SHA; rerun this workflow once it has."
             exit 1
           fi
       - run: rustup toolchain install 1.99.0 --profile minimal

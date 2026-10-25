@@ -1,5 +1,56 @@
 # Changelog
 
+## [0.3.0]
+
+### Breaking
+
+The CLI calls its daemon over MCP, and the operation HTTP interface is removed. MCP carries
+ordered records under the records extension. `docs/contract.md` revises C02, C05, C06, C08 and
+C10 to C12.
+
+- Operation HTTP is removed: `HttpServer::handle_operations` and the `/operations`, `/call` and
+  `/ack/{ticket}` routes. `into_router` mounts `/mcp` and the protected-resource metadata.
+- `clapham_cli::HttpBackend` is replaced by `McpBackend`, which connects over Streamable HTTP
+  with `McpBackend::http` or over a launched daemon's standard streams with
+  `McpBackend::stdio`. `clapham-cli` depends on `clapham-mcp-client`.
+- `HttpServer::handle` returns a boxed body, and `HttpServer::Response` changes with it, so
+  that an SSE reply streams as rmcp writes it.
+- `McpError` gains `Unauthenticated` and `Forbidden`. A rejected credential refuses the
+  connection as `mcp_unauthenticated`; a binding receives `mcp_forbidden` for a server's 403 and
+  `mcp_busy` for its 503, with not-dispatched evidence, where these were `mcp_transport`.
+- A record-sink refusal that a handler returns reaches the caller unchanged instead of becoming
+  `undeclared_refusal`.
+- `ProcessKind` gains `CommandLineStdio`; the conformance suite drives seven front ends.
+
+### Added
+
+- The records extension, `io.github.thirtytwobits.clapham/records`. The server sends each
+  record as a notification on the call's response stream and the next only after the client
+  acknowledges it; acknowledgements are idempotent and admitted outside the request limits.
+  Bound remote tools pass records to the call's sink. A client without the extension receives
+  the final result alone.
+- The catalogue extension, `io.github.thirtytwobits.clapham/catalogue`, which pages the
+  descriptors admitted to the caller whether or not the server's selection exposes
+  `clapham.describe`.
+- `RECORDS_EXTENSION`, `RECORD_NOTIFICATION`, `ACKNOWLEDGE_REQUEST` and `CATALOGUE_EXTENSION`
+  in `clapham-mcp-server`, which answers both extensions' requests through
+  `Server::on_custom_request`.
+- `McpConnection::call_tool` and `McpConnection::operations` for calls and discovery outside a
+  binding, and `McpConfig::operator`, which sizes a connection for an operator such as the CLI.
+  A direct call has no deadline; its caller bounds it.
+- Tool-result metadata names absent outcome fields under `io.github.thirtytwobits.clapham/absent`
+  and marks refusals under `io.github.thirtytwobits.clapham/refusal`, so MCP preserves absent
+  content, an absent result and an error outcome whose result has a refusal's shape.
+- The reference executable's CLI calls its daemon over stdio with `CLAPHAM_TRANSPORT=stdio`.
+
+### Documentation
+
+`docs/mcp.md` records the MCP 2026-07-28 and rmcp 3.6.0 facts Clapham relies on, with tests
+pinning each rmcp fact.
+
+[API reference for 0.3.0](https://thirtytwobits.github.io/clapham/v0.3.0/) covers all five library
+crates with all features enabled.
+
 ## [0.2.0]
 
 ### Breaking
