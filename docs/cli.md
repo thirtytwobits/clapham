@@ -1,106 +1,24 @@
-# The 0.1.0 command line
+# Command line
 
-The [contract](contract.md#c10-front-ends-preserve-the-call-boundary) defines the call boundary.
-Build the reference binary with `cargo build -p clapham-lists`, or prefix an invocation below
-with `cargo run -p clapham-lists --` instead of `lists`. Use `lists --help` and
-`lists lists get --help` for the generated flags and syntax; this guide explains their meaning.
+`Cli::connect` derives its commands from an authenticated operation service. `HttpBackend`
+uses an OAuth token supplied by the host's credential store. The service owns execution,
+resource access and shared validation. `Cli::new` supports trusted in-process embedding with
+verified authority supplied by its host.
 
-## Descriptor and input mapping
+Commands split complete operation names at dots. Flags derive from the input schema;
+positionals, descriptions and titles supply presentation. Scalar binding retains JSON types.
+Object/array inputs accept JSON values. Whole-object JSON and individual properties conflict.
+Use the generated `--help` for syntax.
 
-`clapham-cli` builds a clap command tree from a composed set. The application holds
-workspace exclusivity before composing and handing that set to `Cli::new`. Its
-principal is normally `process_principal()`, the process account as a human caller.
-`--as agent:bot` selects an agent, subject to the same gate as any other caller.
+Confirmation and unsupported-preview checks precede stdin reads. Confirmation does not grant
+permission. Remote calls send only operation arguments and preview; the OAuth grant determines
+authority. Discovery-hidden commands fail as usage errors before dispatch.
 
-An operation name splits at every dot into command levels. `lists.get` is
-`<app> lists get`; `lists.document.edit` is `<app> lists document edit`. The built-in
-`clapham.describe` is also available as `<app> describe`. A command may itself be
-an operation while also having subcommands; property arguments on the parent
-cannot be combined with a child invocation.
-The top-level `describe` and `completions` names are reserved; a contribution under either
-refuses CLI construction as `cli_configuration`. Required positionals must precede
-optional ones. Boolean properties take explicit `true` or `false` values;
-presence-only switches are not generated.
-Property spelling is retained in the flag's base name: `list_id` becomes `--list_id`.
-JSON-valued properties (objects, arrays and complex schemas) add `-json`; the fixture's
-`list` object becomes `--list-json`. Use the generated operation help for the exact names.
+Terminal output uses fields or tables. Pipes use versioned NDJSON envelopes. Ordered records
+are flushed before the sink acknowledges them, followed by one terminal result. Domain
+refusals are unchanged JSON on stderr and use their category's exit code. Human renderers
+can be registered per operation without changing structured output.
 
-Command syntax, malformed JSON and flag type-conversion errors return `usage`
-(exit 2). Validation of the complete bound input retains the core's
-`invalid_input` refusal (exit 65), including for enum constraints, nested JSON
-types and missing or extra document properties. Handler and call-runner refusals
-also retain their codes and evidence. Every parsing or input-validation failure
-precedes admission and dispatch. Whole-object JSON is bounded by
-`bounds.message_bytes` whether supplied inline or read from stdin.
-
-The [crate guide](../crates/clapham-cli/README.md) describes argument types,
-JSON input, help and the in-process API. Over the neutral contribution:
-
-```console
-lists lists get tasks
-lists lists create --json '{"list":{"id":"tasks","name":"Tasks"}}'
-lists lists create --list-json '{"id":"tasks","name":"Tasks"}'
-lists lists get --json -
-lists --as agent:bot lists compact --yes
-lists lists create --list-json '{"id":"preview","name":"Preview"}' --dry-run
-lists lists delete --id tasks --yes
-lists lists export --id tasks --format ndjson
-lists completions zsh
-```
-
-These invoke the [reference lists application](../examples/lists/README.md). Each process
-starts from fresh fixture state. The agent's compact call refuses as `not_admitted` before changing anything.
-Daemon-local operations refuse as `no_daemon`, including if the host accidentally
-supplies a daemon-mode set. Workspace locks remain the application's responsibility.
-
-The CLI tests cover nested names, descriptor and property text in help, ordered
-positionals, scalar and JSON types, enum/schema constraints, principal selection,
-locality and the shared call runner. The conformance tests additionally drive the
-real lists-and-items contribution through `Cli::run_from`. Tests use in-memory
-arguments/readers and explicit cancellation, without clocks or retries.
-
-## Output and refusals
-
-`run` and `execute_from` add process output and return the exit code to the host.
-Pipes use version-one `{v, kind, data}` JSON frames; terminals default to human
-tables or fields. Explicit JSON is pretty on a terminal, while streaming JSON
-always stays one frame per line. `--raw` omits the JSON envelope and leaves human
-output unchanged. `with_renderer`
-registers an operation's human presentation. Refusals always use one unchanged
-JSON line on stderr and the category's code. The published frame schema is
-`crates/clapham-cli/schemas/envelope.schema.json`, generated and checked by xtask.
-
-Ordinary results use their JSON value as `data`. Content, an error flag, absent structured
-output or non-default evidence instead puts the complete `Outcome` in `data`. Tool-reported
-error outcomes still exit 0; typed refusals use their category code. A preview is only as
-non-mutating as the application handler implements it.
-
-## Safeguards and cancellation
-
-Administrative and destructive effects require `--yes`. Parsing checks confirmation
-and preview support before reading stdin, validating input or checking admission.
-An unconfirmed agent's `lists compact` therefore gets `usage`; with `--yes`, it gets
-`not_admitted`. Unsupported `--dry-run` returns `preview_unsupported` in category
-`usage` (exit 2). Prepared calls keep the early confirmation check, while the core
-checks preview support after input validation and admission. Confirmation does not
-change the gate's policy.
-
-`--timeout` applies to the async call after parsing and confirmation. It does not
-bound stdin or pre-empt blocking work. Record writes run inside the timeout budget,
-so their time counts towards it even though expiry cannot interrupt a blocked
-write. Final result writes happen after the call completes. Expiry and external
-interrupts both return `cancelled` with the core's evidence rules; there is no
-separate timeout refusal code. A call-local signal isolates timeouts and delivery
-failures from the host's signal, while host cancellation still reaches the call.
-The host may replace the deadline future with `with_deadline` to integrate its
-runtime or explicit test signals.
-
-## Executable evidence
-
-The process fixture seeds lists and items, runs the real CLI and records its final
-state for assertions. Process tests check every category's exit code, one-line
-stderr, ordered export frames, raw/human/JSON output, confirmation, preview,
-completions and an entered write cancelled by an explicitly signalled deadline.
-Terminal-mode tests inject stdout's terminal status; `run` uses `IsTerminal` in
-normal processes. Output-failure tests prove cancellation stops the producer after
-a failed record write. No test sleeps, starts a timer or reads the wall clock.
+Cancellation and timeouts affect only the invocation. Lost delivery leaves effects uncertain;
+HTTP redirects and retries are disabled. See [the library](../crates/clapham-cli/README.md),
+[application guide](composing.md) and [contract](contract.md).

@@ -10,8 +10,8 @@ use std::task::{Context, Poll};
 
 use clapham::{
     Admission, Bounds, Call, CallResult, Cancellation, Category, ComposeOptions, ComposedSet,
-    Contribution, DefaultGate, Effect, Evidence, ExecutionMode, Gate, Handler, Operation, Outcome,
-    Principal, PrincipalKind, RecordSink, Refusal, Selection, compose, compose_with_options,
+    Contribution, Effect, Evidence, ExecutionMode, Handler, OAuthContext, Operation, Outcome,
+    RecordSink, Refusal, Selection, compose, compose_with_options,
 };
 use futures_executor::block_on;
 use futures_util::task::noop_waker;
@@ -27,8 +27,8 @@ fn descriptor(name: &str, effect: Effect) -> Operation {
     })).unwrap()
 }
 
-fn principal(kind: PrincipalKind) -> Principal {
-    Principal::new("list-reader", kind)
+fn auth(kind: &[&str]) -> OAuthContext {
+    oauth_context("list-reader", kind)
 }
 fn input() -> Value {
     json!({ "id": "item-1" })
@@ -48,7 +48,7 @@ fn one(operation: Operation, handler: impl Handler + 'static) -> ComposedSet {
 fn run(set: &ComposedSet, selection: &Selection, name: &str) -> CallResult {
     block_on(set.call(
         selection,
-        principal(PrincipalKind::Human),
+        auth(&["lists:read", "lists:write", "lists:admin", "items:tick"][..]),
         name,
         input(),
         RecordSink::default(),
@@ -107,7 +107,7 @@ fn an_unselected_or_foreign_selection_never_runs_a_handler_or_gate() {
         )],
         Bounds::default(),
         ComposeOptions {
-            gate: Arc::new(move |_: &Principal, _: &Operation| {
+            gate: Arc::new(move |_: &OAuthContext, _: &Operation| {
                 gate.fetch_add(1, Ordering::SeqCst);
                 Admission::Allow
             }),
@@ -148,7 +148,7 @@ fn input_validation_precedes_the_gate_and_prevents_dispatch() {
         )],
         Bounds::default(),
         ComposeOptions {
-            gate: Arc::new(move |_: &Principal, _: &Operation| {
+            gate: Arc::new(move |_: &OAuthContext, _: &Operation| {
                 seen.fetch_add(1, Ordering::SeqCst);
                 Admission::Deny
             }),
@@ -158,7 +158,7 @@ fn input_validation_precedes_the_gate_and_prevents_dispatch() {
     .unwrap();
     let refusal = block_on(set.call(
         &set.all(),
-        principal(PrincipalKind::Human),
+        auth(&["lists:read", "lists:write", "lists:admin", "items:tick"][..]),
         "lists.get",
         json!({ "id": 17 }),
         RecordSink::default(),
@@ -179,83 +179,26 @@ fn input_validation_precedes_the_gate_and_prevents_dispatch() {
 }
 
 #[test]
-fn default_gate_uses_declared_kinds_and_denies_agents_administrative_and_destructive_calls() {
-    for effect in [
-        Effect::Query,
-        Effect::Mutation,
-        Effect::Administrative,
-        Effect::Destructive,
-    ] {
-        let operation = descriptor("lists.compact", effect);
-        for kind in [
-            PrincipalKind::Human,
-            PrincipalKind::Agent,
-            PrincipalKind::Service,
-            PrincipalKind::System,
-        ] {
-            let expected = if kind == PrincipalKind::Agent
-                && matches!(effect, Effect::Administrative | Effect::Destructive)
-            {
-                Admission::Deny
-            } else {
-                Admission::Allow
-            };
-            assert_eq!(DefaultGate.admit(&principal(kind), &operation), expected);
-        }
-        let set = one(operation, echo);
-        let outcome = block_on(set.call(
-            &set.all(),
-            principal(PrincipalKind::Agent),
-            "lists.compact",
-            input(),
-            RecordSink::default(),
-            Cancellation::new(),
-            false,
-        ));
-        if matches!(effect, Effect::Administrative | Effect::Destructive) {
-            let refusal = outcome.unwrap_err();
-            assert_eq!(
-                (refusal.code.as_str(), refusal.category, refusal.evidence),
-                ("not_admitted", Category::Refused, Evidence::NotDispatched)
-            );
-        } else {
-            assert!(outcome.is_ok());
-        }
-    }
-    let mut operation = descriptor("lists.get", Effect::Query);
-    operation.principals.clear();
-    assert_eq!(
-        DefaultGate.admit(&principal(PrincipalKind::Human), &operation),
-        Admission::Deny
-    );
-    operation.principals = vec![PrincipalKind::Agent];
-    assert_eq!(
-        DefaultGate.admit(&principal(PrincipalKind::Agent), &operation),
-        Admission::Allow
-    );
-}
-
-#[test]
 fn a_host_gate_can_admit_an_agent_to_an_administrative_operation() {
     let set = compose_with_options(
         [Contribution::new("lists").operation(
             descriptor("lists.compact", Effect::Administrative),
             |call: Call| async move {
-                assert_eq!(call.principal, principal(PrincipalKind::Agent));
+                assert_eq!(call.auth, auth(&["lists:read", "lists:write"][..]));
                 assert_eq!(call.name.as_str(), "lists.compact");
                 Ok(Outcome::new(call.input))
             },
         )],
         Bounds::default(),
         ComposeOptions {
-            gate: Arc::new(|_: &Principal, _: &Operation| Admission::Allow),
+            gate: Arc::new(|_: &OAuthContext, _: &Operation| Admission::Allow),
             ..ComposeOptions::default()
         },
     )
     .unwrap();
     let result = block_on(set.call(
         &set.all(),
-        principal(PrincipalKind::Agent),
+        auth(&["lists:read", "lists:write"][..]),
         "lists.compact",
         input(),
         RecordSink::default(),
@@ -281,14 +224,14 @@ fn pending_and_denied_admission_do_not_dispatch_and_precede_preview_checks() {
             )],
             Bounds::default(),
             ComposeOptions {
-                gate: Arc::new(move |_: &Principal, _: &Operation| decision),
+                gate: Arc::new(move |_: &OAuthContext, _: &Operation| decision),
                 ..ComposeOptions::default()
             },
         )
         .unwrap();
         let refusal = block_on(set.call(
             &set.all(),
-            principal(PrincipalKind::Human),
+            auth(&["lists:read", "lists:write", "lists:admin", "items:tick"][..]),
             "lists.get",
             input(),
             RecordSink::default(),
@@ -319,7 +262,7 @@ fn gate_decisions_are_consulted_on_every_call() {
         [Contribution::new("lists").operation(descriptor("lists.get", Effect::Query), echo)],
         Bounds::default(),
         ComposeOptions {
-            gate: Arc::new(move |_: &Principal, _: &Operation| {
+            gate: Arc::new(move |_: &OAuthContext, _: &Operation| {
                 if observed.load(Ordering::SeqCst) {
                     Admission::Allow
                 } else {
@@ -353,7 +296,7 @@ fn preview_requires_support_and_is_passed_unchanged_to_the_handler() {
         });
         let result = block_on(set.call(
             &set.all(),
-            principal(PrincipalKind::Human),
+            auth(&["lists:read", "lists:write", "lists:admin", "items:tick"][..]),
             "lists.create",
             input(),
             RecordSink::default(),
@@ -504,7 +447,7 @@ fn pre_cancelled_calls_skip_validation_and_admission_without_dispatch() {
             )],
             Bounds::default(),
             ComposeOptions {
-                gate: Arc::new(move |_: &Principal, _: &Operation| {
+                gate: Arc::new(move |_: &OAuthContext, _: &Operation| {
                     decisions.fetch_add(1, Ordering::SeqCst);
                     decision
                 }),
@@ -521,7 +464,7 @@ fn pre_cancelled_calls_skip_validation_and_admission_without_dispatch() {
             cancel.cancel();
             let refusal = block_on(set.call(
                 &set.all(),
-                principal(PrincipalKind::Human),
+                auth(&["lists:read", "lists:write", "lists:admin", "items:tick"][..]),
                 name,
                 arguments,
                 RecordSink::default(),
@@ -566,7 +509,7 @@ fn streaming_records_arrive_in_order_before_the_result_with_backpressure() {
     let selection = set.all();
     let mut invocation = pin!(set.call(
         &selection,
-        principal(PrincipalKind::Human),
+        auth(&["lists:read", "lists:write", "lists:admin", "items:tick"][..]),
         "lists.watch",
         input(),
         sink,
@@ -614,7 +557,7 @@ fn cancellation_mid_stream_is_uncertain_without_becoming_an_undeclared_refusal()
     let selection = set.all();
     let mut invocation = pin!(set.call(
         &selection,
-        principal(PrincipalKind::Human),
+        auth(&["lists:read", "lists:write", "lists:admin", "items:tick"][..]),
         "lists.watch",
         input(),
         sink,
@@ -690,7 +633,7 @@ fn revision_unbound_selection_retains_the_composed_set_v1_framing() {
     assert_eq!(set.all().revision(), set.revision());
     assert_eq!(
         set.select(["lists.items.get"]).unwrap().revision(),
-        "sha256:0cf27f0b33f394b0fa9d5048705443e9150834eaa75c602a1d651449b10f86e8"
+        "sha256:9adcd6f47686e790557eb091234c45b6801fe6fb93310d89579f456fbe1810cb"
     );
 }
 
@@ -707,7 +650,7 @@ fn revision_bound_selection_matches_an_independent_golden_digest() {
     .unwrap();
     assert_eq!(
         set.select(["lists.items.get"]).unwrap().revision(),
-        "sha256:3e3fd77ec5eac5f05c1ad79ac2c4bfca764bcececd9571a2957805de92f3183d"
+        "sha256:1add19cb17d4cd52ea6b3a8acaca5d2f6601a149bcd5849d9990f4fbf4f63e5e"
     );
     assert_ne!(
         set.all().revision(),
@@ -762,7 +705,7 @@ fn a_gate_can_cancel_before_handler_entry_with_not_dispatched_evidence() {
         )],
         Bounds::default(),
         ComposeOptions {
-            gate: Arc::new(move |_: &Principal, _: &Operation| {
+            gate: Arc::new(move |_: &OAuthContext, _: &Operation| {
                 signal.cancel();
                 Admission::Allow
             }),
@@ -772,7 +715,7 @@ fn a_gate_can_cancel_before_handler_entry_with_not_dispatched_evidence() {
     .unwrap();
     let refusal = block_on(set.call(
         &set.all(),
-        principal(PrincipalKind::Human),
+        auth(&["lists:read", "lists:write", "lists:admin", "items:tick"][..]),
         "lists.get",
         input(),
         RecordSink::default(),
@@ -794,7 +737,7 @@ fn call_futures_and_selection_are_sendable_with_shared_immutable_handlers() {
     let selection = set.all();
     let future = set.call(
         &selection,
-        principal(PrincipalKind::Human),
+        auth(&["lists:read", "lists:write", "lists:admin", "items:tick"][..]),
         "lists.get",
         input(),
         RecordSink::default(),
@@ -803,4 +746,13 @@ fn call_futures_and_selection_are_sendable_with_shared_immutable_handlers() {
     );
     assert_send(&future);
     assert!(block_on(future).is_ok());
+}
+
+fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthContext {
+    clapham::OAuthContext::from_verified(
+        "https://identity.example.com",
+        "https://lists.example.com",
+        subject,
+        scopes.iter().copied(),
+    )
 }

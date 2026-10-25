@@ -155,7 +155,7 @@ fn stdio_lists_effects_calls_refusals_resources_and_preview() {
 }
 
 #[test]
-fn agent_discovery_and_calls_use_the_launchers_principal() {
+fn restricted_grant_discovery_and_calls_use_the_launchers_authority() {
     let mut client = Client::new(true);
     let catalogue = client.result("tools/list", json!({}));
     assert!(
@@ -165,8 +165,8 @@ fn agent_discovery_and_calls_use_the_launchers_principal() {
             .iter()
             .any(|t| t["name"] == "lists.compact")
     );
-    let denied = client.result("tools/call", json!({"name":"lists.compact","arguments":{},"_meta":{"principal":{"id":"human","kind":"human"}}}));
-    assert_eq!(denied["structuredContent"]["code"], "not_admitted");
+    let denied = client.result("tools/call", json!({"name":"lists.compact","arguments":{},"_meta":{"subject":"other-user","client_id":"operator","scopes":["lists:admin"]}}));
+    assert_eq!(denied["structuredContent"]["code"], "insufficient_scope");
     let invalid = client.result("tools/call", json!({"name":"lists.get","arguments":{}}));
     assert_eq!(invalid["structuredContent"]["code"], "invalid_input");
     let protocol = client.request(

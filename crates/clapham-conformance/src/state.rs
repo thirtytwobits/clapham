@@ -3,9 +3,7 @@ use std::fmt;
 use std::sync::{Arc, Mutex, Weak};
 use std::task::{Context, Poll};
 
-use clapham::{
-    Admission, Category, DefaultGate, Gate, Operation, Principal, PrincipalKind, Refusal,
-};
+use clapham::{Admission, Category, Gate, OAuthContext, Operation, Refusal, ScopeGate};
 use futures_channel::oneshot;
 use futures_util::task::AtomicWaker;
 use schemars::JsonSchema;
@@ -68,17 +66,13 @@ pub struct ListChange {
     pub list: List,
 }
 
-/// The example policy: descriptor defaults, with `items.tick` also denied to agents.
+/// The fixture policy requires every explicitly declared OAuth scope.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ListsGate;
 
 impl Gate for ListsGate {
-    fn admit(&self, principal: &Principal, operation: &Operation) -> Admission {
-        if principal.kind == PrincipalKind::Agent && operation.name.as_str() == "items.tick" {
-            Admission::Deny
-        } else {
-            DefaultGate.admit(principal, operation)
-        }
+    fn admit(&self, auth: &OAuthContext, operation: &Operation) -> Admission {
+        ScopeGate.admit(auth, operation)
     }
 }
 

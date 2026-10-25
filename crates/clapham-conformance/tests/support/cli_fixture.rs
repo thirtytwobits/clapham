@@ -4,10 +4,10 @@ use std::process::ExitCode;
 use std::sync::{Arc, Mutex};
 
 use clapham::{
-    Bounds, Call, Cancellation, Category, ComposeOptions, ContentBlock, Contribution, Evidence,
-    Locality, Operation, Outcome, Refusal, compose_with_options,
+    Bounds, Call, Cancellation, Category, ComposeOptions, Contribution, Evidence, Locality,
+    Operation, Outcome, Refusal, compose_with_options,
 };
-use clapham_cli::{Cli, process_principal};
+use clapham_cli::Cli;
 use clapham_conformance::{ListsGate, ListsHandle};
 use futures_channel::oneshot;
 use futures_executor::block_on;
@@ -36,6 +36,10 @@ fn main() -> ExitCode {
     contributions.push(
         Contribution::new("probe")
             .operation(
+                probe("probe.denied", Locality::Workspace),
+                |_: Call| async { unreachable!() },
+            )
+            .operation(
                 probe("probe.configuration", Locality::Workspace),
                 |_: Call| async {
                     Err(Refusal::new(
@@ -53,9 +57,7 @@ fn main() -> ExitCode {
                 |_: Call| async {
                     Ok(Outcome {
                         result: Some(json!({"answer":42})),
-                        content: Some(vec![ContentBlock::Text {
-                            text: "Explanation".into(),
-                        }]),
+                        content: Some(vec![json!({"type":"text","text":"Explanation"})]),
                         is_error: true,
                         evidence: Evidence::Uncertain,
                     })
@@ -66,12 +68,28 @@ fn main() -> ExitCode {
         contributions,
         Bounds::default(),
         ComposeOptions {
-            gate: Arc::new(ListsGate),
+            gate: Arc::new(|auth: &clapham::OAuthContext, operation: &Operation| {
+                if operation.name.as_str() == "probe.denied" {
+                    clapham::Admission::Deny
+                } else {
+                    clapham::Gate::admit(&ListsGate, auth, operation)
+                }
+            }),
             ..ComposeOptions::default()
         },
     )
     .unwrap();
-    let mut cli = Cli::new("lists-app", set, process_principal().unwrap()).unwrap();
+    let mut cli = Cli::new(
+        "lists-app",
+        set,
+        clapham::OAuthContext::from_verified(
+            "https://identity.example.com",
+            "https://lists.example.com",
+            "operator",
+            ["lists:read", "lists:write", "lists:admin", "items:tick"],
+        ),
+    )
+    .unwrap();
     if std::env::var_os("CLAPHAM_FIXTURE_CUSTOM").is_some() {
         cli = cli
             .with_renderer("lists.get", |_, data, _| {

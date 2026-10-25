@@ -48,7 +48,7 @@ impl Executor {
         self.0
             .call(
                 &self.0.all(),
-                call.principal,
+                call.auth,
                 call.name.as_str(),
                 call.input,
                 call.records,
@@ -58,15 +58,31 @@ impl Executor {
             .await
     }
 }
-pub fn selected(name: &str, kinds: Vec<PrincipalKind>) -> clapham_mcp_client::McpSelection {
+pub fn selected(name: &str, kinds: Vec<&[&str]>) -> clapham_mcp_client::McpSelection {
     let mut selection = clapham_mcp_client::McpSelection::new(name);
-    selection.principals = Some(kinds);
+    selection.scopes = kinds
+        .into_iter()
+        .flatten()
+        .map(|scope| (*scope).to_owned())
+        .collect();
     selection
 }
 pub fn call(name: &str, input: Value) -> Call {
     Call::new(
         OperationName::new(name).unwrap(),
-        Principal::new("host", PrincipalKind::Human),
+        oauth_context(
+            "host",
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+        ),
         input,
+    )
+}
+
+fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthContext {
+    clapham::OAuthContext::from_verified(
+        "https://identity.example.com",
+        "https://lists.example.com",
+        subject,
+        scopes.iter().copied(),
     )
 }

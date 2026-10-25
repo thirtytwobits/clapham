@@ -8,8 +8,8 @@ security contact and exact Cargo package inventories for the five library crates
 `tools/release.py` automates the procedure; `python3 tools/release.py --help` describes each step.
 
 1. On a release branch, run `tools/release.py prepare major|minor|patch`.
-2. Write the version's `CHANGELOG.md` section. Record contract changes under `### Breaking`, or
-   state that there are none. Lines beginning with `## ` are reserved for release sections.
+2. Add the version's `CHANGELOG.md` section with non-empty subsections. Lines beginning with
+   `## ` are reserved for release sections.
 3. Review the diff, including each reported package inventory change, and open a pull request.
 4. Run `tools/release.py gates`. Review generated schema, wire and API changes; merge only after
    CI passes.

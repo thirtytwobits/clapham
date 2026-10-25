@@ -304,8 +304,8 @@ pub type clapham_mcp_client::McpHttpOptions::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_client::McpHttpOptions where T: ?core::marker::Sized
 pub struct clapham_mcp_client::McpSelection
 pub clapham_mcp_client::McpSelection::alias: core::option::Option<alloc::string::String>
-pub clapham_mcp_client::McpSelection::principals: core::option::Option<alloc::vec::Vec<clapham::principal::PrincipalKind>>
 pub clapham_mcp_client::McpSelection::remote_name: alloc::string::String
+pub clapham_mcp_client::McpSelection::scopes: alloc::vec::Vec<alloc::string::String>
 impl clapham_mcp_client::McpSelection
 pub fn clapham_mcp_client::McpSelection::new(remote_name: impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for clapham_mcp_client::McpSelection

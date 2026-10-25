@@ -1,136 +1,100 @@
 # clapham
 
-The contract for operations, descriptors, refusals, principals, composition, selection,
-gates and calls. Requires Rust 1.85.
-
-Start with [`Operation`] and [`Contribution`], compose a set, then use
-[`ComposedSet::call`] with a [`Selection`] and host-supplied [`Gate`].
-
-`Operation` is the serialisable descriptor. Its name uses 1 to 128 ASCII letters,
-digits, `_`, `-` and `.`, and splits at the first dot. `description` is required;
-`input` declares an object root. `output` is an optional JSON Schema. Omitted
-`principals` defaults from the effect; an explicit empty list admits nobody.
-`idempotent` and `open_world` are explicit, required hints.
-
-`Effect::annotations` maps the class and those hints to MCP. Queries are read-only
-and idempotent; mutations and administrative operations are non-destructive;
-destructive operations carry the destructive hint. An administrative class is
-recorded under `io.github.thirtytwobits.clapham/effect` in the tool's `_meta`.
-The returned `Annotations::meta` belongs on the tool itself, alongside its MCP
-annotations. `Operation::annotations` supplies its declared hints to this mapping.
-
-`Principal` carries `id` and `kind`. `Refusal` preserves the contributor's `code`,
-with a fixed `Category`, message, optional JSON details and retryability flag.
-Its `evidence` distinguishes `not_dispatched`, `completed` and `uncertain` effects.
-`Category::exit_code` supplies the command-line exit code. A new handler refusal
-defaults to completed evidence; pre-dispatch checks use `Refusal::not_dispatched`.
-
-`Contribution::new(namespace).operation(descriptor, handler)` pairs descriptors
-with object-safe asynchronous handlers or closures. `compose(contributions, bounds)`
-checks ownership, descriptions and finite budgets, then compiles the input and
-output schemas once. It refuses unresolved external references without fetching
-them. A namespace is one name segment; each operation has that namespace before
-its first dot. `clapham` is reserved for the built-in contribution.
-
-`ComposedSet` is immutable and cheaply clonable. `operations` lists descriptors in
-name order, `get` returns a compiled operation, and `revision` digests canonical
-descriptors in name order. Nested JSON keys are sorted too, so revision does not
-depend on insertion order or the process.
-
-`set.select(names)` selects complete operation names; `set.all()` selects every
-operation. A selection belongs to its originating set and its clones. Its revision
-digests the selected descriptors and any remote revisions supplied through
-`Contribution::with_binding_revision`, so approvals can be tied to that selection.
-
-`ComposedSet::call` first returns any cancellation already signalled on entry.
-It then checks selection membership, validates input, asks the gate,
-checks preview support and locality, runs the handler, then validates successful
-output. Cancellation is checked again before dispatch. `DefaultGate` admits the
-descriptor's principal kinds. Use
-`compose_with_options` to supply a custom `Gate` and `ExecutionMode::Daemon` where
-daemon-local operations can run. A gate may allow, deny or leave approval pending;
-pending calls never dispatch. The default execution mode is `InProcess`.
-
-Declared handler refusals retain their code, details, retryability and evidence;
-their category comes from the descriptor. An undeclared code becomes
-`undeclared_refusal`, with the original refusal in its details. Runner refusals
-are independent of the handler's declared set.
-
-`ComposedOperation::invoke` remains the low-level dispatch primitive. It validates
-input and successful output and handles cancellation; it does not enforce selection,
-gate, preview, locality or declared-refusal policies. Use `ComposedSet::call` to
-apply those policies. Low-level `clapham.describe` uses the full catalogue, filtered
-by the gate.
-
-Every set includes `clapham.describe` and `clapham.version`. The former lists the
-caller's selected, gate-admitted descriptors in name order, including their schemas.
-Its optional `name` input returns one descriptor. Unknown, unselected, denied and
-pending names all refuse as `unknown_operation`. The latter returns the library's
-version and any application name and version supplied in `ComposeOptions::application`.
-Both are workspace queries and consume the same composition budgets as contributed
-operations. A selection must include a built-in operation to call it.
-Built-in results also fit `Bounds::message_bytes` as compact UTF-8 JSON; oversized
-results refuse as the declared, non-retryable `result_too_large` code in `usage`.
-Discovery is unpaged, so narrow the selection or use a named lookup when a listing
-does not fit. Gates are queried for visibility too and must not trigger or consume
-approvals as a side effect of these repeatable policy checks.
-
-`Call` carries the principal, input, asynchronous `RecordSink`, `Cancellation` and
-preview flag. A sink's acknowledgement provides backpressure. Cancellation before
-dispatch yields not-dispatched evidence; cancellation during the handler yields
-uncertain evidence. A returned handler result or refusal retains its evidence.
-
-`Outcome` preserves structured JSON, optional ordered content, the tool-reported
-error flag and evidence. Absent structured output differs from a JSON null. Content
-blocks retain text, image and audio references, resource links and embedded text or
-base64 resources in order. Successful output is schema-validated; a tool-reported
-error carries its error shape unchanged.
-
-The published schemas are [operation.schema.json](schemas/operation.schema.json)
-and [refusal.schema.json](schemas/refusal.schema.json), alongside the describe result's
-[catalogue.schema.json](schemas/catalogue.schema.json). Generate them with
-`cargo xtask schemas`; `cargo xtask schemas --check` refuses stale output and runs
-inside `cargo xtask check`.
+Transport-independent operations, typed Rust handlers, shared JSON/Rust configuration,
+OAuth authority, resource policies, validation, refusals and ordered records. Requires Rust 1.88.
 
 ## Quickstart
 
-A complete contribution-to-call example, also used in the application guide:
+Define and compose a typed query. Schemas and wire conversion are generated from Rust types.
 
 ```rust
 use clapham::{
-    Bounds, Call, Cancellation, Contribution, Operation, Outcome, Principal, PrincipalKind,
-    RecordSink, compose,
+    Bounds, Call, Configuration, Contribution, Effect, Exposure, TypedOperation,
 };
-use serde_json::json;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct CountInput {}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let descriptor: Operation = serde_json::from_value(json!({
-        "name": "lists.count",
-        "description": "Count the lists in this workspace.",
-        "input": {"type": "object", "additionalProperties": false},
-        "output": {"type": "integer", "minimum": 0},
-        "effect": "query", "locality": "workspace",
-        "idempotent": true, "open_world": false
-    }))?;
-    let contribution = Contribution::new("lists").operation(descriptor, |_: Call| async {
-        Ok(Outcome::new(json!(2)))
-    });
-    let set = compose([contribution], Bounds::default())?;
-    let selection = set.select(["lists.count", "clapham.describe"])?;
-    let result = futures_executor::block_on(set.call(
-        &selection,
-        Principal::new("operator", PrincipalKind::Human),
+    let count = TypedOperation::<CountInput, u64>::new(
         "lists.count",
-        json!({}),
-        RecordSink::default(),
-        Cancellation::new(),
-        false,
-    ))?;
-    assert_eq!(result.result, Some(json!(2)));
+        "Count the lists in this workspace.",
+        Effect::Query,
+    )?.require_scope("lists:read");
+    let lists = Contribution::new("lists")
+        .typed_operation(count.clone(), |_: Call, _: CountInput| async { Ok(2) });
+    let set = Configuration::new(
+        "https://identity.example.com",
+        "https://lists.example.com",
+    )
+        .provider("lists", lists)
+        .expose(Exposure::typed("lists", &count))
+        .compose(Bounds::default())?;
+    assert!(set.get("lists.count").is_some());
     Ok(())
 }
 ```
 
-See the [0.1.0 contract](https://github.com/thirtytwobits/clapham/blob/v0.1.1/docs/contract.md),
-[application guide](https://github.com/thirtytwobits/clapham/blob/v0.1.1/docs/composing.md) and
-[call reference](https://github.com/thirtytwobits/clapham/blob/v0.1.1/docs/calls.md).
+The [typed executable](../../examples/typed/src/main.rs) serves this query through authenticated
+MCP and operation HTTP, and supplies its generated CLI. It uses `clapham-cli`,
+`clapham-mcp-server`, `serde`, `schemars`, Tokio and axum. With an OAuth authorisation server
+configured as described in the [application guide](../../docs/composing.md), start the server
+and call the generated command:
+
+```console
+cargo run -p clapham-typed -- serve
+cargo run -p clapham-typed -- lists count
+```
+
+## Operations and composition
+
+[`TypedOperation`] defines an input type and output type. [`Contribution::typed_operation`]
+registers an asynchronous handler receiving [`Call`] and typed input. Use
+[`Contribution::typed_operation_with_outcome`] for explicit effect evidence. Input schemas use
+Serde's deserialisation representation; output schemas use its serialisation representation.
+The shared runner validates schemas and Rust conversion before handlers run.
+
+[`Configuration`] accepts JSON or typed Rust builders. Both resolve registered providers,
+connections and resource policies through the same atomic composition path. Load JSON with
+[`Configuration::from_json`], register application code and extend it with builders before
+composition. Generated schemas belong to providers; configuration selects operations and
+adds restrictions. Namespace claims, duplicate registrations, aliases, schemas, typed policy
+compatibility and budgets are checked before a set is exposed.
+
+[`Operation`] remains the language-neutral descriptor used by adapters and dynamic providers.
+[`compose`] and [`compose_with_options`] accept trusted host registrations directly.
+Their optional OAuth resource binding serves trusted hosts that establish issuer/audience
+elsewhere; HTTP servers require an explicit binding.
+[`ComposeOptions::policies`] resolves intrinsic resource-policy names through the same checks.
+
+## Authority and execution
+
+[`OAuthContext`] carries authority established by trusted OAuth verification or introspection.
+Its issuer, audience, subject, client, scopes and extension claims are available to application
+policy. External interfaces authenticate requests before constructing this context. A stdio
+host binds verified authority to its privately launched connection.
+
+Every declared scope is mandatory, independently of effect hints or a custom [`Gate`].
+[`ResourcePolicy`] checks verified authority against typed input before the operation handler
+runs. Resource-policy refusal codes must be declared by the operation. Composition preserves provider requirements and adds configured restrictions. Discovery
+checks operation-level authority; resource-specific access is checked on invocation.
+
+[`ComposedSet::call`] enforces selection, OAuth resource binding, scopes, input validation,
+host admission, preview, locality, resource policies, cancellation and output validation.
+Selections and canonical revisions identify definitions; permissions are checked on each call.
+
+A declared refusal retains its code, details, retryability and evidence; its category comes
+from the descriptor. Undeclared handler codes become `undeclared_refusal`. Dispatcher
+conversion failures remain `invalid_input` or `invalid_result`. Evidence distinguishes
+`not_dispatched`, `completed` and `uncertain`; completed does not imply durable effects.
+
+[`RecordSink`] acknowledges each record before the producer continues. [`Outcome`] carries
+structured output, opaque adapter content, an error flag and evidence. Adapters own native
+content types. Absent results differ from JSON null; absent content differs from empty content.
+
+The [contract](../../docs/contract.md) links guarantees to executable evidence. Published
+operation, refusal, catalogue and configuration schemas are generated and checked by
+`cargo xtask schemas`. Public Rust exports are recorded by `cargo xtask api`.

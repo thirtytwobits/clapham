@@ -1,8 +1,6 @@
 //! Shared limits, dispatch evidence and lossless ordered content.
 
-use clapham::{
-    Bounds, Category, ContentBlock, Evidence, Outcome, Refusal, ResourceContents, compose,
-};
+use clapham::{Bounds, Category, Evidence, Outcome, Refusal, compose};
 use serde_json::{Value, json};
 
 #[test]
@@ -113,35 +111,13 @@ fn invalid_bounds_are_refused_before_composition_including_overflow_and_total_bu
 #[test]
 fn ordered_content_keeps_all_block_kinds_and_binary_payloads_without_fetching() {
     let content = vec![
-        ContentBlock::Text {
-            text: "first".into(),
-        },
-        ContentBlock::Image {
-            url: "data:image/png;base64,AA==".into(),
-            mime_type: "image/png".into(),
-        },
-        ContentBlock::Audio {
-            url: "data:audio/wav;base64,AA==".into(),
-            mime_type: "audio/wav".into(),
-        },
-        ContentBlock::ResourceLink {
-            uri: "lists://list-1".into(),
-            name: "List".into(),
-            mime_type: None,
-        },
-        ContentBlock::Resource {
-            uri: "items://item-1".into(),
-            mime_type: Some("text/plain".into()),
-            contents: ResourceContents::Text("embedded".into()),
-        },
-        ContentBlock::Resource {
-            uri: "items://item-2".into(),
-            mime_type: None,
-            contents: ResourceContents::Base64("AA==".into()),
-        },
-        ContentBlock::Text {
-            text: "last".into(),
-        },
+        json!({"type":"text","text":"first"}),
+        json!({"type":"image","data":"AA==","mimeType":"image/png"}),
+        json!({"type":"audio","data":"AA==","mimeType":"audio/wav"}),
+        json!({"type":"resource_link","uri":"lists://list-1","name":"List"}),
+        json!({"type":"resource","resource":{"uri":"items://item-1","text":"embedded"}}),
+        json!({"type":"resource","resource":{"uri":"items://item-2","blob":"AA=="}}),
+        json!({"type":"text","text":"last"}),
     ];
     let mut outcome = Outcome::new(json!({ "code": "list_missing" }));
     outcome.content = Some(content.clone());
@@ -154,10 +130,7 @@ fn ordered_content_keeps_all_block_kinds_and_binary_payloads_without_fetching() 
         wire["content"][0],
         json!({ "type": "text", "text": "first" })
     );
-    assert_eq!(
-        wire["content"][5]["contents"],
-        json!({ "encoding": "base64", "data": "AA==" })
-    );
+    assert_eq!(wire["content"][5]["resource"]["blob"], json!("AA=="));
     assert_eq!(
         wire["content"][6],
         json!({ "type": "text", "text": "last" })

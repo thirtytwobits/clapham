@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Configuration",
+  "description": "JSON and Rust configuration share one model and one atomic composition path.\n\nExecutable registrations are supplied by the host and are not serialised.",
+  "type": "object",
+  "properties": {
+    "oauth": {
+      "description": "Resource-server binding checked by the shared runner.",
+      "$ref": "#/$defs/OAuthResource"
+    },
+    "operations": {
+      "description": "Exposed operations, with provider requirements preserved.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Exposure"
+      }
+    },
+    "sources": {
+      "description": "Named sources; duplicate JSON keys are refused.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/Source"
+      },
+      "default": {}
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "oauth"
+  ],
+  "$defs": {
+    "CliSettings": {
+      "description": "Command-line presentation settings.",
+      "type": "object",
+      "properties": {
+        "confirm": {
+          "description": "Require explicit confirmation before a CLI invocation.",
+          "type": "boolean",
+          "default": false
+        },
+        "positional": {
+          "description": "Positional property names in order, where configured.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "default": null,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Exposure": {
+      "description": "One selected provider operation, optionally exposed under an alias.",
+      "type": "object",
+      "properties": {
+        "cli": {
+          "description": "Command-line settings.",
+          "$ref": "#/$defs/CliSettings",
+          "default": {
+            "confirm": false,
+            "positional": null
+          }
+        },
+        "expose_as": {
+          "description": "Public name, where different from the provider's name.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "name": {
+          "description": "Original provider operation name.",
+          "type": "string"
+        },
+        "require": {
+          "description": "Additional permission requirements.",
+          "$ref": "#/$defs/Requirements",
+          "default": {
+            "policy": null,
+            "scopes": []
+          }
+        },
+        "source": {
+          "description": "Source registration in this configuration.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "name"
+      ]
+    },
+    "OAuthResource": {
+      "description": "OAuth resource-server configuration. Token verification belongs to the adapter.",
+      "type": "object",
+      "properties": {
+        "audience": {
+          "description": "Required token audience.",
+          "type": "string"
+        },
+        "issuer": {
+          "description": "Trusted authorisation-server issuer.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "issuer",
+        "audience"
+      ]
+    },
+    "Requirements": {
+      "description": "Additional restrictions attached by composition.",
+      "type": "object",
+      "properties": {
+        "policy": {
+          "description": "A registered typed resource policy.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
+        "scopes": {
+          "description": "Every listed scope is required in addition to provider requirements.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "Source": {
+      "description": "A local provider or a host-established remote connection.",
+      "anyOf": [
+        {
+          "description": "A provider registered by the application.",
+          "type": "object",
+          "properties": {
+            "provider": {
+              "description": "Registration name.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "provider"
+          ]
+        },
+        {
+          "description": "A connection established by the host with audience-appropriate credentials.",
+          "type": "object",
+          "properties": {
+            "credential": {
+              "description": "Host credential reference, not a bearer token.",
+              "type": "string"
+            },
+            "endpoint": {
+              "description": "Host-approved MCP endpoint.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "endpoint",
+            "credential"
+          ]
+        }
+      ]
+    }
+  }
+}

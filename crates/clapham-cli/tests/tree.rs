@@ -8,7 +8,7 @@ use std::sync::{
 
 use clapham::{
     Bounds, Call, Cancellation, ComposeOptions, Contribution, Evidence, ExecutionMode, Operation,
-    Outcome, Principal, PrincipalKind, RecordSink, compose_with_options,
+    Outcome, RecordSink, compose_with_options,
 };
 use clapham_cli::{Cli, CliError};
 use futures_executor::block_on;
@@ -28,11 +28,7 @@ fn fixture(operation: Operation, mode: ExecutionMode, bounds: Bounds) -> (Cli, A
         [
             Contribution::new("lists").operation(operation, move |call: Call| {
                 count.fetch_add(1, Ordering::SeqCst);
-                async move {
-                    Ok(Outcome::new(
-                        json!({"input":call.input,"principal":call.principal}),
-                    ))
-                }
+                async move { Ok(Outcome::new(json!({"input":call.input,"auth":call.auth}))) }
             }),
         ],
         bounds,
@@ -43,7 +39,15 @@ fn fixture(operation: Operation, mode: ExecutionMode, bounds: Bounds) -> (Cli, A
     )
     .unwrap();
     (
-        Cli::new("test", set, Principal::new("account", PrincipalKind::Human)).unwrap(),
+        Cli::new(
+            "test",
+            set,
+            oauth_context(
+                "account",
+                &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+            ),
+        )
+        .unwrap(),
         calls,
     )
 }
@@ -201,55 +205,6 @@ fn help_uses_title_description_property_descriptions_and_effect() {
 }
 
 #[test]
-fn process_principal_and_explicit_as_are_preserved_in_handler_context() {
-    let (cli, _) = fixture(
-        descriptor(json!({"type":"object"})),
-        ExecutionMode::InProcess,
-        Bounds::default(),
-    );
-    assert_eq!(
-        run(&cli, &["test", "lists", "document", "edit"]).unwrap()["principal"],
-        json!({"id":"account","kind":"human"})
-    );
-    for kind in ["human", "agent", "service", "system"] {
-        let identity = format!("{kind}:explicit:identity");
-        let outcome = run(
-            &cli,
-            &["test", "lists", "document", "edit", "--as", &identity],
-        )
-        .unwrap();
-        assert_eq!(
-            outcome["principal"],
-            json!({"id":"explicit:identity","kind":kind})
-        );
-    }
-    let principal = clapham_cli::process_principal().unwrap();
-    assert_eq!(principal.kind, PrincipalKind::Human);
-    assert!(!principal.id.is_empty());
-}
-
-#[test]
-fn malformed_as_is_usage_and_does_not_dispatch() {
-    let (cli, calls) = fixture(
-        descriptor(json!({"type":"object"})),
-        ExecutionMode::InProcess,
-        Bounds::default(),
-    );
-    for identity in ["agent", "agent:", ":bot", "unknown:bot"] {
-        assert_eq!(
-            run(
-                &cli,
-                &["test", "--as", identity, "lists", "document", "edit"]
-            )
-            .unwrap_err()
-            .exit_code(),
-            2
-        );
-    }
-    assert_eq!(calls.load(Ordering::SeqCst), 0);
-}
-
-#[test]
 fn daemon_operations_never_run_even_in_a_daemon_composed_set() {
     for mode in [ExecutionMode::InProcess, ExecutionMode::Daemon] {
         let mut operation = descriptor(json!({"type":"object"}));
@@ -360,7 +315,15 @@ fn command_prefixes_can_be_operations_as_well_as_namespaces() {
         Bounds::default(),
     )
     .unwrap();
-    let cli = Cli::new("test", set, Principal::new("account", PrincipalKind::Human)).unwrap();
+    let cli = Cli::new(
+        "test",
+        set,
+        oauth_context(
+            "account",
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+        ),
+    )
+    .unwrap();
     assert_eq!(run(&cli, &["test", "lists", "document"]).unwrap(), "parent");
     assert_eq!(
         run(&cli, &["test", "lists", "document", "edit"]).unwrap(),
@@ -411,8 +374,15 @@ fn invalid_bindings_return_configuration_refusals_instead_of_panicking() {
             Bounds::default(),
         )
         .unwrap();
-        let refusal =
-            Cli::new("test", set, Principal::new("account", PrincipalKind::Human)).unwrap_err();
+        let refusal = Cli::new(
+            "test",
+            set,
+            oauth_context(
+                "account",
+                &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+            ),
+        )
+        .unwrap_err();
         assert_eq!(refusal.code, "cli_configuration");
     }
 }
@@ -609,11 +579,7 @@ fn schema_refusals_are_carried_unchanged_for_flags_json_and_prepared_calls() {
         }
         // Public Invocation fields can be set without parse_from, so call must
         // apply the same schema validator before the handler is reached.
-        let invocation = clapham_cli::Invocation::new(
-            "lists.document.edit",
-            Principal::new("account", PrincipalKind::Human),
-            input,
-        );
+        let invocation = clapham_cli::Invocation::new("lists.document.edit", input);
         assert_eq!(
             block_on(cli.call(invocation, RecordSink::default(), Cancellation::new())).unwrap_err(),
             expected
@@ -639,8 +605,15 @@ fn built_in_command_namespaces_cannot_be_claimed_by_contributions() {
                 Bounds::default(),
             )
             .unwrap();
-        let error =
-            Cli::new("test", set, Principal::new("account", PrincipalKind::Human)).unwrap_err();
+        let error = Cli::new(
+            "test",
+            set,
+            oauth_context(
+                "account",
+                &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+            ),
+        )
+        .unwrap_err();
         assert_eq!(error.code, "cli_configuration");
         assert!(error.message.contains(namespace));
     }
@@ -706,4 +679,13 @@ fn a_type_next_to_ref_controls_the_argument_spelling_and_conversion() {
             .contains("The item count.")
     );
     assert_eq!(calls.load(Ordering::SeqCst), 0);
+}
+
+fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthContext {
+    clapham::OAuthContext::from_verified(
+        "https://identity.example.com",
+        "https://lists.example.com",
+        subject,
+        scopes.iter().copied(),
+    )
 }

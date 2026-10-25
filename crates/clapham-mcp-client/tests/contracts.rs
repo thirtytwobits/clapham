@@ -1,6 +1,6 @@
 //! Discovery, binding revisions, cancellation and dispatch evidence contracts.
 #![cfg(feature = "stdio")]
-use clapham::{Call, Evidence, PrincipalKind};
+use clapham::{Call, Evidence};
 use clapham_mcp_client::*;
 mod support;
 use support::*;
@@ -138,28 +138,34 @@ async fn binding(connection: &McpConnection) -> McpToolBinding {
         .discover()
         .await
         .unwrap()
-        .bind(vec![selected("write", vec![PrincipalKind::Human])])
+        .bind(vec![selected(
+            "write",
+            vec![&["lists:read", "lists:write", "lists:admin", "items:tick"][..]],
+        )])
         .unwrap()
 }
 async fn wait_count(count: &Counter, expected: usize) {
     count.wait(expected).await;
 }
 #[tokio::test(start_paused = true)]
-async fn principals_provenance_and_results_follow_host_contracts() {
+async fn scope_provenance_and_results_follow_host_contracts() {
     let server = server();
-    server.tools.lock().unwrap()[0]["_meta"] = json!({"principalKinds":["forged"]});
+    server.tools.lock().unwrap()[0]["_meta"] = json!({"scopes":["forged"]});
     let (connection, _tx, shutdown) = connect(server.clone(), config()).await;
     let catalogue = connection.discover().await.unwrap();
     assert_eq!(
-        catalogue.provenance("write").unwrap()["_meta"]["principalKinds"],
+        catalogue.provenance("write").unwrap()["_meta"]["scopes"],
         json!(["forged"])
     );
     let binding = catalogue
-        .bind(vec![selected("write", vec![PrincipalKind::Human])])
+        .bind(vec![selected(
+            "write",
+            vec![&["lists:read", "lists:write", "lists:admin", "items:tick"][..]],
+        )])
         .unwrap();
     assert_eq!(
-        binding.operations()[0].principals,
-        vec![PrincipalKind::Human]
+        binding.operations()[0].scopes,
+        vec!["lists:read", "lists:write", "lists:admin", "items:tick"]
     );
     let result = binding.executor().call(call()).await.unwrap();
     assert!(!format!("{result:?}").contains("secret"));
@@ -352,14 +358,20 @@ async fn discovery_bounds_and_failed_refresh_invalidate_existing_bindings() {
     assert!(matches!(connection.discover().await, Err(McpError::Limit)));
 }
 #[tokio::test(start_paused = true)]
-async fn binding_revision_pins_host_principals_and_aliases() {
+async fn binding_revision_pins_host_auths_and_aliases() {
     let (connection, _tx, _) = connect(server(), config()).await;
     let catalogue = connection.discover().await.unwrap();
     let bind = |selection| catalogue.bind(vec![selection]).unwrap();
-    let first = bind(selected("write", vec![PrincipalKind::Human]));
-    let second = bind(selected("write", vec![PrincipalKind::Agent]));
+    let first = bind(selected(
+        "write",
+        vec![&["lists:read", "lists:write", "lists:admin", "items:tick"][..]],
+    ));
+    let second = bind(selected("write", vec![&["lists:read", "lists:write"][..]]));
     assert_ne!(first.revision(), second.revision());
-    let mut selection = selected("write", vec![PrincipalKind::Human]);
+    let mut selection = selected(
+        "write",
+        vec![&["lists:read", "lists:write", "lists:admin", "items:tick"][..]],
+    );
     selection.alias = Some("alternate".into());
     assert_ne!(first.revision(), bind(selection).revision());
 }
@@ -575,7 +587,7 @@ async fn every_duplicate_record_has_one_source_diagnostic() {
 }
 
 #[tokio::test(start_paused = true)]
-async fn effect_claims_and_principal_authority_remain_separate() {
+async fn effect_claims_and_auth_authority_remain_separate() {
     use clapham::{Effect, Locality};
     let server = server();
     let mut records = vec![tool("read"), tool("erase"), tool("write")];
@@ -584,7 +596,7 @@ async fn effect_claims_and_principal_authority_remain_separate() {
     records[1]["annotations"] =
         json!({"destructiveHint":true,"idempotentHint":true,"openWorldHint":true});
     records[2]["_meta"] =
-        json!({"io.github.thirtytwobits.clapham/effect":"administrative","principals":["system"]});
+        json!({"io.github.thirtytwobits.clapham/effect":"administrative","auths":["system"]});
     *server.tools.lock().unwrap() = records;
     let (connection, _tx, _) = connect(server, config()).await;
     let catalogue = connection.discover().await.unwrap();
@@ -605,7 +617,7 @@ async fn effect_claims_and_principal_authority_remain_separate() {
     assert!(operations[2].open_world);
     for operation in operations {
         assert_eq!(operation.locality, Locality::Daemon);
-        assert_eq!(operation.principals, operation.effect.default_principals());
+        assert!(operation.scopes.is_empty());
         assert!(!operation.preview && !operation.streams);
     }
 }
@@ -675,7 +687,6 @@ async fn binding_and_selection_revisions_fence_metadata_and_credentials() {
 
 #[tokio::test(start_paused = true)]
 async fn content_order_and_structured_null_survive_without_fetching_references() {
-    use clapham::{ContentBlock, ResourceContents};
     let server = server();
     *server.result.lock().unwrap() = json!({"structuredContent":null,"content":[
         {"type":"text","text":"text"}, {"type":"image","data":"YWJj","mimeType":"image/png"},
@@ -694,34 +705,10 @@ async fn content_order_and_structured_null_survive_without_fetching_references()
     assert_eq!(outcome.result, Some(Value::Null));
     assert_eq!(
         outcome.content.unwrap(),
-        vec![
-            ContentBlock::Text {
-                text: "text".into()
-            },
-            ContentBlock::Image {
-                url: "data:image/png;base64,YWJj".into(),
-                mime_type: "image/png".into()
-            },
-            ContentBlock::Audio {
-                url: "data:audio/wav;base64,YWJj".into(),
-                mime_type: "audio/wav".into()
-            },
-            ContentBlock::ResourceLink {
-                uri: "https://invalid.example/item".into(),
-                name: "Item".into(),
-                mime_type: None
-            },
-            ContentBlock::Resource {
-                uri: "lists://tasks".into(),
-                mime_type: None,
-                contents: ResourceContents::Text("Tasks".into())
-            },
-            ContentBlock::Resource {
-                uri: "lists://binary".into(),
-                mime_type: Some("application/octet-stream".into()),
-                contents: ResourceContents::Base64("YWJj".into())
-            },
-        ]
+        server.result.lock().unwrap()["content"]
+            .as_array()
+            .unwrap()
+            .clone()
     );
     assert_eq!(server.calls.load(Ordering::SeqCst), 1);
 }
@@ -754,8 +741,8 @@ async fn binding_a_closed_connection_is_refused_immediately() {
 }
 
 #[tokio::test(start_paused = true)]
-async fn default_effects_refuse_agents_without_a_non_destructive_claim() {
-    use clapham::{Effect, Principal};
+async fn effects_describe_behaviour_without_granting_or_removing_oauth_scopes() {
+    use clapham::Effect;
     let server = server();
     let (connection, _tx, _) = connect(server.clone(), config()).await;
     for annotations in [
@@ -783,30 +770,27 @@ async fn default_effects_refuse_agents_without_a_non_destructive_claim() {
             }
         );
         let mut agent_call = call();
-        agent_call.principal = Principal::new("agent", PrincipalKind::Agent);
+        agent_call.auth = oauth_context("agent", &["lists:read", "lists:write"][..]);
         let outcome = binding.executor().call(agent_call).await;
-        if mutation {
-            outcome.unwrap();
-        } else {
-            let refusal = outcome.unwrap_err();
-            assert_eq!(refusal.code, "not_admitted");
-            assert_eq!(refusal.evidence, Evidence::NotDispatched);
-        }
+        outcome.unwrap();
     }
-    assert_eq!(server.calls.load(Ordering::SeqCst), 1);
-    // An application can explicitly authorise its agent despite conservative defaults.
+    assert_eq!(server.calls.load(Ordering::SeqCst), 4);
+    // Host-configured scope requirements remain independent of remote hints.
     server.tools.lock().unwrap()[0]
         .as_object_mut()
         .unwrap()
         .remove("annotations");
     let catalogue = connection.discover().await.unwrap();
     let binding = catalogue
-        .bind(vec![selected("write", vec![PrincipalKind::Agent])])
+        .bind(vec![selected(
+            "write",
+            vec![&["lists:read", "lists:write"][..]],
+        )])
         .unwrap();
     let mut agent_call = call();
-    agent_call.principal = Principal::new("agent", PrincipalKind::Agent);
+    agent_call.auth = oauth_context("agent", &["lists:read", "lists:write"][..]);
     binding.executor().call(agent_call).await.unwrap();
-    assert_eq!(server.calls.load(Ordering::SeqCst), 2);
+    assert_eq!(server.calls.load(Ordering::SeqCst), 5);
 }
 
 #[tokio::test(start_paused = true)]
@@ -824,4 +808,13 @@ async fn absent_and_empty_remote_content_normalise_to_an_empty_content_result() 
         assert_eq!(outcome.content, Some(Vec::new()));
         assert_eq!(outcome.result, Some(Value::Null));
     }
+}
+
+fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthContext {
+    clapham::OAuthContext::from_verified(
+        "https://identity.example.com",
+        "https://lists.example.com",
+        subject,
+        scopes.iter().copied(),
+    )
 }

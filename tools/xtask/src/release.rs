@@ -277,18 +277,25 @@ fn release_notes(changelog: &str, version: &str) -> Result<String> {
             format!("CHANGELOG.md needs exactly one {heading} section, found {found}").into(),
         );
     }
-    let Some(breaking) = lines.iter().position(|line| *line == "### Breaking") else {
-        return Err(format!("CHANGELOG.md {heading} needs a ### Breaking subsection").into());
-    };
-    if !lines[breaking + 1..]
+    let subsections: Vec<_> = lines
         .iter()
-        .take_while(|line| !line.starts_with("### "))
-        .any(|line| !line.trim().is_empty())
-    {
-        return Err(format!(
-            "CHANGELOG.md {heading} ### Breaking is empty; record the contract changes or state that there are none"
-        )
-        .into());
+        .enumerate()
+        .filter_map(|(index, line)| line.starts_with("### ").then_some(index))
+        .collect();
+    if subsections.is_empty() {
+        return Err(format!("CHANGELOG.md {heading} needs a subsection").into());
+    }
+    for (position, index) in subsections.iter().copied().enumerate() {
+        let end = subsections
+            .get(position + 1)
+            .copied()
+            .unwrap_or(lines.len());
+        if !lines[index + 1..end]
+            .iter()
+            .any(|line| !line.trim().is_empty())
+        {
+            return Err(format!("CHANGELOG.md {heading} {} is empty", lines[index]).into());
+        }
     }
     Ok(format!("{}\n", lines.join("\n").trim()))
 }
@@ -423,21 +430,30 @@ mod tests {
 
     #[test]
     fn notes_are_only_the_selected_body_and_accept_windows_line_endings() {
-        let changelog = "# Changelog\n\n## [Unreleased]\nFuture\n\n## [0.1.0-rc.1]\n\n### Breaking\n\nInitial contract.\n\n### Added\n\nFirst release.\n\n## [0.0.1] - 2026-01-01\nOlder\n";
-        let expected = "### Breaking\n\nInitial contract.\n\n### Added\n\nFirst release.\n";
+        let changelog = "# Changelog\n\n## [Unreleased]\nFuture\n\n## [0.1.0-rc.1]\n\n### Changes\n\nInitial contract.\n\n### Added\n\nFirst release.\n\n## [0.0.1] - 2026-01-01\nOlder\n";
+        let expected = "### Changes\n\nInitial contract.\n\n### Added\n\nFirst release.\n";
         assert_eq!(release_notes(changelog, "0.1.0-rc.1").unwrap(), expected);
         assert_eq!(
             release_notes(&changelog.replace('\n', "\r\n"), "0.1.0-rc.1").unwrap(),
             expected
         );
+        assert!(
+            release_notes(
+                &changelog.replace("### Changes", "### Breaking"),
+                "0.1.0-rc.1"
+            )
+            .is_ok()
+        );
         for (invalid, reason) in [
             (
-                changelog.replace("### Breaking", "### Added"),
-                "needs a ### Breaking",
+                changelog
+                    .replace("### Changes", "Changes")
+                    .replace("### Added", "Added"),
+                "needs a subsection",
             ),
             (
-                "## [0.1.0-rc.1]\n### Breaking\n\n### Added\nNew.\n".into(),
-                "### Breaking is empty",
+                "## [0.1.0-rc.1]\n### Changes\n\n### Added\nNew.\n".into(),
+                "### Changes is empty",
             ),
             (
                 changelog.to_owned() + "## [0.1.0-rc.1]\nDuplicate\n",

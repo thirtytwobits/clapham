@@ -11,8 +11,8 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 
 use clapham::{
-    Bounds, Call, Cancellation, Contribution, Effect, Evidence, Operation, Outcome, Principal,
-    PrincipalKind, RecordSink, Refusal, compose,
+    Bounds, Call, Cancellation, Contribution, Effect, Evidence, Operation, Outcome, RecordSink,
+    Refusal, compose,
 };
 use clapham_cli::{Cli, CliError, Format, Invocation};
 use futures_executor::block_on;
@@ -55,7 +55,10 @@ fn fixture(
         Cli::new(
             "lists-app",
             set,
-            Principal::new("operator", PrincipalKind::Human),
+            oauth_context(
+                "operator",
+                &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+            ),
         )
         .unwrap(),
         calls,
@@ -64,11 +67,7 @@ fn fixture(
 }
 
 fn invocation() -> Invocation {
-    Invocation::new(
-        "lists.action",
-        Principal::new("operator", PrincipalKind::Human),
-        json!({}),
-    )
+    Invocation::new("lists.action", json!({}))
 }
 
 #[derive(Clone, Default)]
@@ -299,7 +298,7 @@ fn confirmations_and_dry_runs_are_checked_before_stdin_is_read() {
 fn prepared_preview_refusals_match_the_core_and_keep_admission_precedence() {
     let operation: Operation = serde_json::from_value(json!({
         "name":"lists.action","description":"Exercise preview refusal precedence.",
-        "input":{"type":"object"},"effect":"administrative","locality":"workspace",
+        "input":{"type":"object"},"scopes":["lists:admin"],"effect":"administrative","locality":"workspace",
         "idempotent":false,"open_world":false
     }))
     .unwrap();
@@ -311,17 +310,23 @@ fn prepared_preview_refusals_match_the_core_and_keep_admission_precedence() {
     let cli = Cli::new(
         "lists-app",
         set.clone(),
-        Principal::new("operator", PrincipalKind::Human),
+        oauth_context(
+            "operator",
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+        ),
     )
     .unwrap();
     for (kind, code) in [
-        (PrincipalKind::Human, "preview_unsupported"),
-        (PrincipalKind::Agent, "not_admitted"),
+        (
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+            "preview_unsupported",
+        ),
+        (&["lists:read", "lists:write"][..], "insufficient_scope"),
     ] {
-        let principal = Principal::new("operator", kind);
+        let auth = oauth_context("operator", kind);
         let expected = block_on(set.call(
             &set.all(),
-            principal.clone(),
+            auth.clone(),
             "lists.action",
             json!({}),
             RecordSink::default(),
@@ -329,7 +334,8 @@ fn prepared_preview_refusals_match_the_core_and_keep_admission_precedence() {
             true,
         ))
         .unwrap_err();
-        let mut invocation = Invocation::new("lists.action", principal, json!({}));
+        let cli = Cli::new("lists-app", set.clone(), auth).unwrap();
+        let mut invocation = Invocation::new("lists.action", json!({}));
         invocation.yes = true;
         invocation.preview = true;
         let actual =
@@ -346,7 +352,10 @@ fn prepared_preview_refusals_match_the_core_and_keep_admission_precedence() {
         .unwrap_err();
     let expected = block_on(set.call(
         &set.all(),
-        Principal::new("operator", PrincipalKind::Human),
+        oauth_context(
+            "operator",
+            &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+        ),
         "lists.action",
         json!({}),
         RecordSink::default(),
@@ -381,7 +390,10 @@ fn host_cancellation_is_forwarded_to_entered_calls_and_process_invocations() {
         let cli = Cli::new(
             "lists-app",
             set,
-            Principal::new("operator", PrincipalKind::Human),
+            oauth_context(
+                "operator",
+                &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+            ),
         )
         .unwrap();
         let host = Cancellation::new();
@@ -421,4 +433,13 @@ fn host_cancellation_is_forwarded_to_entered_calls_and_process_invocations() {
         assert_eq!(refusal.code, "cancelled");
         assert_eq!(refusal.evidence, Evidence::Uncertain);
     }
+}
+
+fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthContext {
+    clapham::OAuthContext::from_verified(
+        "https://identity.example.com",
+        "https://lists.example.com",
+        subject,
+        scopes.iter().copied(),
+    )
 }

@@ -4,8 +4,7 @@ use std::io;
 use std::sync::Arc;
 
 use clapham::{
-    Bounds, Cancellation, Category, ComposeOptions, Evidence, Principal, PrincipalKind, RecordSink,
-    compose_with_options,
+    Bounds, Cancellation, Category, ComposeOptions, Evidence, RecordSink, compose_with_options,
 };
 use clapham_cli::{Cli, CliError};
 use clapham_conformance::{ListsGate, ListsHandle};
@@ -28,7 +27,10 @@ fn fixture() -> (ListsHandle, Cli) {
         Cli::new(
             "lists-app",
             set,
-            Principal::new("operator", PrincipalKind::Human),
+            oauth_context(
+                "operator",
+                &["lists:read", "lists:write", "lists:admin", "items:tick"][..],
+            ),
         )
         .unwrap(),
     )
@@ -214,54 +216,26 @@ fn invalid_documents_keep_invalid_input_and_never_mutate_the_fixture() {
 }
 
 #[test]
-fn as_agent_is_denied_by_both_descriptor_defaults_and_the_lists_gate() {
-    let (handle, cli) = fixture();
-    handle.create_list("tasks", "Tasks").unwrap();
-    handle.add_item("tasks", "a", "Read").unwrap();
-    let before = handle.snapshot();
-    for args in [
-        vec![
-            "lists-app",
-            "--as",
-            "agent:bot",
-            "lists",
-            "compact",
-            "--yes",
-        ],
-        vec![
-            "lists-app",
-            "items",
-            "tick",
-            "--list_id",
-            "tasks",
-            "--id",
-            "a",
-            "--as",
-            "agent:bot",
-        ],
-    ] {
-        let error = run(&cli, &args, &[]).unwrap_err();
-        assert_eq!(error.exit_code(), 77);
-        let CliError::Refusal(refusal) = error else {
-            panic!("expected refusal")
-        };
-        assert_eq!(refusal.code, "not_admitted");
-        assert_eq!(refusal.evidence, Evidence::NotDispatched);
-    }
-    assert_eq!(handle.snapshot(), before);
-}
-
-#[test]
-fn describe_alias_uses_the_same_principal_filtered_catalogue() {
-    let (_, cli) = fixture();
-    let args = ["lists-app", "--as", "agent:bot", "describe"];
-    let alias = run(&cli, &args, &[]).unwrap();
-    let full = run(
-        &cli,
-        &["lists-app", "--as", "agent:bot", "clapham", "describe"],
-        &[],
+fn describe_alias_uses_the_same_auth_filtered_catalogue() {
+    let (handle, _) = fixture();
+    let set = clapham::compose_with_options(
+        handle.contributions(),
+        Bounds::default(),
+        ComposeOptions {
+            gate: std::sync::Arc::new(clapham_conformance::ListsGate),
+            ..Default::default()
+        },
     )
     .unwrap();
+    let cli = Cli::new(
+        "lists-app",
+        set,
+        oauth_context("operator", &["lists:read", "lists:write"]),
+    )
+    .unwrap();
+    let args = ["lists-app", "describe"];
+    let alias = run(&cli, &args, &[]).unwrap();
+    let full = run(&cli, &["lists-app", "clapham", "describe"], &[]).unwrap();
     assert_eq!(alias, full);
     let names: Vec<_> = alias
         .as_array()
@@ -316,4 +290,13 @@ fn records_and_domain_refusals_retain_the_call_runners_contract() {
         assert_eq!(refusal.code, code);
         assert_eq!(refusal.evidence, Evidence::Completed);
     }
+}
+
+fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthContext {
+    clapham::OAuthContext::from_verified(
+        "https://identity.example.com",
+        "https://lists.example.com",
+        subject,
+        scopes.iter().copied(),
+    )
 }

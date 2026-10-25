@@ -9,7 +9,7 @@ pub(crate) struct Template {
 }
 
 impl Template {
-    pub(crate) fn parse(op: &Operation) -> Result<Self, Refusal> {
+    pub(crate) fn parse(op: &Operation, uri: &str) -> Result<Self, Refusal> {
         let invalid = || {
             super::configuration(format!(
                 "{}: resources require a query and unambiguous simple string URI-template variables",
@@ -19,7 +19,7 @@ impl Template {
         if op.effect != Effect::Query {
             return Err(invalid());
         }
-        let mut rest = op.resource.as_deref().ok_or_else(invalid)?;
+        let mut rest = uri;
         let mut literals = Vec::new();
         let mut variables = Vec::new();
         while let Some((literal, expression)) = rest.split_once('{') {

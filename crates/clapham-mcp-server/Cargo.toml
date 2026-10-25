@@ -9,6 +9,10 @@ description = "The MCP server front end for composed operations."
 readme = "README.md"
 
 [dependencies]
+uuid = { version="1", features=["v4"], optional=true }
+axum = { version = "0.8.6", optional = true }
+oauth2 = { version = "5", default-features = false, features = ["reqwest"], optional = true }
+reqwest = { version = "0.12.28", default-features = false, features = ["json", "rustls-tls"], optional = true }
 clapham.workspace = true
 rmcp = { version = "=3.6.0", default-features = false, features = ["server"] }
 serde = "1.0"
@@ -25,7 +29,7 @@ tower-service = { version = "0.3", optional = true }
 [features]
 default = ["stdio", "http"]
 stdio = ["rmcp/transport-io"]
-http = ["rmcp/transport-streamable-http-server", "dep:bytes", "dep:http", "dep:http-body", "dep:http-body-util", "dep:tower-service"]
+http = ["dep:uuid", "dep:axum", "dep:oauth2", "dep:reqwest", "rmcp/transport-streamable-http-server", "dep:bytes", "dep:http", "dep:http-body", "dep:http-body-util", "dep:tower-service"]
 
 [lints]
 workspace = true

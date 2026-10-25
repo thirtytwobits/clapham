@@ -1,16 +1,12 @@
 use std::io::{self, Write};
 use std::sync::Arc;
 
-use clapham::{
-    Category, ContentBlock as CoreContent, Evidence, Operation, Outcome, Refusal,
-    ResourceContents as CoreResource,
-};
+use clapham::{Category, Effect, Evidence, Operation, Outcome, Refusal};
 use rmcp::{ErrorData, model::*};
 use serde::Serialize;
 use serde_json::{Map, Value, json};
 
 pub(crate) fn tool(op: &Operation, schema_bytes: usize) -> Result<Tool, ErrorData> {
-    let hints = op.annotations();
     let mut tool = Tool::new(
         op.name.to_string(),
         op.description.clone(),
@@ -19,13 +15,19 @@ pub(crate) fn tool(op: &Operation, schema_bytes: usize) -> Result<Tool, ErrorDat
     tool.title = op.title.clone();
     tool.annotations = Some(ToolAnnotations::from_raw(
         None,
-        Some(hints.read_only_hint),
-        Some(hints.destructive_hint),
-        Some(hints.idempotent_hint),
-        Some(hints.open_world_hint),
+        Some(op.effect == Effect::Query),
+        Some(op.effect == Effect::Destructive),
+        Some(op.effect == Effect::Query || op.idempotent),
+        Some(op.open_world),
     ));
-    if !hints.meta.is_empty() {
-        tool.meta = Some(hints.meta.into_iter().collect::<Map<_, _>>().into());
+    if op.effect == Effect::Administrative {
+        tool.meta = Some(
+            json!({crate::EFFECT_META_KEY:"administrative"})
+                .as_object()
+                .unwrap()
+                .clone()
+                .into(),
+        );
     }
     if let Some(schema) = &op.output {
         // rmcp's Tool stores an object schema. Boolean schemas have exact object
@@ -53,66 +55,29 @@ pub(crate) fn refusal(refusal: Refusal) -> CallToolResult {
     result
 }
 
-pub(crate) fn outcome(outcome: Outcome) -> CallToolResult {
+pub(crate) fn outcome(outcome: Outcome) -> Result<CallToolResult, Refusal> {
     let mut result = CallToolResult::success(
         outcome
             .content
             .unwrap_or_default()
             .into_iter()
-            .map(content)
-            .collect(),
+            .map(serde_json::from_value)
+            .collect::<Result<Vec<ContentBlock>, _>>()
+            .map_err(|error| {
+                Refusal::new("invalid_result", Category::Internal, error.to_string())
+                    .with_evidence(outcome.evidence)
+            })?,
     );
     result.structured_content = outcome.result;
     result.is_error = Some(outcome.is_error);
-    result
-}
-
-fn content(block: CoreContent) -> ContentBlock {
-    match block {
-        CoreContent::Text { text } => ContentBlock::text(text),
-        CoreContent::Image { url, mime_type } => media(url, mime_type, true),
-        CoreContent::Audio { url, mime_type } => media(url, mime_type, false),
-        CoreContent::ResourceLink {
-            uri,
-            name,
-            mime_type,
-        } => {
-            let mut resource = Resource::new(uri, name);
-            resource.mime_type = mime_type;
-            ContentBlock::resource_link(resource)
-        }
-        CoreContent::Resource {
-            uri,
-            mime_type,
-            contents,
-        } => ContentBlock::resource(match contents {
-            CoreResource::Text(text) => ResourceContents::TextResourceContents {
-                uri,
-                mime_type,
-                text,
-                meta: None,
-            },
-            CoreResource::Base64(blob) => ResourceContents::BlobResourceContents {
-                uri,
-                mime_type,
-                blob,
-                meta: None,
-            },
-        }),
-    }
-}
-
-fn media(url: String, mime_type: String, image: bool) -> ContentBlock {
-    if let Some(data) = url.strip_prefix(&format!("data:{mime_type};base64,")) {
-        return if image {
-            ContentBlock::image(data.to_owned(), mime_type)
-        } else {
-            ContentBlock::audio(data.to_owned(), mime_type)
-        };
-    }
-    // MCP image/audio blocks require inline data. Keep references as references;
-    // never fetch them, invent bytes, or label a URL as base64.
-    ContentBlock::resource_link(Resource::new(url.clone(), url).with_mime_type(mime_type))
+    result.meta = Some(
+        serde_json::json!({"io.github.thirtytwobits.clapham/evidence": outcome.evidence})
+            .as_object()
+            .expect("metadata object")
+            .clone()
+            .into(),
+    );
+    Ok(result)
 }
 
 pub(crate) fn size<T: Serialize + ?Sized>(value: &T, limit: usize) -> Option<usize> {
@@ -145,4 +110,43 @@ pub(crate) fn too_large() -> Refusal {
         "the encoded result exceeds bounds.message_bytes",
     )
     .with_evidence(Evidence::Uncertain)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn every_effect_maps_to_native_rmcp_annotations_and_metadata() {
+        for effect in [
+            Effect::Query,
+            Effect::Mutation,
+            Effect::Administrative,
+            Effect::Destructive,
+        ] {
+            for idempotent in [false, true] {
+                for open_world in [false, true] {
+                    let op:Operation=serde_json::from_value(json!({"name":"lists.count","description":"Count lists.","input":{"type":"object"},"effect":effect,"locality":"workspace","idempotent":idempotent,"open_world":open_world})).unwrap();
+                    let tool = serde_json::to_value(tool(&op, 8192).unwrap()).unwrap();
+                    assert_eq!(tool["annotations"]["readOnlyHint"], effect == Effect::Query);
+                    assert_eq!(
+                        tool["annotations"]["destructiveHint"],
+                        effect == Effect::Destructive
+                    );
+                    assert_eq!(
+                        tool["annotations"]["idempotentHint"],
+                        effect == Effect::Query || idempotent
+                    );
+                    assert_eq!(tool["annotations"]["openWorldHint"], open_world);
+                    assert_eq!(
+                        tool["_meta"][crate::EFFECT_META_KEY].as_str(),
+                        if effect == Effect::Administrative {
+                            Some("administrative")
+                        } else {
+                            None
+                        }
+                    );
+                }
+            }
+        }
+    }
 }

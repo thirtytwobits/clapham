@@ -1,47 +1,31 @@
 # Lists example
 
-A reference `main` over the neutral lists-and-items contribution. Every launch starts a fresh
-Tasks list with two items; this example keeps its state in memory. The command line is built
-from the descriptors and uses the process account as its default human principal.
+A reference application loading [JSON configuration](configuration.json), registering the
+lists/items providers and adding an operation with a typed Rust builder before composition.
+It starts a Tasks list with two items and keeps server state in memory.
+
+The executable serves MCP and the operation HTTP interface through one OAuth authenticator.
+Configure the introspection endpoint and resource-server credentials as described in
+[the application guide](../../docs/composing.md). Set `CLAPHAM_ENDPOINT` and an
+appropriate `CLAPHAM_ACCESS_TOKEN` for the CLI.
 
 ```console
-cargo run -p clapham-lists -- lists get tasks
-cargo run -p clapham-lists -- lists export --id tasks --format ndjson
-cargo run -p clapham-lists -- lists create --list-json '{"id":"new","name":"New"}'
-cargo run -p clapham-lists -- lists compact --yes
-cargo run -p clapham-lists -- --as agent:agent items tick --list_id tasks --id a
-```
-
-After installing or building the `lists` binary, use `lists <operation segments>` directly.
-`lists describe`, descriptor help, confirmations, JSON stdin, formats and completions use the
-same CLI library as an application. `agent:agent` follows the fixture's selective policy;
-`agent:denied` is refused every domain operation and sees only the built-in catalogue.
-
-```console
-cargo run -p clapham-lists -- serve --stdio
-cargo run -p clapham-lists -- serve --stdio --as agent:agent
 cargo run -p clapham-lists -- serve --http 127.0.0.1:8080
+cargo run -p clapham-lists -- lists get tasks
+cargo run -p clapham-lists -- lists export --id tasks
 ```
 
-Stdio takes the principal from launch configuration and reserves stdout for MCP. HTTP serves
-`/mcp` and prints one JSON readiness line with its bound address. Its scripted authenticator
-maps `Bearer human:human`, `Bearer agent:agent`, `Bearer human:agent` and
-`Bearer agent:denied` to their fixed fixture principals;
-unrecognised credentials refuse. This authenticator is restricted to a loopback listener.
-The application owns the listener and shutdown: stdin closure or Ctrl-C ends the HTTP server.
-Any input byte also ends it, including a newline typed into the terminal.
-Port zero chooses an ephemeral port for the harness without guessing or retries.
+Stdio verifies the launch token before binding authority to its private connection.
+The application owns listening and shutdown; HTTP prints a readiness address and stops on
+stdin closure or Ctrl-C. The CLI calls the service and preserves ordered record delivery.
 
-`main` shows composition, the shared gate, CLI dispatch, transport selection and per-request
-authentication. Replace the in-memory fixture and scripted credentials with the application's
-own contributions and authenticator when using it as a reference.
+The conformance harness selects fixture mode through the trusted host environment. It supplies
+scripted claim snapshots for testing instead of contacting an authorisation server. Fixture
+mode is restricted to loopback listeners. The six-front-end test checks different grants for
+the same subject, visibility, results, refusals, exit codes and ordered records.
 
 ```console
 cargo test -p clapham-lists --test conformance
 ```
 
-The reusable harness launches this actual binary through all six front ends, checking results,
-unchanged refusals and retryability, category exit codes, gate visibility and ordered records.
-It checks both MCP discovery surfaces and distinguishes `human:agent` from `agent:agent`.
-It runs in the workspace gates and the Rust 1.88 CI lane. See the
-[conformance crate guide](../../crates/clapham-conformance/README.md) for downstream usage.
+For the minimal typed operation, see [the typed example](../typed/src/main.rs).

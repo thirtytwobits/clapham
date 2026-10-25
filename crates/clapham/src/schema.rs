@@ -2,7 +2,7 @@
 
 use schemars::{Schema, generate::SchemaSettings};
 
-/// The descriptor schema, including omission of effect-dependent principal defaults.
+/// The descriptor schema, including omission of effect-dependent auth defaults.
 pub fn operation_schema() -> Schema {
     let mut schema = SchemaSettings::draft2020_12()
         .into_generator()
@@ -27,4 +27,11 @@ pub fn catalogue_schema() -> Schema {
         .into_root_schema_for::<crate::Catalogue>();
     schema.insert("$id".into(), "https://raw.githubusercontent.com/thirtytwobits/clapham/main/crates/clapham/schemas/catalogue.schema.json".into());
     schema
+}
+
+/// Declarative configuration, sharing the programmatic composition model.
+pub fn configuration_schema() -> Schema {
+    SchemaSettings::draft2020_12()
+        .into_generator()
+        .into_root_schema_for::<crate::Configuration>()
 }

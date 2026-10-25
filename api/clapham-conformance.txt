@@ -30,6 +30,7 @@ impl core::marker::Sync for clapham_conformance::ChangeKind
 impl core::marker::Unpin for clapham_conformance::ChangeKind
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::ChangeKind
 impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::ChangeKind
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::ChangeKind where B: http_body::Body
 impl<Q, K> equivalent::Equivalent<K> for clapham_conformance::ChangeKind where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
 pub fn clapham_conformance::ChangeKind::equivalent(&self, key: &K) -> bool
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::ChangeKind where ST: ?core::marker::Sized, DT: ?core::marker::Sized
@@ -87,6 +88,7 @@ impl core::marker::Sync for clapham_conformance::Frame
 impl core::marker::Unpin for clapham_conformance::Frame
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Frame
 impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::Frame
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::Frame where B: http_body::Body
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Frame where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::Frame where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham_conformance::Frame where U: core::convert::From<T>
@@ -142,6 +144,7 @@ impl core::marker::Sync for clapham_conformance::ProcessKind
 impl core::marker::Unpin for clapham_conformance::ProcessKind
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::ProcessKind
 impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::ProcessKind
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::ProcessKind where B: http_body::Body
 impl<Q, K> equivalent::Equivalent<K> for clapham_conformance::ProcessKind where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
 pub fn clapham_conformance::ProcessKind::equivalent(&self, key: &K) -> bool
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::ProcessKind where ST: ?core::marker::Sized, DT: ?core::marker::Sized
@@ -181,9 +184,9 @@ impl<T> typenum::type_operators::Same for clapham_conformance::ProcessKind
 pub type clapham_conformance::ProcessKind::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::ProcessKind where T: ?core::marker::Sized
 pub struct clapham_conformance::Case
+pub clapham_conformance::Case::auth: clapham::auth::OAuthContext
 pub clapham_conformance::Case::input: serde_json::value::Value
 pub clapham_conformance::Case::operation: alloc::string::String
-pub clapham_conformance::Case::principal: clapham::principal::Principal
 impl clapham_conformance::Case
 pub fn clapham_conformance::Case::new(operation: impl core::convert::Into<alloc::string::String>, input: serde_json::value::Value) -> Self
 impl core::clone::Clone for clapham_conformance::Case
@@ -196,6 +199,7 @@ impl core::marker::Sync for clapham_conformance::Case
 impl core::marker::Unpin for clapham_conformance::Case
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Case
 impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::Case
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::Case where B: http_body::Body
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Case where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::Case where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham_conformance::Case where U: core::convert::From<T>
@@ -254,6 +258,7 @@ impl core::marker::Sync for clapham_conformance::Failure
 impl core::marker::Unpin for clapham_conformance::Failure
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Failure
 impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::Failure
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::Failure where B: http_body::Body
 impl<Q, K> equivalent::Equivalent<K> for clapham_conformance::Failure where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
 pub fn clapham_conformance::Failure::equivalent(&self, key: &K) -> bool
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Failure where ST: ?core::marker::Sized, DT: ?core::marker::Sized
@@ -295,7 +300,7 @@ impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusi
 pub struct clapham_conformance::Fixture
 pub clapham_conformance::Fixture::bounds: clapham::bounds::Bounds
 pub clapham_conformance::Fixture::cases: alloc::vec::Vec<clapham_conformance::Case>
-pub clapham_conformance::Fixture::denied_principal: clapham::principal::Principal
+pub clapham_conformance::Fixture::denied_auth: clapham::auth::OAuthContext
 impl clapham_conformance::Fixture
 pub fn clapham_conformance::Fixture::contributions(&self) -> alloc::vec::Vec<clapham::composition::Contribution>
 pub fn clapham_conformance::Fixture::new(factory: impl core::ops::function::Fn() -> alloc::vec::Vec<clapham::composition::Contribution> + core::marker::Send + core::marker::Sync + 'static, cases: alloc::vec::Vec<clapham_conformance::Case>) -> Self
@@ -309,6 +314,7 @@ impl core::marker::Sync for clapham_conformance::Fixture
 impl core::marker::Unpin for clapham_conformance::Fixture
 impl !core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Fixture
 impl !core::panic::unwind_safe::UnwindSafe for clapham_conformance::Fixture
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::Fixture where B: http_body::Body
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Fixture where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::Fixture where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham_conformance::Fixture where U: core::convert::From<T>
@@ -355,6 +361,7 @@ impl core::marker::Sync for clapham_conformance::HeldCall
 impl core::marker::Unpin for clapham_conformance::HeldCall
 impl !core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::HeldCall
 impl !core::panic::unwind_safe::UnwindSafe for clapham_conformance::HeldCall
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::HeldCall where B: http_body::Body
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::HeldCall where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::HeldCall where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham_conformance::HeldCall where U: core::convert::From<T>
@@ -397,6 +404,7 @@ impl core::marker::Sync for clapham_conformance::InProcess
 impl core::marker::Unpin for clapham_conformance::InProcess
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::InProcess
 impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::InProcess
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::InProcess where B: http_body::Body
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::InProcess where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::InProcess where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham_conformance::InProcess where U: core::convert::From<T>
@@ -460,6 +468,7 @@ impl core::marker::Sync for clapham_conformance::Item
 impl core::marker::Unpin for clapham_conformance::Item
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Item
 impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::Item
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::Item where B: http_body::Body
 impl<Q, K> equivalent::Equivalent<K> for clapham_conformance::Item where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
 pub fn clapham_conformance::Item::equivalent(&self, key: &K) -> bool
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Item where ST: ?core::marker::Sized, DT: ?core::marker::Sized
@@ -525,6 +534,7 @@ impl core::marker::Sync for clapham_conformance::List
 impl core::marker::Unpin for clapham_conformance::List
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::List
 impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::List
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::List where B: http_body::Body
 impl<Q, K> equivalent::Equivalent<K> for clapham_conformance::List where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
 pub fn clapham_conformance::List::equivalent(&self, key: &K) -> bool
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::List where ST: ?core::marker::Sized, DT: ?core::marker::Sized
@@ -588,6 +598,7 @@ impl core::marker::Sync for clapham_conformance::ListChange
 impl core::marker::Unpin for clapham_conformance::ListChange
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::ListChange
 impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::ListChange
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::ListChange where B: http_body::Body
 impl<Q, K> equivalent::Equivalent<K> for clapham_conformance::ListChange where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
 pub fn clapham_conformance::ListChange::equivalent(&self, key: &K) -> bool
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::ListChange where ST: ?core::marker::Sized, DT: ?core::marker::Sized
@@ -627,7 +638,7 @@ pub type clapham_conformance::ListChange::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::ListChange where T: ?core::marker::Sized
 pub struct clapham_conformance::ListsGate
 impl clapham::gate::Gate for clapham_conformance::ListsGate
-pub fn clapham_conformance::ListsGate::admit(&self, principal: &clapham::principal::Principal, operation: &clapham::operation::Operation) -> clapham::gate::Admission
+pub fn clapham_conformance::ListsGate::admit(&self, auth: &clapham::auth::OAuthContext, operation: &clapham::operation::Operation) -> clapham::gate::Admission
 impl core::clone::Clone for clapham_conformance::ListsGate
 pub fn clapham_conformance::ListsGate::clone(&self) -> clapham_conformance::ListsGate
 impl core::default::Default for clapham_conformance::ListsGate
@@ -641,6 +652,7 @@ impl core::marker::Sync for clapham_conformance::ListsGate
 impl core::marker::Unpin for clapham_conformance::ListsGate
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::ListsGate
 impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::ListsGate
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::ListsGate where B: http_body::Body
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::ListsGate where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::ListsGate where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham_conformance::ListsGate where U: core::convert::From<T>
@@ -700,6 +712,7 @@ impl core::marker::Sync for clapham_conformance::ListsHandle
 impl core::marker::Unpin for clapham_conformance::ListsHandle
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::ListsHandle
 impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::ListsHandle
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::ListsHandle where B: http_body::Body
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::ListsHandle where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::ListsHandle where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham_conformance::ListsHandle where U: core::convert::From<T>
@@ -751,6 +764,7 @@ impl core::marker::Sync for clapham_conformance::Observation
 impl core::marker::Unpin for clapham_conformance::Observation
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Observation
 impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::Observation
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::Observation where B: http_body::Body
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Observation where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::Observation where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham_conformance::Observation where U: core::convert::From<T>
@@ -801,6 +815,7 @@ impl core::marker::Sync for clapham_conformance::Process
 impl core::marker::Unpin for clapham_conformance::Process
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Process
 impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::Process
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::Process where B: http_body::Body
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Process where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::Process where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham_conformance::Process where U: core::convert::From<T>
@@ -841,6 +856,7 @@ pub fn clapham_conformance::ProcessFrontEnd::new(kind: clapham_conformance::Proc
 impl clapham_conformance::FrontEnd for clapham_conformance::ProcessFrontEnd
 pub fn clapham_conformance::ProcessFrontEnd::binds_tools(&self) -> bool
 pub fn clapham_conformance::ProcessFrontEnd::carries_records(&self) -> bool
+pub fn clapham_conformance::ProcessFrontEnd::hidden_refusal_code(&self) -> core::option::Option<&str>
 pub fn clapham_conformance::ProcessFrontEnd::name(&self) -> &str
 pub fn clapham_conformance::ProcessFrontEnd::observe<'a>(&'a self, fixture: &'a clapham_conformance::Fixture, _gate: alloc::sync::Arc<dyn clapham::gate::Gate>, case: &'a clapham_conformance::Case) -> clapham_conformance::ObservationFuture<'a>
 impl core::clone::Clone for clapham_conformance::ProcessFrontEnd
@@ -853,6 +869,7 @@ impl core::marker::Sync for clapham_conformance::ProcessFrontEnd
 impl core::marker::Unpin for clapham_conformance::ProcessFrontEnd
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::ProcessFrontEnd
 impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::ProcessFrontEnd
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::ProcessFrontEnd where B: http_body::Body
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::ProcessFrontEnd where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::ProcessFrontEnd where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham_conformance::ProcessFrontEnd where U: core::convert::From<T>
@@ -907,6 +924,7 @@ impl core::marker::Sync for clapham_conformance::Report
 impl core::marker::Unpin for clapham_conformance::Report
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Report
 impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::Report
+impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::Report where B: http_body::Body
 impl<Q, K> equivalent::Equivalent<K> for clapham_conformance::Report where Q: core::cmp::Eq + ?core::marker::Sized, K: core::borrow::Borrow<Q> + ?core::marker::Sized
 pub fn clapham_conformance::Report::equivalent(&self, key: &K) -> bool
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Report where ST: ?core::marker::Sized, DT: ?core::marker::Sized
@@ -943,9 +961,11 @@ impl<T> tracing::instrument::WithSubscriber for clapham_conformance::Report
 impl<T> typenum::type_operators::Same for clapham_conformance::Report
 pub type clapham_conformance::Report::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_conformance::Report where T: ?core::marker::Sized
+pub const clapham_conformance::LIST_RESOURCES: &[(&str, &str)]
 pub trait clapham_conformance::FrontEnd: core::marker::Send + core::marker::Sync
 pub fn clapham_conformance::FrontEnd::binds_tools(&self) -> bool
 pub fn clapham_conformance::FrontEnd::carries_records(&self) -> bool
+pub fn clapham_conformance::FrontEnd::hidden_refusal_code(&self) -> core::option::Option<&str>
 pub fn clapham_conformance::FrontEnd::name(&self) -> &str
 pub fn clapham_conformance::FrontEnd::observe<'a>(&'a self, fixture: &'a clapham_conformance::Fixture, gate: alloc::sync::Arc<dyn clapham::gate::Gate>, case: &'a clapham_conformance::Case) -> clapham_conformance::ObservationFuture<'a>
 impl clapham_conformance::FrontEnd for clapham_conformance::InProcess
@@ -955,9 +975,11 @@ pub fn clapham_conformance::InProcess::observe<'a>(&'a self, fixture: &'a clapha
 impl clapham_conformance::FrontEnd for clapham_conformance::ProcessFrontEnd
 pub fn clapham_conformance::ProcessFrontEnd::binds_tools(&self) -> bool
 pub fn clapham_conformance::ProcessFrontEnd::carries_records(&self) -> bool
+pub fn clapham_conformance::ProcessFrontEnd::hidden_refusal_code(&self) -> core::option::Option<&str>
 pub fn clapham_conformance::ProcessFrontEnd::name(&self) -> &str
 pub fn clapham_conformance::ProcessFrontEnd::observe<'a>(&'a self, fixture: &'a clapham_conformance::Fixture, _gate: alloc::sync::Arc<dyn clapham::gate::Gate>, case: &'a clapham_conformance::Case) -> clapham_conformance::ObservationFuture<'a>
 pub fn clapham_conformance::lists_fixture() -> clapham_conformance::Fixture
 pub fn clapham_conformance::lists_gate() -> alloc::sync::Arc<dyn clapham::gate::Gate>
 pub async fn clapham_conformance::run(fixture: &clapham_conformance::Fixture, gate: alloc::sync::Arc<dyn clapham::gate::Gate>, front_ends: alloc::vec::Vec<alloc::boxed::Box<dyn clapham_conformance::FrontEnd>>) -> core::result::Result<clapham_conformance::Report, clapham_conformance::Failure>
+pub fn clapham_conformance::scripted_access(claims: &serde_json::value::Value) -> core::option::Option<clapham::auth::OAuthContext>
 pub type clapham_conformance::ObservationFuture<'a> = core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::result::Result<clapham_conformance::Observation, clapham_conformance::Failure>> + core::marker::Send + 'a)>>

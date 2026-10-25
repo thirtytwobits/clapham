@@ -301,14 +301,7 @@ impl McpConnection {
     /// Connect a host-approved endpoint. Redirects, POST retries and session reinitialisation are disabled.
     pub async fn http(options: McpHttpOptions, config: McpConfig) -> Result<Self, McpError> {
         config.validate()?;
-        let url = reqwest::Url::parse(&options.endpoint).map_err(|_| McpError::Configuration)?;
-        if !matches!(url.scheme(), "http" | "https")
-            || !url.username().is_empty()
-            || url.password().is_some()
-            || url.fragment().is_some()
-        {
-            return Err(McpError::Configuration);
-        }
+        validate_endpoint(&options.endpoint)?;
         let state = State::new();
         let backend = BoundedHttp::new(&config, state.clone())?;
         let mut transport_config = StreamableHttpClientTransportConfig::with_uri(options.endpoint);
@@ -586,6 +579,47 @@ mod tests {
             }
             tokio::time::resume();
             server.abort();
+        }
+    }
+}
+
+fn validate_endpoint(endpoint: &str) -> Result<(), McpError> {
+    let url = reqwest::Url::parse(endpoint).map_err(|_| McpError::Configuration)?;
+    let loopback = matches!(
+        url.host_str(),
+        Some("localhost" | "127.0.0.1" | "[::1]" | "::1")
+    );
+    if (url.scheme() != "https" && !(url.scheme() == "http" && loopback))
+        || !url.username().is_empty()
+        || url.password().is_some()
+        || url.query().is_some()
+        || url.fragment().is_some()
+    {
+        return Err(McpError::Configuration);
+    }
+    Ok(())
+}
+#[cfg(test)]
+mod endpoint_tests {
+    use super::*;
+    #[test]
+    fn oauth_endpoints_require_https_or_explicit_loopback_without_embedded_credentials() {
+        for endpoint in [
+            "https://lists.example.com/mcp",
+            "http://localhost:8080/mcp",
+            "http://127.0.0.1:8080/mcp",
+            "http://[::1]:8080/mcp",
+        ] {
+            assert!(validate_endpoint(endpoint).is_ok());
+        }
+        for endpoint in [
+            "http://lists.example.com/mcp",
+            "ftp://lists.example.com/mcp",
+            "https://user:secret@lists.example.com/mcp",
+            "https://lists.example.com/mcp?access_token=secret",
+            "https://lists.example.com/mcp#fragment",
+        ] {
+            assert!(validate_endpoint(endpoint).is_err());
         }
     }
 }

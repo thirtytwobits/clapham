@@ -1,9 +1,9 @@
 //! Copyright (c) Scott A Dixon
-//! Discovery, host principal assignment and immutable remote definitions.
+//! Discovery, host auth assignment and immutable remote definitions.
 use crate::{McpConnection, McpError, wire};
 use clapham::{
-    Call, Category, ContentBlock, Contribution, Effect, Evidence, Handler, HandlerFuture, Locality,
-    Operation, OperationName, Outcome, PrincipalKind, Refusal, ResourceContents,
+    Call, Category, Contribution, Effect, Evidence, Handler, HandlerFuture, Locality, Operation,
+    OperationName, Outcome, Refusal,
 };
 use rmcp::{model::*, service::ServiceError};
 use serde_json::{Value, json};
@@ -256,7 +256,7 @@ impl McpCatalogue {
             let administrative = tool
                 .meta
                 .as_ref()
-                .and_then(|meta| meta.get(clapham::EFFECT_META_KEY))
+                .and_then(|meta| meta.get("io.github.thirtytwobits.clapham/effect"))
                 .and_then(Value::as_str)
                 == Some("administrative");
             let effect = if administrative {
@@ -283,13 +283,12 @@ impl McpCatalogue {
                         .expect("object schema")
                 }),
                 effect,
-                principals: selection
-                    .principals
-                    .unwrap_or_else(|| effect.default_principals().to_vec()),
+                scopes: selection.scopes,
+                policies: Vec::new(),
+                confirmation: false,
                 locality: Locality::Daemon,
                 refusals: remote_refusals(),
                 streams: false,
-                resource: None,
                 preview: false,
                 positional: Vec::new(),
                 idempotent: hints.and_then(|h| h.idempotent_hint).unwrap_or(false),
@@ -316,23 +315,23 @@ impl McpCatalogue {
     }
 }
 
-/// Host-selected remote tool and optional local alias and principal kinds.
+/// Host-selected remote tool and optional local alias and OAuth scopes.
 #[derive(Clone, Debug)]
 pub struct McpSelection {
     /// The exact name advertised by the remote server.
     pub remote_name: String,
     /// A local name within the connection's namespace; defaults to the remote name.
     pub alias: Option<String>,
-    /// Host-authorised principal kinds. Omission uses the effect's defaults.
-    pub principals: Option<Vec<PrincipalKind>>,
+    /// Host-authorised OAuth scopes. All listed scopes are required.
+    pub scopes: Vec<String>,
 }
 impl McpSelection {
-    /// Select a remote name with its original spelling and effect-derived principal kinds.
+    /// Select a remote name with its original spelling and host-specified OAuth scopes.
     pub fn new(remote_name: impl Into<String>) -> Self {
         Self {
             remote_name: remote_name.into(),
             alias: None,
-            principals: None,
+            scopes: Vec::new(),
         }
     }
 }
@@ -514,58 +513,25 @@ impl Remote {
     }
 }
 fn convert(result: CallToolResult) -> Result<Outcome, McpError> {
-    let mut blocks = Vec::new();
-    for content in result.content {
-        let raw = serde_json::to_value(content).map_err(|_| McpError::Protocol)?;
-        let string = |key: &str| {
-            raw.get(key)
-                .and_then(Value::as_str)
-                .map(str::to_owned)
-                .ok_or(McpError::Protocol)
-        };
-        blocks.push(match raw["type"].as_str() {
-            Some("text") => ContentBlock::Text {
-                text: string("text")?,
-            },
-            Some("image") | Some("audio") => {
-                let mime_type = string("mimeType")?;
-                let url = format!("data:{mime_type};base64,{}", string("data")?);
-                if raw["type"] == "image" {
-                    ContentBlock::Image { url, mime_type }
-                } else {
-                    ContentBlock::Audio { url, mime_type }
-                }
-            }
-            Some("resource_link") => ContentBlock::ResourceLink {
-                uri: string("uri")?,
-                name: string("name")?,
-                mime_type: raw["mimeType"].as_str().map(str::to_owned),
-            },
-            Some("resource") => {
-                let resource = &raw["resource"];
-                let contents = if let Some(text) = resource["text"].as_str() {
-                    ResourceContents::Text(text.to_owned())
-                } else if let Some(blob) = resource["blob"].as_str() {
-                    ResourceContents::Base64(blob.to_owned())
-                } else {
-                    return Err(McpError::Protocol);
-                };
-                ContentBlock::Resource {
-                    uri: resource["uri"]
-                        .as_str()
-                        .ok_or(McpError::Protocol)?
-                        .to_owned(),
-                    mime_type: resource["mimeType"].as_str().map(str::to_owned),
-                    contents,
-                }
-            }
-            _ => return Err(McpError::UnsupportedInteraction),
-        });
-    }
+    let evidence = result
+        .meta
+        .as_ref()
+        .and_then(|meta| meta.get("io.github.thirtytwobits.clapham/evidence"))
+        .cloned()
+        .map(serde_json::from_value)
+        .transpose()
+        .map_err(|_| McpError::Protocol)?
+        .unwrap_or(Evidence::Completed);
+    let blocks = result
+        .content
+        .into_iter()
+        .map(serde_json::to_value)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|_| McpError::Protocol)?;
     Ok(Outcome {
         content: Some(blocks),
         result: result.structured_content,
         is_error: result.is_error.unwrap_or(false),
-        evidence: Evidence::Completed,
+        evidence,
     })
 }

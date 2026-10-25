@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 
 use crate::{
     Admission, Call, Cancellation, Category, ComposedOperation, ComposedSet, Evidence,
-    ExecutionMode, Locality, Operation, Outcome, Principal, RecordSink, Refusal,
+    ExecutionMode, Locality, OAuthContext, Operation, Outcome, RecordSink, Refusal,
 };
 
 /// The outcome or refusal of a call through a composed set.
@@ -95,11 +95,12 @@ impl ComposedSet {
         Selection::new(self.operations.clone(), self.identity.clone())
     }
 
-    /// Validate, admit and run a selected operation under the authenticated principal.
+    /// Validate, admit and run a selected operation under verified OAuth authority.
     ///
     /// Already-cancelled calls return before any validation or admission. Otherwise,
-    /// the order is selection, input, gate, preview support, locality, dispatch and
-    /// successful output validation, with cancellation checked again before dispatch.
+    /// the order is selection, resource binding, scopes, input conversion, gate,
+    /// preview support, locality, resource policies, dispatch and output validation,
+    /// with cancellation checked again before dispatch.
     /// Every pre-dispatch refusal carries not-dispatched evidence. A selection from
     /// another independently composed set cannot authorise a call here, even if the
     /// descriptors and revision happen to match.
@@ -107,7 +108,7 @@ impl ComposedSet {
     pub async fn call(
         &self,
         selection: &Selection,
-        principal: Principal,
+        auth: OAuthContext,
         name: &str,
         input: Value,
         sink: RecordSink,
@@ -122,8 +123,28 @@ impl ComposedSet {
         }
         let operation = self.get(name).ok_or_else(unknown_operation)?;
         let descriptor = operation.descriptor();
+        if self
+            .oauth
+            .as_ref()
+            .is_some_and(|resource| !auth.is_for(resource))
+        {
+            return Err(Refusal::not_dispatched(
+                "not_authenticated",
+                Category::Refused,
+                "the verified grant is not bound to this resource server",
+            ));
+        }
+        if !descriptor.scopes.iter().all(|scope| auth.has_scope(scope)) {
+            let mut refusal = Refusal::not_dispatched(
+                "insufficient_scope",
+                Category::Refused,
+                "the grant lacks required OAuth scopes",
+            );
+            refusal.details = Some(json!({"required_scopes": descriptor.scopes}));
+            return Err(refusal);
+        }
         operation.validate_input(&input)?;
-        match self.gate.admit(&principal, descriptor) {
+        match self.gate.admit(&auth, descriptor) {
             Admission::Allow => {}
             Admission::Deny => {
                 return Err(Refusal::not_dispatched(
@@ -156,9 +177,27 @@ impl ComposedSet {
                 "the operation needs the running daemon",
             ));
         }
+        for policy in &operation.policies {
+            use futures_util::future::{Either, select};
+            match select(
+                Box::pin(cancel.cancelled()),
+                policy.check(auth.clone(), input.clone()),
+            )
+            .await
+            {
+                Either::Left(_) => {
+                    return Err(crate::composition::cancelled(Evidence::NotDispatched));
+                }
+                Either::Right((result, _)) => {
+                    if let Err(refusal) = result.map_err(Refusal::from)? {
+                        return Err(declared_refusal(descriptor, refusal));
+                    }
+                }
+            }
+        }
         let call = Call {
             name: descriptor.name.clone(),
-            principal,
+            auth,
             input,
             records: sink,
             cancel,
@@ -168,26 +207,27 @@ impl ComposedSet {
         // belongs to the handler, even if it uses a dispatcher-like code.
         let outcome = match operation.dispatch_validated(call, Some(selection)).await? {
             Ok(outcome) => outcome,
-            Err(mut refusal) => {
-                if let Some(category) = descriptor.refusals.get(&refusal.code) {
-                    refusal.category = *category;
-                    return Err(refusal);
-                }
-                let evidence = refusal.evidence;
-                let mut undeclared = Refusal::new(
-                    "undeclared_refusal",
-                    Category::Internal,
-                    "the handler returned a refusal code its descriptor does not declare",
-                )
-                .with_evidence(evidence);
-                undeclared.details =
-                    Some(serde_json::to_value(refusal).expect("refusals contain only JSON values"));
-                return Err(undeclared);
-            }
+            Err(refusal) => return Err(declared_refusal(descriptor, refusal)),
         };
         operation.validate_output(&outcome)?;
         Ok(outcome)
     }
+}
+
+fn declared_refusal(descriptor: &crate::Operation, mut refusal: Refusal) -> Refusal {
+    if let Some(category) = descriptor.refusals.get(&refusal.code) {
+        refusal.category = *category;
+        return refusal;
+    }
+    let mut undeclared = Refusal::new(
+        "undeclared_refusal",
+        Category::Internal,
+        "the handler or resource policy returned a refusal code its descriptor does not declare",
+    )
+    .with_evidence(refusal.evidence);
+    undeclared.details =
+        Some(serde_json::to_value(refusal).expect("refusals contain only JSON values"));
+    undeclared
 }
 
 fn unknown_operation() -> Refusal {

@@ -5,7 +5,6 @@ use clapham::{ComposedSet, Refusal};
 
 use crate::{configuration, input::Field};
 
-pub(crate) const AS: &str = "cli:as";
 pub(crate) const JSON: &str = "cli:json";
 
 #[derive(Debug, Clone, Default)]
@@ -16,9 +15,9 @@ pub(crate) struct Node {
 }
 
 impl Node {
-    pub(crate) fn from_set(set: &ComposedSet) -> Result<Self, Refusal> {
+    pub(crate) fn from_selection(selection: &clapham::Selection) -> Result<Self, Refusal> {
         let mut root = Self::default();
-        for operation in set.operations() {
+        for operation in selection.operations() {
             let mut node = &mut root;
             for segment in operation.name.as_str().split('.') {
                 if !valid_name(segment) {
@@ -40,8 +39,14 @@ impl Node {
                 )));
             }
         }
-        let describe = root.children["clapham"].children["describe"].clone();
-        root.children.insert("describe".into(), describe);
+        if let Some(describe) = root
+            .children
+            .get("clapham")
+            .and_then(|node| node.children.get("describe"))
+            .cloned()
+        {
+            root.children.insert("describe".into(), describe);
+        }
         Ok(root)
     }
 
@@ -123,9 +128,7 @@ pub(crate) fn valid_name(name: &str) -> bool {
 }
 
 pub(crate) fn check_flags(fields: &[Field]) -> Result<(), Refusal> {
-    let mut flags = BTreeSet::from([
-        "help", "json", "as", "yes", "dry-run", "timeout", "format", "raw",
-    ]);
+    let mut flags = BTreeSet::from(["help", "json", "yes", "dry-run", "timeout", "format", "raw"]);
     for field in fields.iter().filter(|field| field.position.is_none()) {
         if !valid_name(&field.flag) || !flags.insert(&field.flag) {
             return Err(configuration(format!(

@@ -1,9 +1,6 @@
 //! Behaviour and wire-schema agreement of the operation contract.
 
-use clapham::{
-    Category, EFFECT_META_KEY, Effect, Locality, Operation, OperationName, Principal,
-    PrincipalKind, Refusal,
-};
+use clapham::{Category, Effect, Locality, Operation, OperationName, Refusal};
 use serde_json::{Value, json};
 
 fn descriptor() -> Value {
@@ -16,9 +13,9 @@ fn descriptor() -> Value {
             "required": ["item"], "additionalProperties": false
         },
         "output": { "type": "object", "properties": { "id": { "type": "string" } } },
-        "effect": "query", "principals": ["human", "agent", "service", "system"],
+        "effect": "query", "scopes": ["lists:read"], "policies": [], "confirmation": false,
         "locality": "workspace", "refusals": { "list_missing": "not_found", "item_conflict": "conflict" },
-        "streams": true, "resource": "lists://{list}/items", "preview": false,
+        "streams": true, "preview": false,
         "positional": ["list", "item"], "idempotent": false, "open_world": false
     })
 }
@@ -47,72 +44,6 @@ fn descriptor_round_trips_and_validates_against_the_published_schema() {
     assert_eq!(operation.positional, ["list", "item"]);
     assert_eq!(serde_json::to_value(&operation).unwrap(), wire);
     operation_validator().validate(&wire).unwrap();
-    assert_eq!(
-        operation.annotations(),
-        operation.effect.annotations(false, false)
-    );
-}
-
-#[test]
-fn defaults_principals_from_each_effect_but_preserves_explicit_lists() {
-    use PrincipalKind::*;
-    let validator = operation_validator();
-    for (effect, expected) in [
-        (Effect::Query, vec![Human, Agent, Service, System]),
-        (Effect::Mutation, vec![Human, Agent, Service, System]),
-        (Effect::Administrative, vec![Human, Service, System]),
-        (Effect::Destructive, vec![Human, Service, System]),
-    ] {
-        assert_eq!(effect.default_principals(), expected);
-        let wire = minimal(effect);
-        validator.validate(&wire).unwrap();
-        let operation: Operation = serde_json::from_value(wire.clone()).unwrap();
-        assert_eq!(operation.principals, expected);
-        assert!(operation.title.is_none());
-        assert!(operation.output.is_none());
-        assert!(operation.refusals.is_empty());
-        assert!(!operation.streams);
-        assert!(!operation.preview);
-        assert!(operation.positional.is_empty());
-        validator
-            .validate(&serde_json::to_value(operation).unwrap())
-            .unwrap();
-        for explicit in [vec![], vec![Agent], vec![System, Human]] {
-            let mut wire = wire.clone();
-            wire["principals"] = json!(explicit);
-            validator.validate(&wire).unwrap();
-            assert_eq!(
-                serde_json::from_value::<Operation>(wire)
-                    .unwrap()
-                    .principals,
-                explicit
-            );
-        }
-    }
-}
-
-#[test]
-fn every_effect_maps_the_explicit_hints_and_administrative_metadata() {
-    for (effect, read_only, destructive, administrative) in [
-        (Effect::Query, true, false, false),
-        (Effect::Mutation, false, false, false),
-        (Effect::Administrative, false, false, true),
-        (Effect::Destructive, false, true, false),
-    ] {
-        for idempotent in [false, true] {
-            for open_world in [false, true] {
-                let annotations = effect.annotations(idempotent, open_world);
-                let mut expected = json!({
-                    "readOnlyHint": read_only, "destructiveHint": destructive,
-                    "idempotentHint": read_only || idempotent, "openWorldHint": open_world
-                });
-                if administrative {
-                    expected["_meta"] = json!({ EFFECT_META_KEY: "administrative" });
-                }
-                assert_eq!(serde_json::to_value(annotations).unwrap(), expected);
-            }
-        }
-    }
 }
 
 #[test]
@@ -226,7 +157,6 @@ fn accepts_object_or_boolean_output_schemas_and_nullable_optional_fields() {
         let mut wire = minimal(Effect::Query);
         wire["output"] = output;
         wire["title"] = Value::Null;
-        wire["resource"] = Value::Null;
         assert!(
             serde_json::from_value::<Operation>(wire.clone()).is_ok(),
             "refused {wire}"
@@ -245,8 +175,8 @@ fn accepts_object_or_boolean_output_schemas_and_nullable_optional_fields() {
 fn refuses_malformed_and_unknown_descriptor_fields() {
     let validator = operation_validator();
     for (field, value) in [
-        ("principals", Value::Null),
-        ("principals", json!(["unknown"])),
+        ("scopes", Value::Null),
+        ("scopes", json!([false])),
         ("effect", json!("unknown")),
         ("locality", json!("remote")),
         ("refusals", json!({ "item_conflict": "unknown" })),
@@ -262,27 +192,6 @@ fn refuses_malformed_and_unknown_descriptor_fields() {
             "accepted {wire}"
         );
         assert!(!validator.is_valid(&wire), "schema admitted {wire}");
-    }
-}
-
-#[test]
-fn principals_keep_the_identity_and_kind_wire_form() {
-    for (kind, spelling) in [
-        (PrincipalKind::Human, "human"),
-        (PrincipalKind::Agent, "agent"),
-        (PrincipalKind::Service, "service"),
-        (PrincipalKind::System, "system"),
-    ] {
-        let principal = Principal::new("list-editor:é", kind);
-        let wire = json!({ "id": "list-editor:é", "kind": spelling });
-        assert_eq!(serde_json::to_value(&principal).unwrap(), wire);
-        assert_eq!(
-            serde_json::from_value::<Principal>(wire.clone()).unwrap(),
-            principal
-        );
-        let mut invalid = wire;
-        invalid["extra"] = json!(true);
-        assert!(serde_json::from_value::<Principal>(invalid).is_err());
     }
 }
 

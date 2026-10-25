@@ -1,6 +1,5 @@
 //! Scripted stdio peer for testing discovery leaks, pagination and notifications.
 
-use clapham::{Principal, PrincipalKind};
 use clapham_conformance::{Case, Frame, FrontEnd, InProcess, lists_fixture, lists_gate};
 use serde_json::{Value, json};
 use std::io::{BufRead, Write};
@@ -8,22 +7,9 @@ use std::io::{BufRead, Write};
 fn main() {
     let args: Vec<_> = std::env::args().collect();
     let flag = |name| args.iter().any(|arg| arg == name);
-    let identity = args
-        .windows(2)
-        .find(|pair| pair[0] == "--as")
-        .map(|pair| pair[1].as_str())
-        .unwrap();
-    let (kind, id) = identity.split_once(':').unwrap();
-    let caller = Principal::new(
-        id,
-        match kind {
-            "human" => PrincipalKind::Human,
-            "agent" => PrincipalKind::Agent,
-            "service" => PrincipalKind::Service,
-            "system" => PrincipalKind::System,
-            _ => unreachable!(),
-        },
-    );
+    let claims: Value =
+        serde_json::from_str(&std::env::var("CLAPHAM_FIXTURE_ACCESS").unwrap()).unwrap();
+    let caller = clapham_conformance::scripted_access(&claims).unwrap();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -32,7 +18,7 @@ fn main() {
     for line in std::io::stdin().lock().lines() {
         let request: Value = serde_json::from_str(&line.unwrap()).unwrap();
         let mut case = Case::new("lists.get", json!({"id":"tasks"}));
-        case.principal = caller.clone();
+        case.auth = caller.clone();
         if request["method"] == "tools/call" && request["params"]["name"] != "clapham.describe" {
             case.operation = request["params"]["name"].as_str().unwrap().to_owned();
             case.input = request["params"]["arguments"].clone();

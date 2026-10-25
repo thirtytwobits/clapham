@@ -1,0 +1,20 @@
+[package]
+name = "clapham-typed"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version = "1.88"
+publish = false
+
+[dependencies]
+clapham.workspace = true
+clapham-cli.workspace = true
+clapham-mcp-server.workspace = true
+serde = { version = "1", features = ["derive"] }
+schemars = "1.2.3"
+tokio = { version = "1", features = ["rt", "macros", "net"] }
+axum = "0.8.6"
+
+[lints]
+workspace = true
