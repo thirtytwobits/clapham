@@ -87,8 +87,9 @@ host admission, preview, locality, resource policies, cancellation and output va
 Selections and canonical revisions identify definitions; permissions are checked on each call.
 
 A declared refusal retains its code, details, retryability and evidence; its category comes
-from the descriptor. Undeclared handler codes become `undeclared_refusal`. Dispatcher
-conversion failures remain `invalid_input` or `invalid_result`. Evidence distinguishes
+from the descriptor. Undeclared handler codes become `undeclared_refusal`; a record-sink
+refusal the handler returns is carried unchanged. Dispatcher conversion failures remain
+`invalid_input` or `invalid_result`. Evidence distinguishes
 `not_dispatched`, `completed` and `uncertain`; completed does not imply durable effects.
 
 [`RecordSink`] acknowledges each record before the producer continues. [`Outcome`] carries

@@ -1,5 +1,5 @@
-use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::collections::{BTreeMap, VecDeque};
+use std::sync::{Arc, Mutex};
 
 use serde_json::{Value, json};
 
@@ -7,6 +7,9 @@ use crate::{
     Admission, Call, Cancellation, Category, ComposedOperation, ComposedSet, Evidence,
     ExecutionMode, Locality, OAuthContext, Operation, Outcome, RecordSink, Refusal,
 };
+
+/// How many of a call's most recent distinct record-sink refusals the runner recognises.
+const SINK_REFUSALS: usize = 32;
 
 /// The outcome or refusal of a call through a composed set.
 pub type CallResult = Result<Outcome, Refusal>;
@@ -195,18 +198,49 @@ impl ComposedSet {
                 }
             }
         }
+        // The host's sink refusals are not the operation's to declare. Remember the most
+        // recent distinct ones so a handler that returns one passes it on unchanged.
+        let refused = Arc::new(Mutex::new(VecDeque::<Refusal>::new()));
+        let records = {
+            let refused = refused.clone();
+            RecordSink::new(move |record| {
+                let (sink, refused) = (sink.clone(), refused.clone());
+                async move {
+                    let delivered = sink.send(record).await;
+                    if let Err(refusal) = &delivered {
+                        let mut refused = refused.lock().expect("sink refusal lock");
+                        if !refused.contains(refusal) {
+                            if refused.len() == SINK_REFUSALS {
+                                refused.pop_front();
+                            }
+                            refused.push_back(refusal.clone());
+                        }
+                    }
+                    delivered
+                }
+            })
+        };
         let call = Call {
             name: descriptor.name.clone(),
             auth,
             input,
-            records: sink,
+            records,
             cancel,
             preview,
         };
         // The outer error is the dispatcher's cancellation. The inner refusal
-        // belongs to the handler, even if it uses a dispatcher-like code.
+        // belongs to the handler, even if it uses a dispatcher-like code, unless
+        // it is a refusal the host's sink returned.
         let outcome = match operation.dispatch_validated(call, Some(selection)).await? {
             Ok(outcome) => outcome,
+            Err(refusal)
+                if refused
+                    .lock()
+                    .expect("sink refusal lock")
+                    .contains(&refusal) =>
+            {
+                return Err(refusal);
+            }
             Err(refusal) => return Err(declared_refusal(descriptor, refusal)),
         };
         operation.validate_output(&outcome)?;

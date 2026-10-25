@@ -20,14 +20,15 @@ pub(crate) fn tool(op: &Operation, schema_bytes: usize) -> Result<Tool, ErrorDat
         Some(op.effect == Effect::Query || op.idempotent),
         Some(op.open_world),
     ));
+    let mut meta = Map::new();
     if op.effect == Effect::Administrative {
-        tool.meta = Some(
-            json!({crate::EFFECT_META_KEY:"administrative"})
-                .as_object()
-                .unwrap()
-                .clone()
-                .into(),
-        );
+        meta.insert(crate::EFFECT_META_KEY.into(), json!("administrative"));
+    }
+    if op.streams {
+        meta.insert(crate::RECORDS_EXTENSION.into(), json!(true));
+    }
+    if !meta.is_empty() {
+        tool.meta = Some(meta.into());
     }
     if let Some(schema) = &op.output {
         // rmcp's Tool stores an object schema. Boolean schemas have exact object

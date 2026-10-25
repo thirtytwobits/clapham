@@ -222,9 +222,6 @@ impl Kind {
             _ => {}
         }
         let streams = matches!(self, Self::Watch | Self::Export);
-        if streams {
-            refusals.insert("record_delivery_failed".into(), Category::Unavailable);
-        }
         Operation {
             name: self
                 .name()

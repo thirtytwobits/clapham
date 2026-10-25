@@ -1,9 +1,32 @@
 {
+  "extensions": {
+    "io.github.thirtytwobits.clapham/records": {}
+  },
   "protocolVersions": [
     "2026-07-28"
   ],
+  "records": {
+    "acknowledgement": {
+      "method": "io.github.thirtytwobits.clapham/acknowledge",
+      "params": [
+        "sequence",
+        "token"
+      ],
+      "result": {}
+    },
+    "notification": {
+      "method": "io.github.thirtytwobits.clapham/record",
+      "params": [
+        "record",
+        "sequence",
+        "token"
+      ]
+    },
+    "tokenMetaKey": "io.github.thirtytwobits.clapham/records"
+  },
   "requestMetaKeys": [
     "io.github.thirtytwobits.clapham/preview",
+    "io.github.thirtytwobits.clapham/records",
     "io.modelcontextprotocol/clientCapabilities",
     "io.modelcontextprotocol/clientInfo",
     "io.modelcontextprotocol/protocolVersion"
@@ -770,6 +793,9 @@
       }
     },
     {
+      "_meta": {
+        "io.github.thirtytwobits.clapham/records": true
+      },
       "annotations": {
         "destructiveHint": false,
         "idempotentHint": true,
@@ -1083,6 +1109,9 @@
       }
     },
     {
+      "_meta": {
+        "io.github.thirtytwobits.clapham/records": true
+      },
       "annotations": {
         "destructiveHint": false,
         "idempotentHint": true,

@@ -79,8 +79,7 @@ async fn verified_grants_scopes_resource_policies_and_cli_records_share_one_runn
     .require_scope("lists:read")
     .policy("lists.can_read")
     .refusal("list_access_denied", clapham::Category::Refused)
-    .streams(true)
-    .refusal("record_delivery_failed", clapham::Category::Unavailable);
+    .streams(true);
     let delete = TypedOperation::<ListInput, u64>::new(
         "lists.delete",
         "Delete a list.",
@@ -293,8 +292,7 @@ async fn native_http_records_wait_for_client_acknowledgement_and_disconnect_canc
     )
     .unwrap()
     .require_scope("lists:read")
-    .streams(true)
-    .refusal("record_delivery_failed", clapham::Category::Unavailable);
+    .streams(true);
     let count = TypedOperation::<ListInput, u64>::new("lists.count", "Count lists.", Effect::Query)
         .unwrap();
     let provider = Contribution::new("lists")

@@ -45,7 +45,8 @@ The operation HTTP interface carries `{name,input,preview}` invocations and NDJS
 `{kind:"record"|"outcome"|"refusal",data:...}`. It provides ordered record delivery with
 bounded buffering and authenticated acknowledgement after client sink acceptance. Disconnect
 cancels work.
-MCP calls retain the final result; progress notifications are distinct from record delivery.
+MCP calls carry records under the records extension, each acknowledged after the client's sink
+accepts it. A client without the extension receives the final result alone.
 
 Resource templates, frame sizes, catalogue budgets, concurrency and output validation remain
 bounded. Oversized existing refusals are not replaced with another domain code. See

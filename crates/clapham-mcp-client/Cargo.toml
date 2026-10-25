@@ -19,8 +19,10 @@ jsonschema = { version = "0.60.0", default-features = false }
 tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }
 tokio-util = "0.7"
 futures-util = "0.3"
+uuid = { version = "1", features = ["v4"] }
 reqwest = { version = "0.12.28", default-features = false, features = ["json", "stream", "rustls-tls"], optional = true }
 http = { version = "1", optional = true }
+bytes = { version = "1", optional = true }
 sse-stream = { version = "0.2.4", optional = true }
 
 [dev-dependencies]
@@ -31,7 +33,7 @@ rmcp = { version = "=3.6.0", default-features = false, features = ["client", "tr
 [features]
 default = ["stdio", "http"]
 stdio = ["tokio/io-util"]
-http = ["dep:reqwest", "dep:http", "dep:sse-stream", "rmcp/transport-streamable-http-client"]
+http = ["dep:reqwest", "dep:http", "dep:bytes", "dep:sse-stream", "rmcp/transport-streamable-http-client"]
 
 [lints]
 workspace = true

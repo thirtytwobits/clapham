@@ -14,7 +14,7 @@ use rmcp::{
 use sha2::{Digest, Sha256};
 use tokio::io::{AsyncRead, AsyncWrite};
 
-use crate::{Server, mapping};
+use crate::{Server, mapping, records};
 
 impl Server {
     /// Start a connection on process stdin/stdout. The host supplies a Tokio runtime
@@ -128,10 +128,14 @@ where
             () = self.failed.cancelled() => return None,
             item = self.inner.receive() => item?,
         };
+        // A streaming call holding every slot waits for its acknowledgements, so they
+        // are admitted outside the lifetime and active-request limits.
+        let acknowledgement = records::is_acknowledgement(&item);
         if matches!(
             item,
             JsonRpcMessage::Request(_) | JsonRpcMessage::Notification(_)
-        ) {
+        ) && !acknowledgement
+        {
             if self.received == self.bounds.notifications {
                 return None;
             }
@@ -141,10 +145,15 @@ where
             JsonRpcMessage::Request(request) => {
                 let mut active = self.active.lock().expect("request lock poisoned");
                 if self.cancelled.contains(&request_key(&request.id))
-                    || active.len() >= self.bounds.in_flight + self.bounds.waiting
-                    || !active.insert(request.id.clone())
+                    || active.contains(&request.id)
                 {
                     return None;
+                }
+                if !acknowledgement {
+                    if active.len() >= self.bounds.in_flight + self.bounds.waiting {
+                        return None;
+                    }
+                    active.insert(request.id.clone());
                 }
             }
             JsonRpcMessage::Notification(notification) => {

@@ -9,7 +9,17 @@ use rmcp::{
     transport::{Transport, common::client_side_sse::SseRetryPolicy, streamable_http_client::*},
 };
 use sse_stream::{Error as SseError, Sse, SseStream};
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+    time::Duration,
+};
+
+// SSE field names, separators and an event id around one JSON-RPC message.
+const EVENT_FRAMING: usize = 256;
 
 /// Endpoint and host-resolved bearer credential. Debug formatting intentionally omits both.
 pub struct McpHttpOptions {
@@ -108,13 +118,25 @@ impl BoundedHttp {
         Ok(response)
     }
     fn stream(&self, response: reqwest::Response) -> BoxStream<'static, Result<Sse, SseError>> {
-        let limit = self.limit;
         let state = self.state.clone();
-        // The entire response is bounded, which also bounds each event before SSE parsing.
-        let bytes = response.bytes_stream().scan(0usize, move |count, chunk| {
-            let result = chunk.map_err(|_| McpError::Transport).and_then(|chunk| {
+        // A response may carry one event beyond the notifications already admitted, so
+        // keep-alive comments cannot grow it while records stream. Notifications draw on the
+        // connection's budgets.
+        let allowance = Arc::new(AtomicUsize::new(self.limit + EVENT_FRAMING));
+        let admitted = allowance.clone();
+        // Each event is bounded before parsing, and the parser admits it before the next
+        // event's bytes are counted, however the transport chunks them.
+        let mut events = EventBoundaries::new(self.limit + EVENT_FRAMING);
+        let pieces = response.bytes_stream().flat_map(move |chunk| {
+            futures_util::stream::iter(match chunk {
+                Ok(chunk) => events.split(chunk),
+                Err(_) => vec![Err(McpError::Transport)],
+            })
+        });
+        let bytes = pieces.scan(0usize, move |count, chunk| {
+            let result = chunk.and_then(|chunk| {
                 *count = count.saturating_add(chunk.len());
-                if *count > limit {
+                if *count > admitted.load(Ordering::SeqCst) {
                     Err(McpError::Limit)
                 } else {
                     Ok(chunk)
@@ -133,11 +155,12 @@ impl BoundedHttp {
                 if let Some(data) = &mut event.data
                     && let Ok(mut value) = serde_json::from_str::<serde_json::Value>(data)
                 {
-                    if value.get("method").is_some()
-                        && let Err(error) = state.charge_incoming_bytes(data.len())
-                    {
-                        state.fail(error.clone());
-                        return Err(SseError::Body(Box::new(error)));
+                    if value.get("method").is_some() {
+                        if let Err(error) = state.charge_incoming_bytes(data.len()) {
+                            state.fail(error.clone());
+                            return Err(SseError::Body(Box::new(error)));
+                        }
+                        allowance.fetch_add(data.len() + EVENT_FRAMING, Ordering::SeqCst);
                     }
                     state.requests.prepare(&mut value);
                     *data = value.to_string();
@@ -145,6 +168,50 @@ impl BoundedHttp {
                 Ok(event)
             })
             .boxed()
+    }
+}
+
+/// Splits an SSE byte stream after each blank line, the end of an event, and refuses an
+/// event longer than `limit` bytes.
+struct EventBoundaries {
+    line: usize,
+    event: usize,
+    limit: usize,
+}
+impl EventBoundaries {
+    fn new(limit: usize) -> Self {
+        Self {
+            line: 0,
+            event: 0,
+            limit,
+        }
+    }
+    fn split(&mut self, chunk: bytes::Bytes) -> Vec<Result<bytes::Bytes, McpError>> {
+        let mut pieces = Vec::new();
+        let mut start = 0;
+        for (index, byte) in chunk.iter().enumerate() {
+            self.event += 1;
+            if self.event > self.limit {
+                pieces.push(Err(McpError::Limit));
+                return pieces;
+            }
+            match byte {
+                b'\n' => {
+                    if self.line == 0 {
+                        pieces.push(Ok(chunk.slice(start..=index)));
+                        start = index + 1;
+                        self.event = 0;
+                    }
+                    self.line = 0;
+                }
+                b'\r' => {}
+                _ => self.line += 1,
+            }
+        }
+        if start < chunk.len() {
+            pieces.push(Ok(chunk.slice(start..)));
+        }
+        pieces
     }
 }
 impl StreamableHttpClient for BoundedHttp {
@@ -308,8 +375,9 @@ impl McpConnection {
         transport_config.auth_header = options.bearer_token;
         transport_config.reinit_on_expired_session = false;
         transport_config.retry_config = Arc::new(NoRetry);
-        transport_config.max_concurrent_requests = config.bounds.in_flight;
-        transport_config.channel_buffer_capacity = config.bounds.in_flight;
+        // Each operation in flight may also acknowledge a record.
+        transport_config.max_concurrent_requests = 2 * config.bounds.in_flight;
+        transport_config.channel_buffer_capacity = 2 * config.bounds.in_flight;
         transport_config.max_sse_event_size = config.bounds.message_bytes;
         transport_config.control_request_timeout = config.operation_timeout;
         let transport = Guard {
@@ -454,6 +522,57 @@ mod tests {
         assert!(stream.next().await.unwrap().is_err());
         assert_eq!(backend.state.check(), Err(McpError::Limit));
         task.abort();
+    }
+
+    #[tokio::test]
+    async fn notifications_in_one_chunk_are_each_admitted_before_the_next() {
+        let event = |message: serde_json::Value| format!("data: {message}\n\n");
+        let notification = |sequence: u64| {
+            event(
+                serde_json::json!({"jsonrpc":"2.0","method":"example.test/record",
+                "params":{"sequence":sequence,"pad":"x".repeat(5000)}}),
+            )
+        };
+        // Each event fits the bound; together they exceed it before any is parsed.
+        let body = notification(1)
+            + &notification(2)
+            + &event(serde_json::json!({"jsonrpc":"2.0","id":1,"result":{}}));
+        let response = http::Response::builder()
+            .header("content-type", "text/event-stream")
+            .body(body)
+            .unwrap();
+        let mut backend = backend();
+        backend.limit = 8192;
+        let events: Vec<_> = backend
+            .stream(reqwest::Response::from(response))
+            .collect()
+            .await;
+        assert_eq!(events.len(), 3);
+        assert!(events.iter().all(Result::is_ok));
+        assert_eq!(backend.state.check(), Ok(()));
+    }
+
+    #[tokio::test]
+    async fn admitted_notifications_cannot_fund_an_oversized_event() {
+        let event = |message: serde_json::Value| format!("data: {message}\n\n");
+        let small = event(serde_json::json!({"jsonrpc":"2.0","method":"example.test/record"}));
+        let oversized = event(
+            serde_json::json!({"jsonrpc":"2.0","method":"example.test/record",
+            "params":{"pad":"x".repeat(20_000)}}),
+        );
+        let response = http::Response::builder()
+            .header("content-type", "text/event-stream")
+            .body(small.repeat(100) + &oversized)
+            .unwrap();
+        let mut backend = backend();
+        backend.limit = 8192;
+        let events: Vec<_> = backend
+            .stream(reqwest::Response::from(response))
+            .collect()
+            .await;
+        assert_eq!(events.iter().filter(|event| event.is_ok()).count(), 100);
+        assert!(events.last().unwrap().is_err());
+        assert_eq!(backend.state.check(), Err(McpError::Limit));
     }
 
     #[tokio::test]
