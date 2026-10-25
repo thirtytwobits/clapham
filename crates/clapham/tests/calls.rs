@@ -458,6 +458,33 @@ fn a_returned_sink_refusal_is_carried_unchanged_without_declaration() {
 }
 
 #[test]
+fn an_earlier_sink_refusal_is_carried_unchanged_after_later_ones() {
+    let failures = Arc::new(AtomicUsize::new(0));
+    let sink = RecordSink::new(move |_| {
+        let failure = failures.fetch_add(1, Ordering::SeqCst);
+        async move {
+            Err(Refusal::new(
+                "output_failed",
+                Category::Unavailable,
+                format!("Failure {failure}."),
+            )
+            .with_evidence(Evidence::Uncertain))
+        }
+    });
+    let set = streaming(|call: Call| async move {
+        let first = call.records.send(json!({ "item": 1 })).await.unwrap_err();
+        let later = call.records.send(json!({ "item": 2 })).await.unwrap_err();
+        assert_ne!(first, later);
+        Err(first)
+    });
+    let refusal = watch(&set, sink).unwrap_err();
+    assert_eq!(
+        (refusal.code.as_str(), refusal.message.as_str()),
+        ("output_failed", "Failure 0.")
+    );
+}
+
+#[test]
 fn a_handler_refusal_other_than_the_sinks_still_requires_declaration() {
     for reuses_code in [true, false] {
         let (sink, original) = refusing_sink();

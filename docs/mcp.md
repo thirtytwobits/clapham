@@ -54,8 +54,9 @@ under the extension identifier in its `_meta`.
 - A client that does not declare the extension, or sends no token, receives the final result
   alone.
 
-The client bounds an SSE reply to one event beyond the notifications it has admitted. Records
-count against the connection's `bounds.notifications`.
+The client bounds each SSE event to `bounds.message_bytes` with its framing, and an SSE reply
+to one event beyond the notifications it has admitted. Records count against the connection's
+`bounds.notifications`.
 
 ## Operation HTTP and CLI
 

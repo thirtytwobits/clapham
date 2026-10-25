@@ -116,14 +116,16 @@ Evidence: [call tests](../crates/clapham/tests/calls.rs),
 Declared handler and resource-policy refusals retain code, message, details, retryability and evidence. Their
 category comes from the descriptor. An undeclared code becomes `undeclared_refusal`, retaining
 the original refusal and its evidence. Dispatcher refusals do not require declarations, and a
-record-sink refusal the handler returns is carried unchanged without declaration.
+record-sink refusal the handler returns is carried unchanged without declaration; the runner
+recognises the call's 32 most recent distinct sink refusals.
 Categories map to CLI exits: usage 2, invalid input 65, not found 66, conflict 67, refused 77,
 unavailable 69, interrupted 75, configuration 78 and internal 70.
 
 Evidence: [call tests](../crates/clapham/tests/calls.rs),
 `declared_refusals_keep_the_code_and_use_the_descriptors_category` and
 `undeclared_handler_refusals_preserve_the_original_including_reserved_looking_codes`,
-`a_returned_sink_refusal_is_carried_unchanged_without_declaration` and
+`a_returned_sink_refusal_is_carried_unchanged_without_declaration`,
+`an_earlier_sink_refusal_is_carried_unchanged_after_later_ones` and
 `a_handler_refusal_other_than_the_sinks_still_requires_declaration`;
 [process tests](../crates/clapham-conformance/tests/cli_process.rs),
 `every_refusal_category_uses_one_json_stderr_line_and_its_exit_code`.
