@@ -47,9 +47,11 @@ under the extension identifier in its `_meta`.
 - The client repeats an acknowledgement once after a transport failure. An acknowledgement it
   cannot confirm, a sink refusal or a record out of sequence cancels the call with uncertain
   evidence.
-- A record notification over `bounds.message_bytes` refuses the call with `result_too_large`
-  and uncertain evidence; an unacknowledged record refuses it with `record_delivery_failed`.
-  Closing the response stream, or `notifications/cancelled` over stdio, cancels the call.
+- The record sink refuses a notification over `bounds.message_bytes` with `result_too_large`
+  and an unacknowledged record with `record_delivery_failed`, both with uncertain evidence. A
+  handler returns the refusal as any other: an operation that does not declare the code reports
+  `undeclared_refusal` carrying it. Closing the response stream, or `notifications/cancelled`
+  over stdio, cancels the call.
 - A client that does not declare the extension, or sends no token, receives the final result
   alone.
 

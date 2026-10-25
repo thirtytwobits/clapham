@@ -154,9 +154,10 @@ for the client sink to accept and acknowledge each record. Disconnect cancels wo
 carries records under the records extension: one notification per record on the call's
 response stream, acknowledged by a request bound to the grant that began the call.
 Acknowledgements are admitted outside the request limits; repeating the last is accepted, and
-the client cancels on one it cannot confirm. A record notification over the message bound
-refuses the call with `result_too_large` and uncertain evidence. A client without the
-extension receives the final result alone. If an outcome fits the core bound but its stream
+the client cancels on one it cannot confirm. The record sink refuses a notification over
+the message bound with `result_too_large` and an unacknowledged record with
+`record_delivery_failed`, both with uncertain evidence; the handler returns the refusal under
+C06. A client without the extension receives the final result alone. If an outcome fits the core bound but its stream
 envelope exceeds it, HTTP sends `result_too_large` with uncertain evidence. An oversized
 existing domain refusal closes the stream.
 
@@ -182,6 +183,7 @@ Evidence: [call type tests](../crates/clapham/tests/call_types.rs),
 `closing_the_stream_cancels_a_call_awaiting_acknowledgement_over_http`;
 [client records tests](../crates/clapham-mcp-client/tests/records.rs),
 `a_streaming_tool_passes_records_to_the_sink_and_acknowledges_each_after_it`,
+`a_result_completes_the_call_while_its_acknowledgement_reply_is_outstanding`,
 `a_refused_acknowledgement_cancels_the_call_with_uncertain_evidence`,
 `a_sink_refusal_cancels_the_call_without_acknowledging`,
 `a_record_out_of_sequence_cancels_the_call` and

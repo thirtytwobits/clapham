@@ -501,13 +501,21 @@ impl Remote {
                         }
                         expected += 1;
                         call.records.send(record).await?;
-                        if let Err(error) = records::acknowledge(&peer, &route.token, sequence).await {
-                            // An acknowledgement that cannot be confirmed cancels the call,
-                            // unless its result has already arrived.
-                            if let Some(response) = futures_util::FutureExt::now_or_never(&mut reply) {
-                                return Ok(response);
-                            }
-                            return Err(error.refusal(Evidence::Uncertain));
+                        // The result is authoritative: it can arrive while the reply to
+                        // the acknowledgement that released it is still outstanding.
+                        let acknowledged = records::acknowledge(&peer, &route.token, sequence);
+                        tokio::pin!(acknowledged);
+                        tokio::select! {
+                            biased;
+                            response = &mut reply => return Ok(response),
+                            acknowledged = &mut acknowledged => if let Err(error) = acknowledged {
+                                // An acknowledgement that cannot be confirmed cancels the
+                                // call, unless its result has already arrived.
+                                if let Some(response) = futures_util::FutureExt::now_or_never(&mut reply) {
+                                    return Ok(response);
+                                }
+                                return Err(error.refusal(Evidence::Uncertain));
+                            },
                         }
                     }
                 }

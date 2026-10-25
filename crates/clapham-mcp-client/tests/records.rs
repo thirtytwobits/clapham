@@ -159,6 +159,26 @@ async fn a_streaming_tool_passes_records_to_the_sink_and_acknowledges_each_after
 }
 
 #[tokio::test]
+async fn a_result_completes_the_call_while_its_acknowledgement_reply_is_outstanding() {
+    let (connection, mut remote) = Remote::connect().await;
+    let executor = remote.bind(&connection).await.executor();
+    let (records, accepted) = collecting();
+    let mut call = call("remote.export", json!({}));
+    call.records = records;
+    let calling = tokio::spawn(async move { executor.call(call).await });
+    let (request, token) = remote.call().await;
+    remote.send(record(&token, 1)).await;
+    remote.acknowledgement(&token, 1).await;
+    // The acknowledgement released the result; its own reply never arrives.
+    remote
+        .reply(&request, json!({"content":[],"structuredContent":1}))
+        .await;
+    let outcome = calling.await.unwrap().unwrap();
+    assert_eq!(outcome.result, Some(json!(1)));
+    assert_eq!(*accepted.lock().unwrap(), vec![json!({"item":1})]);
+}
+
+#[tokio::test]
 async fn a_refused_acknowledgement_cancels_the_call_with_uncertain_evidence() {
     let (connection, mut remote) = Remote::connect().await;
     let executor = remote.bind(&connection).await.executor();
