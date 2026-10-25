@@ -199,6 +199,13 @@ def tag(arguments: argparse.Namespace) -> None:
         run("cargo", "xtask", "release-check", name, "--notes", str(notes))
         print(f"\nDraft release notes:\n\n{notes.read_text(encoding='utf-8')}")
     commit = run("git", "rev-parse", "HEAD", capture=True)
+    # The tag workflow refuses a commit without a successful CI run on main.
+    passed = run(
+        "gh", "run", "list", "--repo", slug, "--workflow", "ci.yml", "--event", "push", "--branch", "main",
+        "--commit", commit, "--status", "success", "--json", "databaseId", "--jq", "length", capture=True,
+    )
+    if passed == "0":
+        raise Refusal(f"CI has not passed on main for {commit}; wait for it and run tag again")
     if not arguments.yes and input(f"Tag {commit} as {name} and push it to origin? [y/N] ").strip().lower() != "y":
         raise Refusal("not tagged")
     run("git", "tag", "-a", name, "-m", f"Clapham {new}")
