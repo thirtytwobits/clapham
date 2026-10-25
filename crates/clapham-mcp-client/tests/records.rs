@@ -48,13 +48,16 @@ struct Remote {
 }
 impl Remote {
     async fn connect() -> (McpConnection, Self) {
+        Self::connect_with(McpConfig::new("remote", "scope")).await
+    }
+    async fn connect_with(config: McpConfig) -> (McpConnection, Self) {
         let (client, server) = tokio::io::duplex(64 * 1024);
         let (read, write) = tokio::io::split(client);
         let connecting = tokio::spawn(McpConnection::stdio(
             read,
             write,
             CancellationToken::new(),
-            McpConfig::new("remote", "scope"),
+            config,
         ));
         let (read, write) = tokio::io::split(server);
         let mut remote = Self {
@@ -233,6 +236,71 @@ async fn a_record_out_of_sequence_cancels_the_call() {
     assert_eq!(refusal.code, "mcp_protocol");
     assert_eq!(refusal.evidence, Evidence::Uncertain);
     assert!(accepted.lock().unwrap().is_empty());
+}
+
+/// A connection that admits one lifetime notification.
+fn sparing() -> McpConfig {
+    let mut config = McpConfig::new("remote", "scope");
+    config.bounds.notifications = 1;
+    config
+}
+
+#[tokio::test]
+async fn a_direct_call_streams_records_without_spending_the_notification_budget() {
+    let (connection, mut remote) = Remote::connect_with(sparing()).await;
+    let (records, accepted) = collecting();
+    let meta = json!({"io.github.thirtytwobits.clapham/preview":true});
+    let calling = tokio::spawn(async move {
+        connection
+            .call_tool(
+                "export",
+                serde_json::Map::new(),
+                meta.as_object().unwrap().clone(),
+                records,
+            )
+            .await
+    });
+    let (request, token) = remote.call().await;
+    assert_eq!(request["params"]["name"], "export");
+    assert_eq!(
+        request["params"]["_meta"]["io.github.thirtytwobits.clapham/preview"],
+        true
+    );
+    // Acknowledgement paces each record, so none counts against the lifetime budget.
+    for sequence in 1..=5 {
+        remote.send(record(&token, sequence)).await;
+        let acknowledgement = remote.acknowledgement(&token, sequence).await;
+        remote.reply(&acknowledgement, json!({})).await;
+    }
+    remote
+        .reply(&request, json!({"content":[],"structuredContent":5}))
+        .await;
+    assert_eq!(calling.await.unwrap().unwrap().result, Some(json!(5)));
+    assert_eq!(accepted.lock().unwrap().len(), 5);
+}
+
+#[tokio::test]
+async fn records_sent_ahead_of_their_acknowledgement_spend_the_notification_budget() {
+    let (connection, mut remote) = Remote::connect_with(sparing()).await;
+    let (records, _) = collecting();
+    let calling = tokio::spawn(async move {
+        connection
+            .call_tool(
+                "export",
+                serde_json::Map::new(),
+                serde_json::Map::new(),
+                records,
+            )
+            .await
+    });
+    let (_, token) = remote.call().await;
+    // The first is paced; the second and third arrive while it is held.
+    for sequence in 1..=3 {
+        remote.send(record(&token, sequence)).await;
+    }
+    let refusal = calling.await.unwrap().unwrap_err();
+    assert_eq!(refusal.code, "mcp_limit");
+    assert_eq!(refusal.evidence, Evidence::Uncertain);
 }
 
 /// Answers the first acknowledgement as if its reply were lost, then accepts the repeat.

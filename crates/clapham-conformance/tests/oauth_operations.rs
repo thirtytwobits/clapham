@@ -13,7 +13,7 @@ use clapham::{
     Bounds, Call, Configuration, Contribution, Effect, Exposure, OAuthContext, OAuthResource,
     RecordSink, Refusal, ResourcePolicy, TypedOperation,
 };
-use clapham_cli::{Backend, Cli, HttpBackend};
+use clapham_cli::{Backend, Cli, McpBackend};
 use clapham_mcp_server::{HttpServer, OAuthIntrospector};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -124,7 +124,9 @@ async fn verified_grants_scopes_resource_policies_and_cli_records_share_one_runn
         .unwrap();
     let server = HttpServer::new(set, verifier).unwrap();
     let (endpoint, stop, task) = serve(server.into_router()).await;
-    let backend = HttpBackend::new(&endpoint, "assistant", Bounds::default()).unwrap();
+    let backend = McpBackend::http(format!("{endpoint}/mcp"), "assistant")
+        .await
+        .unwrap();
     let catalogue = backend.catalogue().await.unwrap();
     assert!(
         catalogue
@@ -137,10 +139,12 @@ async fn verified_grants_scopes_resource_policies_and_cli_records_share_one_runn
             .any(|op| op.name.as_str() == "lists.delete")
     );
     for token in ["unknown", "expired", "wrong-audience", "oversized"] {
-        let invalid = HttpBackend::new(&endpoint, token, Bounds::default()).unwrap();
+        let refusal = McpBackend::http(format!("{endpoint}/mcp"), token)
+            .await
+            .unwrap_err();
         assert_eq!(
-            invalid.catalogue().await.unwrap_err().code,
-            "not_authenticated"
+            (refusal.code.as_str(), refusal.category),
+            ("mcp_unauthenticated", clapham::Category::Refused)
         );
     }
     let records = Arc::new(Mutex::new(Vec::new()));
@@ -194,31 +198,10 @@ async fn verified_grants_scopes_resource_policies_and_cli_records_share_one_runn
     assert_eq!(refusal.evidence, clapham::Evidence::NotDispatched);
     assert_eq!(calls.load(Ordering::SeqCst), 1);
     let http = reqwest::Client::new();
-    let denied = http
-        .post(format!("{endpoint}/call"))
-        .bearer_auth("assistant")
-        .json(&json!({"name":"lists.delete","input":{"id":"tasks"}}))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(denied.status(), 403);
-    assert!(
-        denied.headers()["www-authenticate"]
-            .to_str()
-            .unwrap()
-            .contains("lists:delete")
-    );
-    let allowed = http
-        .post(format!("{endpoint}/call"))
-        .bearer_auth("operator")
-        .json(&json!({"name":"lists.delete","input":{"id":"tasks"}}))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(allowed.status(), 200);
-    assert!(allowed.text().await.unwrap().contains("outcome"));
     let challenge = http
-        .get(format!("{endpoint}/operations"))
+        .post(format!("{endpoint}/mcp"))
+        .header("accept", "application/json, text/event-stream")
+        .json(&super_request("lists.export"))
         .send()
         .await
         .unwrap();
@@ -260,8 +243,23 @@ async fn verified_grants_scopes_resource_policies_and_cli_records_share_one_runn
             .unwrap()
             .contains("lists:delete")
     );
-    let forged = http.post(format!("{endpoint}/call")).bearer_auth("assistant").json(&json!({"name":"lists.delete","input":{"id":"tasks"},"auth":{"scopes":["lists:delete"]}})).send().await.unwrap();
-    assert_eq!(forged.status(), 400);
+    let mut allowed = super_request("lists.delete");
+    allowed["params"]["arguments"] = json!({"id":"tasks"});
+    let allowed: Value = http
+        .post(format!("{endpoint}/mcp"))
+        .bearer_auth("operator")
+        .header("mcp-method", "tools/call")
+        .header("mcp-name", "lists.delete")
+        .header("mcp-protocol-version", "2026-07-28")
+        .header("accept", "application/json, text/event-stream")
+        .json(&allowed)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(allowed["result"]["isError"], false, "{allowed}");
     stop.cancel();
     task.await.unwrap();
     auth_stop.cancel();
@@ -270,218 +268,6 @@ async fn verified_grants_scopes_resource_policies_and_cli_records_share_one_runn
 
 fn super_request(name: &str) -> Value {
     json!({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":name,"arguments":{"id":"tasks"},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientCapabilities":{}}}})
-}
-
-#[tokio::test]
-async fn native_http_records_wait_for_client_acknowledgement_and_disconnect_cancels_dispatch() {
-    use http_body_util::BodyExt;
-    struct Dropped(Option<tokio::sync::oneshot::Sender<()>>);
-    impl Drop for Dropped {
-        fn drop(&mut self) {
-            let _ = self.0.take().unwrap().send(());
-        }
-    }
-    let (dropped, finished) = tokio::sync::oneshot::channel();
-    let dropped = Mutex::new(Some(dropped));
-    let stage = Arc::new(AtomicUsize::new(0));
-    let observed = stage.clone();
-    let stream = TypedOperation::<ListInput, u64>::new(
-        "lists.export",
-        "Export held records.",
-        Effect::Query,
-    )
-    .unwrap()
-    .require_scope("lists:read")
-    .streams(true);
-    let count = TypedOperation::<ListInput, u64>::new("lists.count", "Count lists.", Effect::Query)
-        .unwrap();
-    let provider = Contribution::new("lists")
-        .typed_operation(stream, move |call: Call, _: ListInput| {
-            let dropped = Dropped(Some(dropped.lock().unwrap().take().unwrap()));
-            let stage = stage.clone();
-            async move {
-                let _dropped = dropped;
-                stage.store(1, Ordering::SeqCst);
-                call.records.send(json!({"item":"a"})).await?;
-                stage.store(2, Ordering::SeqCst);
-                call.records.send(json!({"item":"b"})).await?;
-                std::future::pending::<Result<u64, Refusal>>().await
-            }
-        })
-        .typed_operation(count, |_: Call, _: ListInput| async { Ok(2) });
-    let bounds = Bounds {
-        in_flight: 1,
-        waiting: 0,
-        ..Bounds::default()
-    };
-    let set = Configuration::new("https://identity.example.com", "https://lists.example.com")
-        .provider("lists", provider)
-        .expose(Exposure::new("lists", "lists.export"))
-        .expose(Exposure::new("lists", "lists.count"))
-        .compose(bounds)
-        .unwrap();
-    let server = HttpServer::new(set, |credential: &clapham_mcp_server::Credential| {
-        let (subject, scopes, lists): (&str, &[&str], &[&str]) = match credential.authorization()? {
-            "Bearer controlled" => ("alice", &["lists:read"], &["tasks"]),
-            "Bearer other-grant" => ("bob", &["lists:read"], &["tasks"]),
-            "Bearer reduced-scopes" => ("alice", &[], &["tasks"]),
-            "Bearer reduced-resources" => ("alice", &["lists:read"], &["other"]),
-            _ => return None,
-        };
-        Some(
-            OAuthContext::from_verified(
-                "https://identity.example.com",
-                "https://lists.example.com",
-                subject,
-                scopes.iter().copied(),
-            )
-            .with_client("same-client")
-            .with_claim("list_ids", json!(lists)),
-        )
-    })
-    .unwrap();
-    let request = |name: &str| {
-        http::Request::post("/call")
-            .header("host", "localhost")
-            .header("authorization", "Bearer controlled")
-            .body(http_body_util::Full::new(bytes::Bytes::from(
-                json!({"name":name,"input":{"id":"tasks"}}).to_string(),
-            )))
-            .unwrap()
-    };
-    let mut body = server
-        .handle_operations(request("lists.export"))
-        .await
-        .into_body();
-    let first = body.frame().await.unwrap().unwrap().into_data().unwrap();
-    let first: Value = serde_json::from_slice(&first).unwrap();
-    assert_eq!(first["kind"], "record");
-    assert_eq!(observed.load(Ordering::SeqCst), 1);
-    let acknowledgement = |ticket: &str, token: &str| {
-        http::Request::post(format!("/ack/{ticket}"))
-            .header("host", "localhost")
-            .header("authorization", format!("Bearer {token}"))
-            .body(http_body_util::Full::new(bytes::Bytes::new()))
-            .unwrap()
-    };
-    let second = {
-        use std::{future::Future, pin::pin, task::Context};
-        let mut next = pin!(body.frame());
-        let mut cx = Context::from_waker(futures_util::task::noop_waker_ref());
-        assert!(next.as_mut().poll(&mut cx).is_pending());
-        assert_eq!(observed.load(Ordering::SeqCst), 1);
-        let ticket = first["ack"].as_str().unwrap();
-        for token in ["other-grant", "reduced-scopes", "reduced-resources"] {
-            let denied = server
-                .handle_operations(acknowledgement(ticket, token))
-                .await;
-            assert_eq!(denied.status(), 404);
-            assert_eq!(observed.load(Ordering::SeqCst), 1);
-        }
-        struct UnfinishedBody;
-        impl http_body::Body for UnfinishedBody {
-            type Data = bytes::Bytes;
-            type Error = std::convert::Infallible;
-            fn poll_frame(
-                self: std::pin::Pin<&mut Self>,
-                _: &mut std::task::Context<'_>,
-            ) -> std::task::Poll<Option<Result<http_body::Frame<Self::Data>, Self::Error>>>
-            {
-                panic!("ACK bodies must not be polled");
-            }
-        }
-        let request = http::Request::post(format!("/ack/{ticket}"))
-            .header("host", "localhost")
-            .header("authorization", "Bearer controlled")
-            .body(UnfinishedBody)
-            .unwrap();
-        assert_eq!(server.handle_operations(request).await.status(), 400);
-        assert_eq!(observed.load(Ordering::SeqCst), 1);
-        let accepted = server
-            .handle_operations(acknowledgement(ticket, "controlled"))
-            .await;
-        assert_eq!(accepted.status(), 204);
-        let duplicate = server
-            .handle_operations(acknowledgement(ticket, "controlled"))
-            .await;
-        assert_eq!(duplicate.status(), 404);
-        next.await.unwrap().unwrap().into_data().unwrap()
-    };
-    let second: Value = serde_json::from_slice(&second).unwrap();
-    assert_eq!(second["data"]["item"], "b");
-    assert_eq!(observed.load(Ordering::SeqCst), 2);
-    drop(body);
-    finished.await.unwrap();
-    let abandoned = server
-        .handle_operations(acknowledgement(
-            second["ack"].as_str().unwrap(),
-            "controlled",
-        ))
-        .await;
-    assert_eq!(abandoned.status(), 404);
-    let response = server.handle_operations(request("lists.count")).await;
-    assert_eq!(response.status(), 200);
-    let result: Value =
-        serde_json::from_slice(&response.into_body().collect().await.unwrap().to_bytes()).unwrap();
-    assert_eq!(result["kind"], "outcome");
-    assert_eq!(result["data"]["evidence"], "completed");
-}
-
-#[tokio::test]
-async fn native_http_client_rejects_missing_duplicate_truncated_and_oversized_terminals() {
-    let complete = format!(
-        "{}\n",
-        json!({"kind":"outcome","data":{"result":2,"evidence":"completed"}})
-    );
-    for (body, valid) in [
-        (complete.clone(), true),
-        (String::new(), false),
-        (format!("{complete}{complete}"), false),
-        (complete.trim_end().to_owned(), false),
-        (
-            format!("{}\n", json!({"kind":"record","data":"x".repeat(8192)})),
-            false,
-        ),
-        (
-            format!("{complete}{}\n", json!({"kind":"record","data":1})),
-            false,
-        ),
-    ] {
-        let app = axum::Router::new().route(
-            "/call",
-            axum::routing::post(move || {
-                let body = body.clone();
-                async move { ([("content-type", "application/x-ndjson")], body) }
-            }),
-        );
-        let (endpoint, stop, task) = serve(app).await;
-        let backend = HttpBackend::new(
-            endpoint,
-            "controlled",
-            Bounds {
-                message_bytes: 8192,
-                schema_bytes: 8192,
-                ..Bounds::default()
-            },
-        )
-        .unwrap();
-        let result = backend
-            .call(
-                clapham_cli::Invocation::new("lists.count", json!({})),
-                Default::default(),
-                Default::default(),
-            )
-            .await;
-        if valid {
-            assert_eq!(result.unwrap().result, Some(json!(2)));
-        } else {
-            let refusal = result.unwrap_err();
-            assert_eq!(refusal.code, "connection_lost");
-            assert_eq!(refusal.evidence, clapham::Evidence::Uncertain);
-        }
-        stop.cancel();
-        task.await.unwrap();
-    }
 }
 
 #[tokio::test]
@@ -617,10 +403,14 @@ async fn oversized_terminal_outcomes_report_the_size_error_without_rewriting_dom
     })
     .unwrap();
     let (endpoint, stop, task) = serve(server.into_router()).await;
-    let backend = HttpBackend::new(endpoint, "controlled", bounds).unwrap();
+    let backend = McpBackend::http(format!("{endpoint}/mcp"), "controlled")
+        .await
+        .unwrap();
+    // The size refusal replaces an oversized result; an oversized domain refusal fails the
+    // reply rather than changing its code.
     for (name, code) in [
         ("lists.output", "result_too_large"),
-        ("lists.refuse", "connection_lost"),
+        ("lists.refuse", "mcp_transport"),
     ] {
         let error = backend
             .call(

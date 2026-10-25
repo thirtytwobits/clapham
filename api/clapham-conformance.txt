@@ -135,6 +135,7 @@ pub enum clapham_conformance::ProcessKind
 pub clapham_conformance::ProcessKind::BoundHttp
 pub clapham_conformance::ProcessKind::BoundStdio
 pub clapham_conformance::ProcessKind::CommandLine
+pub clapham_conformance::ProcessKind::CommandLineStdio
 pub clapham_conformance::ProcessKind::McpHttp
 pub clapham_conformance::ProcessKind::McpStdio
 impl core::clone::Clone for clapham_conformance::ProcessKind

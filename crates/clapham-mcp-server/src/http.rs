@@ -1,5 +1,3 @@
-#[path = "calls_http.rs"]
-mod calls;
 use std::{
     convert::Infallible,
     fmt,
@@ -95,7 +93,6 @@ pub struct HttpServer {
     authenticator: Arc<dyn Authenticator>,
     outstanding: Arc<Semaphore>,
     authenticating: Arc<Semaphore>,
-    acknowledgements: Arc<std::sync::Mutex<calls::Acknowledgements>>,
     deliveries: Arc<crate::records::Deliveries>,
     executing: Arc<Semaphore>,
     authentication_challenge: Option<http::HeaderValue>,
@@ -155,7 +152,6 @@ impl HttpServer {
         Ok(Self {
             outstanding: Arc::new(Semaphore::new(bounds.in_flight + bounds.waiting)),
             authenticating: Arc::new(Semaphore::new(bounds.in_flight + bounds.waiting)),
-            acknowledgements: Default::default(),
             deliveries: Default::default(),
             executing: Arc::new(Semaphore::new(bounds.in_flight)),
             authentication_challenge: Some(challenge),
@@ -284,22 +280,8 @@ impl HttpServer {
     {
         let limit = self.set.bounds().message_bytes;
         let config = self.transport_config();
-        // rmcp 3.6.0 keeps its Host/Origin validator private. An OPTIONS probe
-        // follows that exact policy and stops at 405, without parsing a body or
-        // constructing a handler. Reusing it avoids a second authority/origin parser.
-        let validator = StreamableHttpService::<Server, _>::new(
-            || Err(std::io::Error::other("HTTP policy probe cannot dispatch")),
-            Arc::new(LocalSessionManager::default()),
-            config.clone(),
-        );
-        let mut probe = Request::new(Empty::<Bytes>::new());
-        *probe.method_mut() = http::Method::OPTIONS;
-        *probe.uri_mut() = request.uri().clone();
-        *probe.version_mut() = request.version();
-        *probe.headers_mut() = request.headers().clone();
-        let checked = validator.handle(probe).await;
-        if checked.status() != StatusCode::METHOD_NOT_ALLOWED {
-            return calls::full(bounded_response(checked, limit, false).await);
+        if let Some(refused) = self.host_policy(policy_probe(&request)).await {
+            return refused;
         }
 
         let mut authorization = request.headers().get_all(header::AUTHORIZATION).iter();
@@ -308,7 +290,7 @@ impl HttpServer {
             (Some(value), None) => match value.to_str() {
                 Ok(value) => Credential::new(value),
                 Err(_) => {
-                    return calls::full(refusal_response(
+                    return full(refusal_response(
                         StatusCode::BAD_REQUEST,
                         "invalid_credential",
                         Category::InvalidInput,
@@ -317,7 +299,7 @@ impl HttpServer {
                 }
             },
             _ => {
-                return calls::full(refusal_response(
+                return full(refusal_response(
                     StatusCode::BAD_REQUEST,
                     "invalid_credential",
                     Category::InvalidInput,
@@ -336,7 +318,7 @@ impl HttpServer {
             None
         } else {
             let Ok(outstanding) = self.outstanding.clone().try_acquire_owned() else {
-                return calls::full(refusal_response(
+                return full(refusal_response(
                     StatusCode::SERVICE_UNAVAILABLE,
                     "server_busy",
                     Category::Unavailable,
@@ -346,7 +328,7 @@ impl HttpServer {
             Some(outstanding)
         };
         let Ok(authentication) = self.authenticating.try_acquire() else {
-            return calls::full(refusal_response(
+            return full(refusal_response(
                 StatusCode::SERVICE_UNAVAILABLE,
                 "server_busy",
                 Category::Unavailable,
@@ -374,7 +356,7 @@ impl HttpServer {
                     .headers_mut()
                     .insert(header::WWW_AUTHENTICATE, challenge.clone());
             }
-            return calls::full(response);
+            return full(response);
         };
         if acknowledgement {
             // The authentication permit bounds concurrent acknowledgements.
@@ -389,7 +371,7 @@ impl HttpServer {
             );
             let response = bounded_response(service.handle(request).await, limit, false).await;
             drop(authentication);
-            return calls::full(response);
+            return full(response);
         }
         drop(authentication);
         if tool_call
@@ -399,7 +381,7 @@ impl HttpServer {
                 .and_then(|value| value.to_str().ok())
             && let Some(response) = self.scope_challenge(&auth, name)
         {
-            return calls::full(response);
+            return full(response);
         }
         let executing = self
             .executing
@@ -444,8 +426,91 @@ impl HttpServer {
                 .boxed()
             });
         }
-        calls::full(bounded_response(response, limit, failure.load(Ordering::Acquire)).await)
+        full(bounded_response(response, limit, failure.load(Ordering::Acquire)).await)
     }
+}
+
+impl HttpServer {
+    /// Mount MCP at `/mcp` and the OAuth protected-resource metadata, under one Host and
+    /// Origin policy. The application supplies the listener, TLS and shutdown.
+    pub fn into_router(self) -> axum::Router {
+        let mcp = self.clone();
+        let router = axum::Router::new().route(
+            "/mcp",
+            axum::routing::any(move |request: Request<axum::body::Body>| {
+                let server = mcp.clone();
+                async move { server.handle(request).await }
+            }),
+        );
+        match self.metadata_path.clone() {
+            Some(path) => router.route(
+                &path,
+                axum::routing::get(move |request: Request<axum::body::Body>| {
+                    let server = self.clone();
+                    async move { server.protected_resource(request).await }
+                }),
+            ),
+            None => router,
+        }
+    }
+
+    /// A refusal for a request whose `probe` rmcp's Host and Origin policy rejects.
+    async fn host_policy(
+        &self,
+        probe: Request<Empty<Bytes>>,
+    ) -> Option<Response<BoxBody<Bytes, Infallible>>> {
+        let validator = StreamableHttpService::<Server, _>::new(
+            || Err(std::io::Error::other("HTTP policy probe cannot dispatch")),
+            Arc::new(LocalSessionManager::default()),
+            self.transport_config(),
+        );
+        let checked = validator.handle(probe).await;
+        if checked.status() == StatusCode::METHOD_NOT_ALLOWED {
+            return None;
+        }
+        let limit = self.set.bounds().message_bytes;
+        Some(full(bounded_response(checked, limit, false).await))
+    }
+
+    /// The OAuth protected-resource metadata for this server's resource binding.
+    async fn protected_resource<B>(
+        &self,
+        request: Request<B>,
+    ) -> Response<BoxBody<Bytes, Infallible>> {
+        if let Some(refused) = self.host_policy(policy_probe(&request)).await {
+            return refused;
+        }
+        let resource = self
+            .set
+            .oauth_resource()
+            .expect("HttpServer requires an OAuth resource binding");
+        let metadata = serde_json::json!({
+            "resource":resource.audience,
+            "authorization_servers":[resource.issuer],
+        });
+        full(
+            Response::builder()
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Full::new(Bytes::from(metadata.to_string())))
+                .expect("valid metadata response"),
+        )
+    }
+}
+
+/// An OPTIONS request with `request`'s target and headers. rmcp 3.6.0 keeps its
+/// Host/Origin validator private; the probe follows that exact policy and stops at 405,
+/// without parsing a body or constructing a handler.
+fn policy_probe<B>(request: &Request<B>) -> Request<Empty<Bytes>> {
+    let mut probe = Request::new(Empty::<Bytes>::new());
+    *probe.method_mut() = http::Method::OPTIONS;
+    *probe.uri_mut() = request.uri().clone();
+    *probe.version_mut() = request.version();
+    *probe.headers_mut() = request.headers().clone();
+    probe
+}
+
+fn full(response: Response<Full<Bytes>>) -> Response<BoxBody<Bytes, Infallible>> {
+    response.map(BodyExt::boxed)
 }
 
 /// The handler behind an acknowledgement admitted outside the request limits. It

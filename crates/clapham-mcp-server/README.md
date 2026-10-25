@@ -30,9 +30,8 @@ let router = HttpServer::new(set, verifier)?.into_router();
 # }
 ```
 
-`into_router` mounts `/mcp`, `/operations`, `/call`, record acknowledgements and protected-resource metadata under the
-same authenticator. The application owns its listener, TLS and shutdown. `handle` and
-`handle_operations` allow explicit mounting. HTTP uses rmcp's Host/Origin policy and bounded
+`into_router` mounts `/mcp` and the protected-resource metadata. The application owns its
+listener, TLS and shutdown. `handle` allows explicit mounting. HTTP uses rmcp's Host/Origin policy and bounded
 request execution. OAuth credentials and introspection secrets are omitted from debug output.
 The authorisation server owns consent, token issuance, refresh and scope elevation.
 
@@ -41,12 +40,9 @@ rmcp content types are interpreted in the adapter. Tool errors carry unchanged s
 refusals. Successful effect evidence is carried in tool-result metadata. Resource reads and
 discovery use the same scope and host-policy checks; calls additionally run resource policies.
 
-The operation HTTP interface carries `{name,input,preview}` invocations and NDJSON frames
-`{kind:"record"|"outcome"|"refusal",data:...}`. It provides ordered record delivery with
-bounded buffering and authenticated acknowledgement after client sink acceptance. Disconnect
-cancels work.
 MCP calls carry records under the records extension, each acknowledged after the client's sink
-accepts it. A client without the extension receives the final result alone.
+accepts it. A client without the extension receives the final result alone. Closing the
+response stream cancels a call.
 
 Resource templates, frame sizes, catalogue budgets, concurrency and output validation remain
 bounded. Oversized existing refusals are not replaced with another domain code. See
@@ -55,5 +51,3 @@ bounded. Oversized existing refusals are not replaced with another domain code. 
 Register URI templates with `Server::resources` or `HttpServer::resources`. The adapter checks
 query semantics, string variables and duplicate template shapes before serving.
 
-The operation HTTP stream waits for authenticated record acknowledgements after the CLI sink
-accepts each record. Tickets are one-use, bound to verified authority and removed on disconnect.

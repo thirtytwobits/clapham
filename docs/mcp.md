@@ -1,4 +1,4 @@
-# MCP and operation HTTP
+# MCP
 
 Clapham's MCP adapters use rmcp 3.6.0 and MCP 2026-07-28. All library crates require Rust 1.88.
 The core operation model has no rmcp dependency.
@@ -10,15 +10,17 @@ authenticates every request using asynchronous middleware. `OAuthIntrospector` d
 RFC 7662 requests to the OAuth library and checks active status, issuer, audience, subject,
 expiry and not-before. Introspection extension claims remain available to resource policy.
 
-`into_router` mounts MCP, protected-resource metadata and the operation HTTP interface. The
-application supplies its listener, TLS and shutdown. Host/Origin validation and MCP protocol
+`into_router` mounts MCP at `/mcp` and the protected-resource metadata. The application
+supplies its listener, TLS and shutdown. Host/Origin validation and MCP protocol
 handling use rmcp. Bounds limit input/output, catalogue sizes, active requests and waiting work.
 
 Tool definitions and annotations derive from operations. Scope requirements and host policy
 control visibility. Calls additionally validate typed input and run resource policies. Domain
 refusals retain their codes in structured tool errors. Native rmcp content blocks stay inside
-the adapters; the core carries opaque content. Explicit effect evidence is carried in result
-metadata under `io.github.thirtytwobits.clapham/evidence`.
+the adapters; the core carries opaque content. Result metadata carries explicit effect evidence
+under `io.github.thirtytwobits.clapham/evidence`, and under `io.github.thirtytwobits.clapham/absent`
+the outcome fields that are absent: `content`, which MCP's required content list cannot omit, and
+`result`, whose absence differs from a JSON null.
 
 `HttpServer::handle` bounds a JSON reply as a whole. It streams an SSE reply as rmcp writes it,
 each event bounded, and holds the request's queue and execution permits until the stream ends.
@@ -55,28 +57,25 @@ under the extension identifier in its `_meta`.
   alone.
 
 The client bounds each SSE event to `bounds.message_bytes` with its framing, and an SSE reply
-to one event beyond the notifications it has admitted. Records count against the connection's
-`bounds.notifications`.
+to one event beyond the notifications it has admitted. Acknowledgement paces a call's records,
+so the record a call awaits is outside the connection's lifetime notification and byte budgets;
+a record that arrives while the call holds another is counted.
 
-## Operation HTTP and CLI
+## CLI daemon mode
 
-The non-MCP HTTP interface uses the same authenticator and runner:
+The CLI's daemon mode is Clapham's MCP client. `McpBackend` reads the catalogue from
+`clapham.describe` and calls each operation as `tools/call`, with its input as arguments and
+`--dry-run` as `io.github.thirtytwobits.clapham/preview` in request `_meta`. Records arrive under
+the records extension and print as NDJSON, each acknowledged after the output sink accepts it.
+A tool result that carries a structured refusal is that refusal. Cancelling closes the call's
+response stream, or sends `notifications/cancelled` over stdio.
 
-- `GET /operations` returns the caller's admitted descriptors.
-- `POST /call` accepts `{name,input,preview}` and streams bounded NDJSON
-  `{kind:"record"|"outcome"|"refusal",data:...}` frames. Each record also carries a one-use
-  `ack` ticket.
-- `POST /ack/{ticket}` acknowledges sink acceptance, with an empty body and the same verified
-  OAuth authority. ACK bodies must be complete and empty. Successful acknowledgement returns 204.
-
-ACK tickets bind the complete verified grant, including scopes and resource restrictions.
-An ACK must retain the authority recorded when the call began.
-
-The CLI acknowledges each record after its sink accepts it. The producer waits for that
-authenticated acknowledgement. Pending tickets and buffering are finite, record order is
-preserved and disconnect cancels the call. This interface carries records to the generated
-CLI; MCP progress notifications serve a different purpose. The CLI obtains tokens through
-the application's OAuth client or credential store and cannot choose identity in arguments.
+`McpConfig::operator` sizes the connection for an operator: the largest message `Bounds`
+allows and one call at a time. `McpConnection::call_tool` has no deadline: the CLI's
+`--timeout` and cancellation bound each call, and a `tools/call` request over Streamable HTTP
+has no request deadline of its own. The CLI obtains tokens through the application's OAuth
+client or credential store and cannot choose identity in arguments. A credential the server
+does not accept refuses the connection with `mcp_unauthenticated`.
 
 ## Remote connections
 

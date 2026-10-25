@@ -9,6 +9,7 @@ pub clapham_mcp_client::McpError::Selection
 pub clapham_mcp_client::McpError::Stale
 pub clapham_mcp_client::McpError::Timeout
 pub clapham_mcp_client::McpError::Transport
+pub clapham_mcp_client::McpError::Unauthenticated
 pub clapham_mcp_client::McpError::UnsupportedInteraction
 impl clapham_mcp_client::McpError
 pub fn clapham_mcp_client::McpError::refusal(&self, evidence: clapham::call::Evidence) -> clapham::refusal::Refusal
@@ -113,6 +114,7 @@ pub clapham_mcp_client::McpConfig::operation_timeout: core::time::Duration
 pub clapham_mcp_client::McpConfig::server_id: alloc::string::String
 impl clapham_mcp_client::McpConfig
 pub fn clapham_mcp_client::McpConfig::new(server_id: impl core::convert::Into<alloc::string::String>, credential_scope_revision: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn clapham_mcp_client::McpConfig::operator(server_id: impl core::convert::Into<alloc::string::String>, credential_scope_revision: impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for clapham_mcp_client::McpConfig
 pub fn clapham_mcp_client::McpConfig::clone(&self) -> clapham_mcp_client::McpConfig
 impl core::fmt::Debug for clapham_mcp_client::McpConfig
@@ -158,6 +160,8 @@ impl<T> typenum::type_operators::Same for clapham_mcp_client::McpConfig
 pub type clapham_mcp_client::McpConfig::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_client::McpConfig where T: ?core::marker::Sized
 pub struct clapham_mcp_client::McpConnection(_)
+impl clapham_mcp_client::McpConnection
+pub async fn clapham_mcp_client::McpConnection::call_tool(&self, name: &str, arguments: rmcp::model::JsonObject, meta: rmcp::model::JsonObject, records: clapham::call::RecordSink) -> core::result::Result<clapham::call::Outcome, clapham::refusal::Refusal>
 impl clapham_mcp_client::McpConnection
 pub fn clapham_mcp_client::McpConnection::close(&self)
 pub fn clapham_mcp_client::McpConnection::credential_scope_revision(&self) -> &str

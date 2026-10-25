@@ -1,11 +1,16 @@
-//! Reference application: mixed JSON/Rust composition and an authenticated server-backed CLI.
+//! Reference application: mixed JSON/Rust composition and an authenticated CLI that calls
+//! its daemon over MCP.
 
 use clapham::{Bounds, ComposedSet, Configuration, Exposure, OAuthContext};
-use clapham_cli::{Cli, HttpBackend};
+use clapham_cli::{Cli, McpBackend};
 use clapham_conformance::{lists_fixture, lists_gate, scripted_access};
 use clapham_mcp_server::{Authenticator, Credential, HttpServer, OAuthIntrospector, Server};
 use serde_json::{Value, json};
-use std::{error::Error, io::Write, process::ExitCode};
+use std::{
+    error::Error,
+    io::Write,
+    process::{ExitCode, Stdio},
+};
 use tokio::io::AsyncReadExt;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
@@ -86,6 +91,9 @@ fn routes(server: HttpServer) -> axum::Router {
 async fn run() -> Result<u8> {
     let args: Vec<_> = std::env::args().skip(1).collect();
     if args.first().map(String::as_str) != Some("serve") {
+        if std::env::var("CLAPHAM_TRANSPORT").as_deref() == Ok("stdio") {
+            return cli_over_stdio().await;
+        }
         if fixture_mode() {
             let access = fixture_authority()?;
             let server = http_server(composed()?)?;
@@ -99,7 +107,8 @@ async fn run() -> Result<u8> {
                     .await
             });
             let backend =
-                HttpBackend::new(endpoint, serde_json::to_string(&access)?, Bounds::default())?;
+                McpBackend::http(format!("{endpoint}/mcp"), serde_json::to_string(&access)?)
+                    .await?;
             let result = Cli::connect("lists", backend, Bounds::default())
                 .await?
                 .run()
@@ -108,11 +117,11 @@ async fn run() -> Result<u8> {
             task.await??;
             return Ok(result);
         }
-        let backend = HttpBackend::new(
+        let backend = McpBackend::http(
             std::env::var("CLAPHAM_ENDPOINT")?,
             std::env::var("CLAPHAM_ACCESS_TOKEN")?,
-            Bounds::default(),
-        )?;
+        )
+        .await?;
         return Ok(Cli::connect("lists", backend, Bounds::default())
             .await?
             .run()
@@ -159,6 +168,29 @@ async fn run() -> Result<u8> {
         _ => return Err("expected serve --stdio or serve --http ADDR".into()),
     }
     Ok(0)
+}
+/// Launch this executable's stdio server, which verifies the launch credential in the
+/// inherited environment, and run the CLI over its standard streams.
+async fn cli_over_stdio() -> Result<u8> {
+    let mut server = tokio::process::Command::new(std::env::current_exe()?)
+        .args(["serve", "--stdio"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::inherit())
+        .kill_on_drop(true)
+        .spawn()?;
+    let input = server.stdin.take().ok_or("missing server stdin")?;
+    let output = server.stdout.take().ok_or("missing server stdout")?;
+    let backend = McpBackend::stdio(output, input).await?;
+    // Dropping the CLI closes the connection and the server's stdin.
+    let result = Cli::connect("lists", backend, Bounds::default())
+        .await?
+        .run()
+        .await;
+    if !server.wait().await?.success() {
+        return Err("the stdio server failed".into());
+    }
+    Ok(result)
 }
 async fn shutdown() {
     let mut stdin = tokio::io::stdin();

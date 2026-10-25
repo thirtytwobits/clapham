@@ -45,6 +45,10 @@
       "uriTemplate": "lists://"
     }
   ],
+  "resultMetaKeys": [
+    "io.github.thirtytwobits.clapham/absent",
+    "io.github.thirtytwobits.clapham/evidence"
+  ],
   "tools": [
     {
       "annotations": {

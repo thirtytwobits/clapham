@@ -594,7 +594,7 @@ fn http_requires_an_explicit_oauth_resource_binding() {
 }
 
 #[tokio::test]
-async fn mismatched_verified_authority_is_rejected_by_both_http_interfaces() {
+async fn mismatched_verified_authority_is_rejected() {
     for (issuer, audience) in [
         ("https://other.example.com", "https://lists.example.com"),
         ("https://identity.example.com", "https://other.example.com"),
@@ -619,14 +619,5 @@ async fn mismatched_verified_authority_is_rejected_by_both_http_interfaces() {
             ))
             .await;
         assert_eq!(mcp.status(), StatusCode::UNAUTHORIZED);
-        let native = Request::post("/call")
-            .header("host", "localhost")
-            .header("authorization", "Bearer controlled")
-            .body(UnreadBody)
-            .unwrap();
-        assert_eq!(
-            server.handle_operations(native).await.status(),
-            StatusCode::UNAUTHORIZED
-        );
     }
 }

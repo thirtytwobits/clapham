@@ -1,9 +1,11 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use clapham::{
-    Bounds, Call, Cancellation, Category, Contribution, Operation, RecordSink, Refusal, compose,
+    Bounds, Call, Cancellation, Category, Contribution, Evidence, Operation, Outcome, RecordSink,
+    Refusal, compose,
 };
-use serde_json::{Value, json};
+use clapham_mcp_client::{McpConfig, McpConnection, McpHttpOptions};
+use serde_json::{Map, Value, json};
 
 use crate::{Cli, Invocation};
 
@@ -71,120 +73,92 @@ impl Cli {
     }
 }
 
-/// HTTP client for the authenticated operation/record interface.
+/// The request `_meta` key that selects a dry run on Clapham's MCP server.
+const PREVIEW_META_KEY: &str = "io.github.thirtytwobits.clapham/preview";
+
+/// The daemon's MCP server, reached through Clapham's MCP client.
 ///
-/// The token is supplied by the host's OAuth client or credential store. This
-/// client does not accept identity claims from command-line arguments.
+/// The catalogue is `clapham.describe`. A call is `tools/call`, with the operation's input as
+/// its arguments and preview in request `_meta`. Records arrive under the records extension
+/// and are acknowledged after the sink accepts each one. A refusal is the tool result's
+/// structured refusal. Cancelling a call closes its response stream.
 #[derive(Clone)]
-pub struct HttpBackend {
-    endpoint: String,
-    token: String,
-    client: reqwest::Client,
-    bounds: Bounds,
+pub struct McpBackend {
+    connection: McpConnection,
 }
 
-impl std::fmt::Debug for HttpBackend {
+impl std::fmt::Debug for McpBackend {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("HttpBackend")
-            .field("bounds", &self.bounds)
-            .finish_non_exhaustive()
+        f.debug_struct("McpBackend").finish_non_exhaustive()
     }
 }
 
-impl HttpBackend {
-    /// Connect using a token issued for this operation service's audience.
-    pub fn new(
+impl McpBackend {
+    /// Use a connection the host established, normally configured by [`McpConfig::operator`].
+    pub fn new(connection: McpConnection) -> Self {
+        Self { connection }
+    }
+
+    /// Connect to the daemon's Streamable HTTP endpoint with a token issued for its audience.
+    pub async fn http(
         endpoint: impl Into<String>,
         token: impl Into<String>,
-        bounds: Bounds,
     ) -> Result<Self, Refusal> {
-        let endpoint = endpoint.into();
-        let url =
-            reqwest::Url::parse(&endpoint).map_err(|e| crate::configuration(e.to_string()))?;
-        let loopback = matches!(
-            url.host_str(),
-            Some("localhost" | "127.0.0.1" | "[::1]" | "::1")
-        );
-        if url.scheme() != "https" && !(url.scheme() == "http" && loopback) {
-            return Err(crate::configuration("operation HTTP requires HTTPS"));
-        }
-        if !url.username().is_empty()
-            || url.password().is_some()
-            || url.fragment().is_some()
-            || url.query().is_some()
-        {
-            return Err(crate::configuration("invalid operation service endpoint"));
-        }
-        bounds
-            .validate()
-            .map_err(|e| crate::configuration(e.to_string()))?;
-        let client = reqwest::Client::builder()
-            .redirect(reqwest::redirect::Policy::none())
-            .retry(reqwest::retry::never())
-            .build()
-            .map_err(|e| crate::configuration(e.to_string()))?;
-        Ok(Self {
-            endpoint: endpoint.trim_end_matches('/').to_owned(),
-            token: token.into(),
-            client,
-            bounds,
-        })
+        let mut options = McpHttpOptions::new(endpoint);
+        options.bearer_token = Some(token.into());
+        McpConnection::http(options, operator())
+            .await
+            .map(Self::new)
+            .map_err(|error| error.refusal(Evidence::NotDispatched))
+    }
+
+    /// Connect over a launched daemon's standard streams, whose authority its host bound.
+    pub async fn stdio<R, W>(reader: R, writer: W) -> Result<Self, Refusal>
+    where
+        R: tokio::io::AsyncRead + Unpin + Send + 'static,
+        W: tokio::io::AsyncWrite + Unpin + Send + 'static,
+    {
+        McpConnection::stdio(reader, writer, Default::default(), operator())
+            .await
+            .map(Self::new)
+            .map_err(|error| error.refusal(Evidence::NotDispatched))
     }
 }
 
-#[derive(serde::Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
-enum Frame {
-    Record { data: Value, ack: uuid::Uuid },
-    Outcome { data: clapham::Outcome },
-    Refusal { data: Refusal },
+fn operator() -> McpConfig {
+    McpConfig::operator("daemon", "operator")
 }
 
-fn transport() -> Refusal {
-    Refusal::new(
-        "connection_lost",
-        Category::Unavailable,
-        "operation service delivery failed",
-    )
-    .with_evidence(clapham::Evidence::Uncertain)
-}
-
-async fn server_refusal(mut response: reqwest::Response, limit: usize) -> Refusal {
-    let mut bytes = Vec::new();
-    loop {
-        match response.chunk().await {
-            Ok(Some(chunk)) if bytes.len().saturating_add(chunk.len()) <= limit => {
-                bytes.extend_from_slice(&chunk)
-            }
-            Ok(None) => return serde_json::from_slice(&bytes).unwrap_or_else(|_| transport()),
-            _ => return transport(),
-        }
+/// A tool result that carries a refusal becomes that refusal.
+fn refused(outcome: Outcome) -> Result<Outcome, Refusal> {
+    if outcome.is_error
+        && let Some(refusal) = outcome
+            .result
+            .clone()
+            .and_then(|value| serde_json::from_value::<Refusal>(value).ok())
+    {
+        return Err(refusal);
     }
+    Ok(outcome)
 }
 
-impl Backend for HttpBackend {
+impl Backend for McpBackend {
     fn catalogue(&self) -> BackendFuture<'_, Vec<Operation>> {
         Box::pin(async move {
-            let mut response = self
-                .client
-                .get(format!("{}/operations", self.endpoint))
-                .bearer_auth(&self.token)
-                .send()
+            let outcome = self
+                .connection
+                .call_tool(
+                    "clapham.describe",
+                    Map::new(),
+                    Map::new(),
+                    RecordSink::default(),
+                )
                 .await
-                .map_err(|_| transport().with_evidence(clapham::Evidence::NotDispatched))?;
-            if !response.status().is_success() {
-                return Err(server_refusal(response, self.bounds.message_bytes).await);
-            }
-            let mut bytes = Vec::new();
-            while let Some(chunk) = response.chunk().await.map_err(|_| transport())? {
-                if bytes.len().saturating_add(chunk.len()) > self.bounds.catalogue_bytes {
-                    return Err(crate::configuration(
-                        "catalogue exceeds bounds.catalogue_bytes",
-                    ));
-                }
-                bytes.extend_from_slice(&chunk);
-            }
-            serde_json::from_slice(&bytes).map_err(|e| crate::configuration(e.to_string()))
+                .and_then(refused)?;
+            let catalogue = outcome
+                .result
+                .ok_or_else(|| crate::configuration("clapham.describe returned no catalogue"))?;
+            serde_json::from_value(catalogue).map_err(|e| crate::configuration(e.to_string()))
         })
     }
     fn call(
@@ -192,7 +166,7 @@ impl Backend for HttpBackend {
         invocation: Invocation,
         records: RecordSink,
         cancel: Cancellation,
-    ) -> BackendFuture<'_, clapham::Outcome> {
+    ) -> BackendFuture<'_, Outcome> {
         Box::pin(async move {
             if cancel.is_cancelled() {
                 return Err(Refusal::not_dispatched(
@@ -201,74 +175,26 @@ impl Backend for HttpBackend {
                     "cancelled before dispatch",
                 ));
             }
-            let request = json!({"name":invocation.name,"input":invocation.input,"preview":invocation.preview});
-            let encoded = serde_json::to_vec(&request).expect("call serialises");
-            if encoded.len() > self.bounds.message_bytes {
-                return Err(crate::usage("call exceeds bounds.message_bytes"));
-            }
-            let run = async {
-                let mut response = self
-                    .client
-                    .post(format!("{}/call", self.endpoint))
-                    .bearer_auth(&self.token)
-                    .header("content-type", "application/json")
-                    .body(encoded)
-                    .send()
-                    .await
-                    .map_err(|_| transport())?;
-                if !response.status().is_success() {
-                    return Err(server_refusal(response, self.bounds.message_bytes).await);
-                }
-                let mut pending = Vec::new();
-                let mut terminal: Option<Result<clapham::Outcome, Refusal>> = None;
-                while let Some(chunk) = response.chunk().await.map_err(|_| transport())? {
-                    for byte in chunk {
-                        if terminal.is_some() {
-                            return Err(transport());
-                        }
-                        pending.push(byte);
-                        if pending.len() > self.bounds.message_bytes {
-                            return Err(transport());
-                        }
-                        if byte == b'\n' {
-                            let frame: Frame =
-                                serde_json::from_slice(&pending).map_err(|_| transport())?;
-                            pending.clear();
-                            match frame {
-                                Frame::Record { data, ack } => {
-                                    records.send(data).await?;
-                                    let acknowledged = self
-                                        .client
-                                        .post(format!("{}/ack/{ack}", self.endpoint))
-                                        .bearer_auth(&self.token)
-                                        .body(Vec::new())
-                                        .send()
-                                        .await
-                                        .map_err(|_| transport())?;
-                                    if acknowledged.status() != reqwest::StatusCode::NO_CONTENT {
-                                        return Err(server_refusal(
-                                            acknowledged,
-                                            self.bounds.message_bytes,
-                                        )
-                                        .await
-                                        .with_evidence(clapham::Evidence::Uncertain));
-                                    }
-                                }
-                                Frame::Outcome { data } => terminal = Some(Ok(data)),
-                                Frame::Refusal { data } => terminal = Some(Err(data)),
-                            }
-                        }
-                    }
-                }
-                if pending.is_empty() {
-                    terminal.unwrap_or_else(|| Err(transport()))
-                } else {
-                    Err(transport())
-                }
+            let Value::Object(arguments) = invocation.input else {
+                return Err(crate::usage("operation input must be a JSON object"));
             };
-            tokio::select! { biased;
-                _ = cancel.cancelled() => Err(Refusal::new("cancelled",Category::Interrupted,"the request was cancelled").with_evidence(clapham::Evidence::Uncertain)),
-                result = run => result,
+            let mut meta = Map::new();
+            if invocation.preview {
+                meta.insert(PREVIEW_META_KEY.into(), json!(true));
+            }
+            let call = self
+                .connection
+                .call_tool(&invocation.name, arguments, meta, records);
+            // Dropping the call cancels it.
+            tokio::select! {
+                biased;
+                () = cancel.cancelled() => Err(Refusal::new(
+                    "cancelled",
+                    Category::Interrupted,
+                    "the request was cancelled",
+                )
+                .with_evidence(Evidence::Uncertain)),
+                outcome = call => outcome.and_then(refused),
             }
         })
     }

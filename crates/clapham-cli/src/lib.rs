@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 mod backend;
-pub use backend::{Backend, BackendFuture, HttpBackend};
+pub use backend::{Backend, BackendFuture, McpBackend};
 mod input;
 mod output;
 mod process;

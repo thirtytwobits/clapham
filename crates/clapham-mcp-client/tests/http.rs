@@ -208,3 +208,27 @@ async fn startup_distinguishes_unavailable_endpoints_from_invalid_responses() {
         task.abort();
     }
 }
+
+#[tokio::test]
+async fn an_unaccepted_credential_refuses_the_connection_as_unauthenticated() {
+    let app = Router::new().route("/mcp", post(|| async { StatusCode::UNAUTHORIZED }));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let endpoint = format!("http://{}/mcp", listener.local_addr().unwrap());
+    let task = tokio::spawn(async {
+        axum::serve(listener, app).await.unwrap();
+    });
+    let error = McpConnection::http(
+        McpHttpOptions::new(endpoint),
+        McpConfig::new("remote", "scope"),
+    )
+    .await
+    .err()
+    .unwrap();
+    assert_eq!(error, McpError::Unauthenticated);
+    let refusal = error.refusal(Evidence::NotDispatched);
+    assert_eq!(
+        (refusal.code.as_str(), refusal.category),
+        ("mcp_unauthenticated", clapham::Category::Refused)
+    );
+    task.abort();
+}

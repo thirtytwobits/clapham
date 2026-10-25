@@ -96,7 +96,11 @@ where
             && let ServerResult::CallToolResult(result) = &mut response.result
             && result.is_error != Some(true)
         {
-            let meta = result.meta.take();
+            // The refusal replaces the outcome, so its absent fields no longer apply.
+            let meta = result.meta.take().map(|mut meta| {
+                meta.remove(mapping::ABSENT_META_KEY);
+                meta
+            });
             *result = mapping::refusal(mapping::too_large());
             result.meta = meta;
         }

@@ -14,8 +14,8 @@ introspection requests. Applications own their authorisation server, credentials
 resource policy, persistence, workspace ownership and lifecycle.
 
 The CLI discovers its authenticated service and derives commands, help, argument binding,
-completions and presentation. A bounded operation HTTP interface preserves ordered records,
-refusal codes and effect evidence. Remote MCP contributions retain pinned definitions,
+completions and presentation. Against a daemon it is Clapham's MCP client, and the records
+extension preserves ordered records, refusal codes and effect evidence. Remote MCP contributions retain pinned definitions,
 credential-scoped revisions and explicit controls over replay.
 
 ## Development
@@ -28,7 +28,7 @@ Clapham is under development.
 - [JSON plus Rust application](examples/lists/src/main.rs)
 - [Configuration and OAuth setup](docs/composing.md)
 - [Operation contract and test evidence](docs/contract.md)
-- [MCP and operation HTTP](docs/mcp.md)
+- [MCP](docs/mcp.md)
 - [Conformance](docs/conformance.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)

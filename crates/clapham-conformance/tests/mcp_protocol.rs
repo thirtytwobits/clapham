@@ -90,6 +90,14 @@ async fn mcp_protocol_record_is_current() {
     )
     .await;
     let discovery = support::result(&server, "server/discover", json!({}), "Bearer human").await;
+    let described = support::result(
+        &server,
+        "tools/call",
+        json!({"name":"clapham.describe","arguments":{}}),
+        "Bearer human",
+    )
+    .await;
+    let result_meta_keys: Vec<&String> = described["_meta"].as_object().unwrap().keys().collect();
     let record = json!({
         "protocolVersions":discovery["supportedVersions"],
         "extensions":discovery["capabilities"]["extensions"],
@@ -97,6 +105,7 @@ async fn mcp_protocol_record_is_current() {
         "tools":tools["tools"],
         "resourceTemplates":resources["resourceTemplates"],
         "requestMetaKeys":REQUEST_META_KEYS,
+        "resultMetaKeys":result_meta_keys,
     });
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("records/mcp-protocol.json");
     let mut record = record;

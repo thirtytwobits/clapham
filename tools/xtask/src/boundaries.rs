@@ -10,7 +10,12 @@ use crate::{Result, capture, cargo};
 // dependencies remain available except for the other London pieces below.
 const POLICIES: &[(&str, &str, &[&str])] = &[
     ("clapham", "crates/clapham", &[]),
-    ("clapham-cli", "crates/clapham-cli", &["clapham"]),
+    // The CLI's daemon mode is Clapham's MCP client.
+    (
+        "clapham-cli",
+        "crates/clapham-cli",
+        &["clapham", "clapham-mcp-client"],
+    ),
     (
         "clapham-mcp-server",
         "crates/clapham-mcp-server",

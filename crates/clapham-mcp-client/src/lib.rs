@@ -1,6 +1,7 @@
 //! Copyright (c) Scott A Dixon
 #![doc = include_str!("../README.md")]
 mod binding;
+mod call;
 mod connection;
 #[cfg(feature = "http")]
 mod http;

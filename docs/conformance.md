@@ -8,15 +8,15 @@ Use explicit holds and releases for concurrent behaviour.
 results, visible-operation refusal codes/categories/retryability, CLI exit codes and ordered
 records where carried. Namespace collisions are checked before drivers start.
 
-`ProcessFrontEnd` drives a reference executable through the server-backed CLI, raw MCP
-stdio/HTTP and client-bound stdio/HTTP. The fixture protocol supplies controlled claim snapshots
+`ProcessFrontEnd` drives a reference executable through the CLI against its daemon over MCP
+stdio/HTTP, raw MCP stdio/HTTP and client-bound stdio/HTTP. The fixture protocol supplies controlled claim snapshots
 through the host environment and scripted HTTP credentials. Production hosts verify OAuth
 credentials. An operation hidden before CLI parsing refuses as `usage`; one hidden before
 remote binding refuses as `mcp_selection`. These native selection failures are checked explicitly.
 
 The [lists executable](../examples/lists/src/main.rs) loads JSON configuration, registers
 providers and extends the configuration in Rust. Its [matrix](../examples/lists/tests/conformance.rs)
-checks all six front ends, including different grants for the same subject. The
+checks all seven front ends, including different grants for the same subject. The
 [OAuth integration test](../crates/clapham-conformance/tests/oauth_operations.rs) uses a real
 introspection exchange and a deterministic verification clock.
 

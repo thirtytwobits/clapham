@@ -41,8 +41,12 @@ impl Process {
 /// Process transports supplied by the reference application contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProcessKind {
-    /// Invoke the command line as a fresh process for each case.
+    /// Invoke the command line as a fresh process for each case, against its daemon over
+    /// Streamable HTTP.
     CommandLine,
+    /// Invoke the command line as a fresh process for each case, against a stdio daemon it
+    /// launches.
+    CommandLineStdio,
     /// Drive MCP JSON-RPC over a server process's stdin and stdout.
     McpStdio,
     /// Drive authenticated Streamable HTTP over a server process's ephemeral loopback listener.
@@ -56,6 +60,7 @@ impl ProcessKind {
     fn name(self) -> &'static str {
         match self {
             Self::CommandLine => "command_line",
+            Self::CommandLineStdio => "command_line_stdio",
             Self::McpStdio => "mcp_stdio",
             Self::McpHttp => "mcp_http",
             Self::BoundStdio => "bound_stdio",
@@ -89,7 +94,7 @@ impl FrontEnd for ProcessFrontEnd {
     }
     fn hidden_refusal_code(&self) -> Option<&str> {
         match self.kind {
-            ProcessKind::CommandLine => Some("usage"),
+            ProcessKind::CommandLine | ProcessKind::CommandLineStdio => Some("usage"),
             ProcessKind::BoundStdio | ProcessKind::BoundHttp => Some("mcp_selection"),
             _ => None,
         }
@@ -101,8 +106,12 @@ impl FrontEnd for ProcessFrontEnd {
         case: &'a Case,
     ) -> ObservationFuture<'a> {
         Box::pin(async move {
-            if self.kind == ProcessKind::CommandLine {
-                return cli(&self.process, case).await;
+            match self.kind {
+                ProcessKind::CommandLine => return cli(&self.process, case, "http").await,
+                ProcessKind::CommandLineStdio => {
+                    return cli(&self.process, case, "stdio").await;
+                }
+                _ => {}
             }
             let mut host = Host::start(&self.process, self.kind, &case.auth).await?;
             let observation = match self.kind {
@@ -155,7 +164,7 @@ impl FrontEnd for ProcessFrontEnd {
                     drop(connection);
                     observation?
                 }
-                ProcessKind::CommandLine => unreachable!(),
+                ProcessKind::CommandLine | ProcessKind::CommandLineStdio => unreachable!(),
             };
             host.finish().await?;
             Ok(observation)
@@ -168,6 +177,7 @@ fn auth(auth: &OAuthContext) -> String {
 }
 async fn cli_once(
     process: &Process,
+    transport: &str,
     auth_value: &OAuthContext,
     operation: &str,
     input: &Value,
@@ -175,6 +185,7 @@ async fn cli_once(
     let mut child = process
         .command()
         .env("CLAPHAM_FIXTURE_ACCESS", auth(auth_value))
+        .env("CLAPHAM_TRANSPORT", transport)
         .args(operation.split('.'))
         .args(["--yes", "--format", "ndjson", "--json"])
         .arg("-")
@@ -228,8 +239,15 @@ async fn cli_once(
     }
     Ok((frames, code))
 }
-async fn cli(process: &Process, case: &Case) -> Result<Observation, Failure> {
-    let (described, exit) = cli_once(process, &case.auth, "clapham.describe", &json!({})).await?;
+async fn cli(process: &Process, case: &Case, transport: &str) -> Result<Observation, Failure> {
+    let (described, exit) = cli_once(
+        process,
+        transport,
+        &case.auth,
+        "clapham.describe",
+        &json!({}),
+    )
+    .await?;
     if exit != 0 {
         return Err(Failure::new("CLI describe was refused"));
     }
@@ -237,7 +255,8 @@ async fn cli(process: &Process, case: &Case) -> Result<Observation, Failure> {
         return Err(Failure::new("CLI describe returned unexpected frames"));
     };
     let catalogue = names(value)?;
-    let (frames, exit_code) = cli_once(process, &case.auth, &case.operation, &case.input).await?;
+    let (frames, exit_code) =
+        cli_once(process, transport, &case.auth, &case.operation, &case.input).await?;
     Ok(Observation {
         catalogue,
         frames,

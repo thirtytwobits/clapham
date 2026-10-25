@@ -45,6 +45,23 @@ impl McpConfig {
             bounds: clapham::Bounds::default(),
         }
     }
+    /// Configure an operator's connection, such as a command line against its daemon: the
+    /// largest message `Bounds` allows and one call at a time. The deadline covers
+    /// connecting and discovery; [`McpConnection::call_tool`] calls run until the caller
+    /// stops them.
+    pub fn operator(
+        server_id: impl Into<String>,
+        credential_scope_revision: impl Into<String>,
+    ) -> Self {
+        let mut config = Self::new(server_id, credential_scope_revision);
+        config.bounds = clapham::Bounds {
+            message_bytes: 8 * 1024 * 1024,
+            in_flight: 1,
+            waiting: 0,
+            ..clapham::Bounds::default()
+        };
+        config
+    }
     #[cfg(any(feature = "stdio", feature = "http"))]
     pub(crate) fn validate(&self) -> Result<(), McpError> {
         if self.server_id == "clapham"
@@ -96,6 +113,9 @@ pub enum McpError {
     /// The bounded operation queue is full.
     #[error("MCP operation queue is full")]
     Busy,
+    /// The server did not accept the connection's credential.
+    #[error("MCP credential was not accepted")]
+    Unauthenticated,
     /// The remote requested an unadvertised interaction or continuation.
     #[error("MCP interaction requires an unsupported host capability")]
     UnsupportedInteraction,
@@ -117,6 +137,7 @@ impl McpError {
             Self::Stale => ("mcp_stale", Conflict),
             Self::Selection => ("mcp_selection", Usage),
             Self::Busy => ("mcp_busy", Unavailable),
+            Self::Unauthenticated => ("mcp_unauthenticated", Refused),
             Self::UnsupportedInteraction => ("mcp_unsupported_interaction", Internal),
         };
         let mut refusal =
@@ -146,6 +167,7 @@ pub(crate) struct State {
     incoming: AtomicUsize,
     #[cfg(any(feature = "stdio", feature = "http"))]
     incoming_bytes: AtomicUsize,
+    pub routes: Arc<Routes>,
     pub stop: CancellationToken,
 }
 impl State {
@@ -157,6 +179,7 @@ impl State {
             fault: Mutex::new(None),
             incoming: AtomicUsize::new(0),
             incoming_bytes: AtomicUsize::new(0),
+            routes: Arc::default(),
             stop: CancellationToken::new(),
         })
     }
@@ -191,7 +214,8 @@ impl State {
         if matches!(
             message,
             ServerJsonRpcMessage::Request(_) | ServerJsonRpcMessage::Notification(_)
-        ) {
+        ) && !self.routes.paced(message)
+        {
             self.charge_incoming_bytes(bytes)?;
         }
         Ok(())
@@ -201,7 +225,8 @@ impl State {
         if matches!(
             message,
             ServerJsonRpcMessage::Request(_) | ServerJsonRpcMessage::Notification(_)
-        ) && self.incoming.fetch_add(1, Ordering::SeqCst) >= limit
+        ) && !self.routes.admit(message)
+            && self.incoming.fetch_add(1, Ordering::SeqCst) >= limit
         {
             return Err(McpError::Limit);
         }
@@ -258,7 +283,6 @@ pub(crate) struct Inner {
     pub service: RunningService<RoleClient, Handler>,
     pub config: McpConfig,
     pub state: Arc<State>,
-    pub routes: Arc<Routes>,
     pub active: Semaphore,
     pub admitted: Semaphore,
     pub discovery: tokio::sync::Mutex<()>,
@@ -281,12 +305,11 @@ impl McpConnection {
         config: McpConfig,
         state: Arc<State>,
     ) -> Result<Self, McpError> {
-        let routes = Arc::new(Routes::default());
         let service = tokio::time::timeout(
             config.operation_timeout,
             rmcp::service::serve_client_with_lifecycle_and_ct(
                 Handler {
-                    routes: routes.clone(),
+                    routes: state.routes.clone(),
                 },
                 transport,
                 ClientLifecycleMode::Discover {
@@ -318,7 +341,6 @@ impl McpConnection {
             config,
             service,
             state,
-            routes,
             discovery: tokio::sync::Mutex::new(()),
             published: Mutex::new(None),
             revision: AtomicU64::new(0),

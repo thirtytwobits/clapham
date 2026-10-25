@@ -46,6 +46,11 @@ A remote tool that streams under the records extension passes each record to the
 acknowledges it after the sink accepts it. An acknowledgement the client cannot confirm cancels
 the call with uncertain evidence.
 
+`McpConnection::call_tool` calls a remote tool by name outside any binding and has no deadline:
+its caller bounds it, and dropping the call cancels it. `McpConfig::operator` sizes a connection
+for an operator, such as the CLI against its daemon. A credential the server does not accept
+refuses the connection as `mcp_unauthenticated`.
+
 See the [client contract](../../docs/mcp.md#remote-connections)
 for refusal mappings and transport limits, and the
 [operation guarantees](../../docs/contract.md)

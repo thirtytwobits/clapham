@@ -5,7 +5,7 @@ use futures_util::{StreamExt, stream::BoxStream};
 use http::{HeaderName, HeaderValue};
 use rmcp::{
     RoleClient,
-    model::{ClientJsonRpcMessage, ServerJsonRpcMessage},
+    model::{ClientJsonRpcMessage, ClientRequest, ServerJsonRpcMessage},
     transport::{Transport, common::client_side_sse::SseRetryPolicy, streamable_http_client::*},
 };
 use sse_stream::{Error as SseError, Sse, SseStream};
@@ -87,13 +87,16 @@ impl BoundedHttp {
         session: Option<&str>,
         auth: Option<String>,
         headers: HashMap<HeaderName, HeaderValue>,
+        // A tool call is bounded by its invocation deadline or its caller, so a long
+        // record stream outlives the request deadline.
+        call: bool,
     ) -> reqwest::RequestBuilder {
         let persistent = method == reqwest::Method::GET;
         let mut request = self
             .client
             .request(method, uri)
             .header("accept", "application/json, text/event-stream");
-        if !persistent {
+        if !persistent && !call {
             request = request.timeout(self.timeout);
         }
         if let Some(session) = session {
@@ -112,6 +115,9 @@ impl BoundedHttp {
             .send()
             .await
             .map_err(|_| error(McpError::Transport))?;
+        if response.status() == reqwest::StatusCode::UNAUTHORIZED {
+            return Err(self.fail(McpError::Unauthenticated));
+        }
         if !response.status().is_success() {
             return Err(error(McpError::Transport));
         }
@@ -156,7 +162,11 @@ impl BoundedHttp {
                     && let Ok(mut value) = serde_json::from_str::<serde_json::Value>(data)
                 {
                     if value.get("method").is_some() {
-                        if let Err(error) = state.charge_incoming_bytes(data.len()) {
+                        let paced = value["method"] == crate::records::RECORD_NOTIFICATION
+                            && value["params"]["token"]
+                                .as_str()
+                                .is_some_and(|token| state.routes.awaits(token));
+                        if !paced && let Err(error) = state.charge_incoming_bytes(data.len()) {
                             state.fail(error.clone());
                             return Err(SseError::Body(Box::new(error)));
                         }
@@ -229,6 +239,8 @@ impl StreamableHttpClient for BoundedHttp {
             .requests
             .begin(&message)
             .map_err(|fault| self.fail(fault))?;
+        let call = matches!(&message, ClientJsonRpcMessage::Request(request)
+            if matches!(request.request, ClientRequest::CallToolRequest(_)));
         let result = async {
             let body = wire::encode(&message, self.limit).map_err(error)?;
             let response = self
@@ -239,6 +251,7 @@ impl StreamableHttpClient for BoundedHttp {
                         session_id.as_deref(),
                         auth,
                         headers,
+                        call,
                     )
                     .header("content-type", "application/json")
                     .body(body),
@@ -294,8 +307,15 @@ impl StreamableHttpClient for BoundedHttp {
         auth: Option<String>,
         headers: HashMap<HeaderName, HeaderValue>,
     ) -> Result<(), HttpError> {
-        self.send(self.request(reqwest::Method::DELETE, &uri, Some(&session), auth, headers))
-            .await?;
+        self.send(self.request(
+            reqwest::Method::DELETE,
+            &uri,
+            Some(&session),
+            auth,
+            headers,
+            false,
+        ))
+        .await?;
         Ok(())
     }
     async fn get_stream(
@@ -312,6 +332,7 @@ impl StreamableHttpClient for BoundedHttp {
             session.as_deref(),
             auth,
             headers,
+            false,
         );
         if let Some(last) = last {
             request = request.header("last-event-id", last);
@@ -490,6 +511,60 @@ mod tests {
         assert_eq!(
             stream.next().await.unwrap().unwrap().data.as_deref(),
             Some("after deadline")
+        );
+        assert_eq!(backend.state.check(), Ok(()));
+        task.abort();
+    }
+
+    #[tokio::test]
+    async fn a_tool_call_stream_outlives_the_request_deadline() {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let receiver = Arc::new(std::sync::Mutex::new(Some(rx)));
+        let app = Router::new().route(
+            "/call",
+            axum::routing::post(move || {
+                let rx = receiver.lock().unwrap().take().unwrap();
+                async move {
+                    let events = futures_util::stream::unfold(rx, |mut rx| async move {
+                        rx.recv().await.map(|text: String| {
+                            (
+                                Ok::<_, std::convert::Infallible>(
+                                    axum::response::sse::Event::default().data(text),
+                                ),
+                                rx,
+                            )
+                        })
+                    });
+                    axum::response::Sse::new(events).into_response()
+                }
+            }),
+        );
+        let (endpoint, task) = serve(app).await;
+        let backend = backend();
+        let message = serde_json::from_value(serde_json::json!({"jsonrpc":"2.0","id":1,
+            "method":"tools/call","params":{"name":"export","arguments":{}}}))
+        .unwrap();
+        let response = backend
+            .post_message(
+                format!("{endpoint}/call").into(),
+                message,
+                None,
+                None,
+                HashMap::new(),
+            )
+            .await
+            .unwrap();
+        let StreamableHttpPostResponse::Sse(mut stream, _) = response else {
+            panic!("expected an SSE reply");
+        };
+        tokio::time::pause();
+        tokio::time::advance(backend.timeout * 3).await;
+        let record = serde_json::json!({"jsonrpc":"2.0","method":"example.test/record"});
+        tx.send(record.to_string()).unwrap();
+        let event = stream.next().await.unwrap().unwrap();
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(event.data.as_deref().unwrap()).unwrap(),
+            record
         );
         assert_eq!(backend.state.check(), Ok(()));
         task.abort();
