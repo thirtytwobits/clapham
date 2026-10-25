@@ -38,6 +38,14 @@ not elapsed time, to prove concurrent behaviour.
 Documentation is en-GB, precise and concise. A removal is clean: remove obsolete code,
 tests, documentation and configuration together; do not leave compatibility debris.
 
+## MCP claims
+
+A statement about what MCP or rmcp can do cites the specification page for the revision
+Clapham pins and, for rmcp, the source path in the pinned release. Recall is not a source.
+A design that rests on an MCP limitation names the clause that imposes it. `docs/mcp.md`
+records the facts Clapham relies on; a change that depends on another fact adds it there
+with its source.
+
 ## Validation
 
 Run `cargo xtask check`, `cargo xtask boundaries` and `cargo xtask api` before handing off

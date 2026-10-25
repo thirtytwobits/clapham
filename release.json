@@ -118,6 +118,7 @@
         "src/wire.rs",
         "tests/contracts.rs",
         "tests/http.rs",
+        "tests/rmcp_facts.rs",
         "tests/support/mod.rs"
       ]
     },
@@ -137,6 +138,7 @@
         "src/mapping.rs",
         "src/oauth.rs",
         "src/resource.rs",
+        "src/rmcp_facts.rs",
         "src/stdio.rs"
       ]
     }

@@ -42,20 +42,12 @@ impl Server {
         R: AsyncRead + Send + Unpin + 'static,
         W: AsyncWrite + Send + Unpin + 'static,
     {
-        let bounds = self.set.bounds().clone();
-        let transport = BoundedTransport {
-            inner: AsyncRwTransport::new(read, write).with_max_line_length(bounds.message_bytes),
-            active: Arc::new(Mutex::new(HashSet::new())),
-            cancelled: HashSet::new(),
-            failed: clapham::Cancellation::new(),
-            received: 0,
-            bounds,
-        };
+        let transport = BoundedTransport::new(read, write, self.set.bounds().clone());
         self.serve(transport).await.map_err(Box::new)
     }
 }
 
-struct BoundedTransport<R: AsyncRead, W: AsyncWrite> {
+pub(crate) struct BoundedTransport<R: AsyncRead, W: AsyncWrite> {
     inner: AsyncRwTransport<RoleServer, R, W>,
     bounds: Bounds,
     active: Arc<Mutex<HashSet<RequestId>>>,
@@ -63,6 +55,23 @@ struct BoundedTransport<R: AsyncRead, W: AsyncWrite> {
     cancelled: HashSet<[u8; 32]>,
     failed: clapham::Cancellation,
     received: usize,
+}
+
+impl<R, W> BoundedTransport<R, W>
+where
+    R: AsyncRead + Send + Unpin + 'static,
+    W: AsyncWrite + Send + Unpin + 'static,
+{
+    pub(crate) fn new(read: R, write: W, bounds: Bounds) -> Self {
+        Self {
+            inner: AsyncRwTransport::new(read, write).with_max_line_length(bounds.message_bytes),
+            active: Arc::new(Mutex::new(HashSet::new())),
+            cancelled: HashSet::new(),
+            failed: clapham::Cancellation::new(),
+            received: 0,
+            bounds,
+        }
+    }
 }
 
 impl<R, W> Transport<RoleServer> for BoundedTransport<R, W>

@@ -11,6 +11,8 @@ pub use oauth::OAuthIntrospector;
 
 mod mapping;
 mod resource;
+#[cfg(all(test, feature = "stdio", feature = "http"))]
+mod rmcp_facts;
 #[cfg(feature = "stdio")]
 mod stdio;
 
