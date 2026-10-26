@@ -116,8 +116,9 @@ the template:
 
 A query variable that names a required property, a property of another type or a name another
 expression binds refuses registration. A read URI matches when every path variable and query
-parameter percent-decodes to UTF-8 and every parameter is bound. A query template shares its
-path's shape, so it cannot be registered beside a template of that path alone.
+parameter percent-decodes to UTF-8 and every parameter is bound. A URI that no template
+matches answers `-32602` with the URI under `data.uri`. A query template shares its path's
+shape, so it cannot be registered beside a template of that path alone.
 
 ## Protocol facts
 
@@ -140,6 +141,7 @@ rmcp source paths are relative to the rmcp 3.6.0 crate root.
 | A client declares its capabilities in each request's `_meta` under `io.modelcontextprotocol/clientCapabilities`; servers must not infer them from earlier requests. A server declares its capabilities in `DiscoverResult`. | [`RequestMetaObject`](https://modelcontextprotocol.io/specification/2026-07-28/schema#requestmetaobject-iomodelcontextprotocolclientcapabilities), [`DiscoverResult`](https://modelcontextprotocol.io/specification/2026-07-28/schema#discoverresult-capabilities) |
 | A progress value must increase with each notification; progress carries a number, an optional total and an optional human-readable message, and both sides should rate-limit it. Progress notifications are not a record channel. | [Progress](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/progress.md) |
 | Resource templates are RFC 6570 URI templates. `resources/read` names one resource by its `uri`, and servers must validate every resource URI. | [Resource Templates](https://modelcontextprotocol.io/specification/2026-07-28/server/resources#resource-templates), [Reading Resources](https://modelcontextprotocol.io/specification/2026-07-28/server/resources#reading-resources), [Security Considerations](https://modelcontextprotocol.io/specification/2026-07-28/server/resources#security-considerations) |
+| A server must answer a `resources/read` for a resource that does not exist with JSON-RPC `-32602` (Invalid Params); the specification's example carries the URI under `data.uri`. Clients should also accept `-32002`, which earlier protocol versions used. | [Resources: Error Handling](https://modelcontextprotocol.io/specification/2026-07-28/server/resources#error-handling) |
 | SEP-2998, partial tool results, was closed on 22 September 2026 without acceptance; new SEPs require a Working Group. | [modelcontextprotocol#2998](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2998) |
 
 ### rmcp 3.6.0
