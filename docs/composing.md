@@ -58,9 +58,11 @@ and scope elevation belong to the authorisation server.
 
 ## JSON and programmatic extension
 
-The [lists configuration](../examples/lists/configuration.json) selects providers and
-operations. The [executable](../examples/lists/src/main.rs) loads that JSON, registers the
-providers and adds `items.tick` with a Rust builder before composition.
+The [lists configuration](../crates/clapham-conformance/src/harness/lists.json) selects
+providers and operations and attaches the `lists.private` resource policy to `lists.get`. The
+[lists fixture](../crates/clapham-conformance/src/harness/lists.rs) loads that JSON, registers
+the providers and policies and adds `items.tick` with a Rust builder before composition. The
+[executable](../examples/lists/src/main.rs) composes the fixture.
 
 A permission binding has this form:
 

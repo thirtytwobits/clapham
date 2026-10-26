@@ -4,9 +4,9 @@ mod lists;
 mod process;
 
 use clapham::{
-    Admission, Bounds, CallResult, Cancellation, ComposeOptions, ComposedSet, CompositionCode,
-    Contribution, ExecutionMode, Gate, OAuthContext, Outcome, RecordSink, Refusal,
-    compose_with_options,
+    Admission, Bounds, Call, CallResult, Cancellation, ComposeOptions, ComposedSet,
+    CompositionCode, CompositionError, Configuration, Contribution, ExecutionMode, Exposure, Gate,
+    OAuthContext, Outcome, RecordSink, Refusal, compose_with_options,
 };
 use serde_json::Value;
 use std::{
@@ -47,42 +47,139 @@ impl Case {
 /// Reproducible state and explicit inputs; schemas cannot supply meaningful application identities.
 #[derive(Clone)]
 pub struct Fixture {
-    factory: Arc<dyn Fn() -> Vec<Contribution> + Send + Sync>,
-    /// Finite cases, with at least one schema-valid input for every contributed operation.
+    composition: Composition,
+    /// Finite cases, with at least one schema-valid input for every composed operation.
     pub cases: Vec<Case>,
-    /// A caller the scripted gate must refuse for every contributed operation, but admit to describe.
+    /// A caller the scripted gate must refuse for every composed operation, but admit to describe.
     pub denied_auth: OAuthContext,
-    /// Bounds used by in-process compositions; external hosts must use the same profile.
+    /// Bounds used by every composition of the fixture; external hosts must use the same profile.
     pub bounds: Bounds,
 }
+#[derive(Clone)]
+enum Composition {
+    Contributions(Arc<dyn Fn() -> Vec<Contribution> + Send + Sync>),
+    Configuration(Arc<dyn Fn() -> Configuration + Send + Sync>),
+}
+/// A source and provider name no fixture configuration may use; it claims a fixture namespace.
+const COLLISION_SOURCE: &str = "clapham.conformance.collision";
 impl Fixture {
-    /// The factory must recreate the same initial state on every invocation.
+    /// Compose contributions directly: every operation is exposed, no resource policy is
+    /// registered and no OAuth resource is bound. The factory must recreate the same initial
+    /// state on every invocation.
     pub fn new(
         factory: impl Fn() -> Vec<Contribution> + Send + Sync + 'static,
         cases: Vec<Case>,
     ) -> Self {
+        Self::with(Composition::Contributions(Arc::new(factory)), cases)
+    }
+    /// Compose a configuration with its providers, resource policies, exposures and OAuth
+    /// resource binding. The factory must recreate the same initial state on every invocation.
+    pub fn configured(
+        factory: impl Fn() -> Configuration + Send + Sync + 'static,
+        cases: Vec<Case>,
+    ) -> Self {
+        Self::with(Composition::Configuration(Arc::new(factory)), cases)
+    }
+    fn with(composition: Composition, cases: Vec<Case>) -> Self {
         Self {
-            factory: Arc::new(factory),
+            composition,
             cases,
             denied_auth: oauth_context("denied", &["lists:read", "lists:write"]),
             bounds: Bounds::default(),
         }
     }
-    /// Fresh handlers and state for one independent probe, also usable by the application binary.
-    pub fn contributions(&self) -> Vec<Contribution> {
-        (self.factory)()
+    /// Fresh handlers and state for one independent probe, composed within the fixture's bounds.
+    /// The fixture's host executable composes through this method with its own options.
+    pub fn compose(&self, options: ComposeOptions) -> Result<ComposedSet, CompositionError> {
+        match &self.composition {
+            Composition::Contributions(factory) => {
+                compose_with_options(factory(), self.bounds.clone(), options)
+            }
+            Composition::Configuration(factory) => {
+                factory().compose_with_options(self.bounds.clone(), options)
+            }
+        }
     }
-    fn compose(&self, gate: Arc<dyn Gate>) -> Result<ComposedSet, Failure> {
-        compose_with_options(
-            self.contributions(),
-            self.bounds.clone(),
-            ComposeOptions {
-                gate,
-                execution: ExecutionMode::Daemon,
-                ..Default::default()
-            },
-        )
-        .map_err(|error| Failure::new(error.to_string()))
+    fn baseline(&self, gate: Arc<dyn Gate>) -> Result<ComposedSet, Failure> {
+        self.compose(daemon(gate))
+            .map_err(|error| Failure::new(error.to_string()))
+    }
+    /// Namespaces the fixture claims: those of its contributions, or of its exposed operations.
+    fn namespaces(&self, set: &ComposedSet) -> Vec<String> {
+        match &self.composition {
+            Composition::Contributions(factory) => factory()
+                .into_iter()
+                .map(|contribution| contribution.namespace)
+                .collect(),
+            Composition::Configuration(_) => set
+                .operations()
+                .filter_map(|operation| operation.name.namespace())
+                .filter(|namespace| *namespace != "clapham")
+                .map(str::to_owned)
+                .collect::<BTreeSet<_>>()
+                .into_iter()
+                .collect(),
+        }
+    }
+    /// Compose the fixture with another registration claiming `namespace`, and check the refusal.
+    fn check_collision(
+        &self,
+        set: &ComposedSet,
+        namespace: &str,
+        gate: Arc<dyn Gate>,
+    ) -> Result<(), Failure> {
+        let (collision, expected) = match &self.composition {
+            Composition::Contributions(factory) => {
+                let mut duplicate = factory();
+                duplicate.push(Contribution::new(namespace));
+                (
+                    compose_with_options(duplicate, self.bounds.clone(), daemon(gate)),
+                    CompositionCode::NamespaceClaimed,
+                )
+            }
+            Composition::Configuration(factory) => {
+                // A configuration refuses a second source exposing an operation in a claimed
+                // namespace. The handler is never dispatched.
+                let operation = set
+                    .operations()
+                    .find(|operation| operation.name.namespace() == Some(namespace))
+                    .ok_or_else(|| Failure::new(format!("{namespace} exposes no operation")))?
+                    .clone();
+                let name = operation.name.to_string();
+                let claim = Contribution::new(namespace).operation(operation, |_: Call| async {
+                    Err(Refusal::not_dispatched(
+                        "unreachable",
+                        clapham::Category::Internal,
+                        "the collision probe is never composed",
+                    ))
+                });
+                (
+                    factory()
+                        .provider(COLLISION_SOURCE, claim)
+                        .expose(Exposure::new(COLLISION_SOURCE, name))
+                        .compose_with_options(self.bounds.clone(), daemon(gate)),
+                    CompositionCode::InvalidConfiguration,
+                )
+            }
+        };
+        let error = match collision {
+            Ok(_) => return Err(Failure::new("duplicate namespace was accepted")),
+            Err(error) => error,
+        };
+        if error.code != expected {
+            return Err(Failure::new(format!(
+                "duplicate namespace refused as {}",
+                error.code.as_str()
+            )));
+        }
+        Ok(())
+    }
+}
+fn daemon(gate: Arc<dyn Gate>) -> ComposeOptions {
+    ComposeOptions {
+        gate,
+        execution: ExecutionMode::Daemon,
+        ..Default::default()
     }
 }
 impl fmt::Debug for Fixture {
@@ -196,7 +293,7 @@ impl FrontEnd for InProcess {
         case: &'a Case,
     ) -> ObservationFuture<'a> {
         Box::pin(async move {
-            let set = fixture.compose(gate)?;
+            let set = fixture.baseline(gate)?;
             let catalogue = describe(&set, &case.auth).await?;
             let frames = Arc::new(Mutex::new(Vec::new()));
             let records = {
@@ -337,6 +434,9 @@ fn compare(
             if actual.retryable != expected.retryable {
                 return Err(Failure::new("refusal retryable changed"));
             }
+            if actual.evidence != expected.evidence {
+                return Err(Failure::new("refusal evidence changed"));
+            }
         }
         i32::from(actual.category.exit_code())
     } else {
@@ -394,11 +494,11 @@ pub struct Report {
     pub namespace_checks: usize,
 }
 
-/// Compare a fresh contribution fixture through all front ends, without timers or retries.
+/// Compare a fresh fixture through all front ends, without timers or retries.
 ///
 /// Each operation needs a schema-valid finite case. Indefinite watches can use a terminal
 /// refusal case; finite streams prove record ordering. The scripted gate must admit describe
-/// and refuse `fixture.denied_auth` for each contributed operation.
+/// and refuse `fixture.denied_auth` for each composed operation.
 pub async fn run(
     fixture: &Fixture,
     gate: Arc<dyn Gate>,
@@ -413,31 +513,10 @@ pub async fn run(
             return Err(Failure::new("front-end names must be unique"));
         }
     }
-    let contributions = fixture.contributions();
-    let namespaces: Vec<_> = contributions.iter().map(|c| c.namespace.clone()).collect();
-    let set = fixture.compose(gate.clone())?;
+    let set = fixture.baseline(gate.clone())?;
+    let namespaces = fixture.namespaces(&set);
     for namespace in &namespaces {
-        let mut duplicate = fixture.contributions();
-        duplicate.push(Contribution::new(namespace));
-        let collision = compose_with_options(
-            duplicate,
-            fixture.bounds.clone(),
-            ComposeOptions {
-                gate: gate.clone(),
-                execution: ExecutionMode::Daemon,
-                ..Default::default()
-            },
-        );
-        let error = match collision {
-            Ok(_) => return Err(Failure::new("duplicate namespace was accepted")),
-            Err(error) => error,
-        };
-        if error.code != CompositionCode::NamespaceClaimed {
-            return Err(Failure::new(format!(
-                "duplicate namespace refused as {}",
-                error.code.as_str()
-            )));
-        }
+        fixture.check_collision(&set, namespace, gate.clone())?;
     }
     if fixture.cases.is_empty() || namespaces.is_empty() {
         return Err(Failure::new(
@@ -479,7 +558,7 @@ pub async fn run(
             })
         }) {
             return Err(Failure::new(format!(
-                "case operation is not contributed by the fixture: {}",
+                "case operation is not composed by the fixture: {}",
                 case.operation
             )));
         }

@@ -323,7 +323,8 @@ pub clapham_conformance::Fixture::bounds: clapham::bounds::Bounds
 pub clapham_conformance::Fixture::cases: alloc::vec::Vec<clapham_conformance::Case>
 pub clapham_conformance::Fixture::denied_auth: clapham::auth::OAuthContext
 impl clapham_conformance::Fixture
-pub fn clapham_conformance::Fixture::contributions(&self) -> alloc::vec::Vec<clapham::composition::Contribution>
+pub fn clapham_conformance::Fixture::compose(&self, options: clapham::gate::ComposeOptions) -> core::result::Result<clapham::composition::ComposedSet, clapham::composition::CompositionError>
+pub fn clapham_conformance::Fixture::configured(factory: impl core::ops::function::Fn() -> clapham::configuration::Configuration + core::marker::Send + core::marker::Sync + 'static, cases: alloc::vec::Vec<clapham_conformance::Case>) -> Self
 pub fn clapham_conformance::Fixture::new(factory: impl core::ops::function::Fn() -> alloc::vec::Vec<clapham::composition::Contribution> + core::marker::Send + core::marker::Sync + 'static, cases: alloc::vec::Vec<clapham_conformance::Case>) -> Self
 impl core::clone::Clone for clapham_conformance::Fixture
 pub fn clapham_conformance::Fixture::clone(&self) -> clapham_conformance::Fixture

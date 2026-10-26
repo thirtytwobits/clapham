@@ -263,6 +263,16 @@ impl ListsHandle {
     /// Fresh `lists` and `items` contributions sharing this fixture's state and controls.
     /// They may be composed beside other namespaces or reused in independent composed sets.
     pub fn contributions(&self) -> [Contribution; 2] {
+        self.contributions_with(false)
+    }
+
+    /// The contributions with `items.tick` naming the `items.private` resource policy and
+    /// declaring its `list_access_denied` refusal. Composition must register the policy.
+    pub(crate) fn policy_contributions(&self) -> [Contribution; 2] {
+        self.contributions_with(true)
+    }
+
+    fn contributions_with(&self, policies: bool) -> [Contribution; 2] {
         let mut lists = Contribution::new("lists");
         let mut items = Contribution::new("items");
         for kind in Kind::ALL {
@@ -270,10 +280,17 @@ impl ListsHandle {
                 handle: self.clone(),
                 kind,
             };
+            let mut descriptor = kind.descriptor();
+            if policies && matches!(kind, Kind::Tick) {
+                descriptor.policies.push("items.private".into());
+                descriptor
+                    .refusals
+                    .insert("list_access_denied".into(), Category::Refused);
+            }
             if matches!(kind, Kind::Add | Kind::Tick) {
-                items = items.operation(kind.descriptor(), handler);
+                items = items.operation(descriptor, handler);
             } else {
-                lists = lists.operation(kind.descriptor(), handler);
+                lists = lists.operation(descriptor, handler);
             }
         }
         [lists, items]
