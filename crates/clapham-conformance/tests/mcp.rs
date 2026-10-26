@@ -236,6 +236,20 @@ async fn constant_resource_and_missing_resource_have_json_contents() {
 }
 
 #[tokio::test]
+async fn unmatched_resource_uri_is_invalid_params_with_its_uri() {
+    let (_, server) = fixture();
+    let mut wire = Wire::new(server);
+    for (id, uri) in [(1, "items://tasks"), (2, "lists://tasks/items")] {
+        wire.send(id, "resources/read", json!({"uri":uri})).await;
+        let error = &wire.response().await["error"];
+        assert_eq!(error["code"], -32602, "{error}");
+        assert_eq!(error["message"], "resource not found");
+        assert_eq!(error["data"], json!({"uri":uri}));
+    }
+    wire.close().await;
+}
+
+#[tokio::test]
 async fn pagination_is_bounded_and_cursors_are_checked() {
     let mut contribution = Contribution::new("probe");
     for index in 0..12 {

@@ -569,8 +569,9 @@ impl ServerHandler for Server {
                 }
             }
         }
-        let (name, input) =
-            matched.ok_or_else(|| ErrorData::resource_not_found("resource not found", None))?;
+        let (name, input) = matched.ok_or_else(|| {
+            ErrorData::invalid_params("resource not found", Some(json!({"uri":request.uri})))
+        })?;
         let _permit = self.execution_permit(&context).await?;
         let outcome = self
             .invoke(&name, Value::Object(input), false, None, &context)
