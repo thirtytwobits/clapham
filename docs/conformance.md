@@ -12,6 +12,11 @@ results, visible-operation refusal codes/categories/retryability/evidence, CLI e
 ordered records where carried. A resource policy's refusal is compared like any other; its
 evidence is `not_dispatched`. Namespace collisions are checked before drivers start.
 
+`Case::compare` sets a projection of a successful result. The harness applies it to the
+baseline's result and to each front end's MCP result or CLI data before comparing them. A case
+projects its result only to leave out what the operation mints, such as an identifier, revision
+or timestamp, never to hide a difference in behaviour.
+
 `ProcessFrontEnd` drives a reference executable through the CLI against its daemon over MCP
 stdio/HTTP, raw MCP stdio/HTTP and client-bound stdio/HTTP. The fixture protocol supplies controlled claim snapshots
 through the host environment and scripted HTTP credentials. Production hosts verify OAuth

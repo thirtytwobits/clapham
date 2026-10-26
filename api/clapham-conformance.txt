@@ -201,6 +201,7 @@ pub clapham_conformance::Case::auth: clapham::auth::OAuthContext
 pub clapham_conformance::Case::input: serde_json::value::Value
 pub clapham_conformance::Case::operation: alloc::string::String
 impl clapham_conformance::Case
+pub fn clapham_conformance::Case::compare(self, projection: impl core::ops::function::Fn(&serde_json::value::Value) -> serde_json::value::Value + core::marker::Send + core::marker::Sync + 'static) -> Self
 pub fn clapham_conformance::Case::new(operation: impl core::convert::Into<alloc::string::String>, input: serde_json::value::Value) -> Self
 impl core::clone::Clone for clapham_conformance::Case
 pub fn clapham_conformance::Case::clone(&self) -> clapham_conformance::Case
@@ -210,8 +211,8 @@ impl core::marker::Freeze for clapham_conformance::Case
 impl core::marker::Send for clapham_conformance::Case
 impl core::marker::Sync for clapham_conformance::Case
 impl core::marker::Unpin for clapham_conformance::Case
-impl core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Case
-impl core::panic::unwind_safe::UnwindSafe for clapham_conformance::Case
+impl !core::panic::unwind_safe::RefUnwindSafe for clapham_conformance::Case
+impl !core::panic::unwind_safe::UnwindSafe for clapham_conformance::Case
 impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_conformance::Case where B: http_body::Body
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_conformance::Case where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_conformance::Case where ST: ?core::marker::Sized, DT: ?core::marker::Sized

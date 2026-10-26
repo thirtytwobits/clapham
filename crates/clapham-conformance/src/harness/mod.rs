@@ -21,7 +21,7 @@ pub use lists::{lists_fixture, lists_gate};
 pub use process::{Process, ProcessFrontEnd, ProcessKind};
 
 /// One finite invocation against a fresh fixture, including a terminal refusal for a watch.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Case {
     /// The complete operation name, before any remote binding alias.
     pub operation: String,
@@ -29,7 +29,9 @@ pub struct Case {
     pub input: Value,
     /// The caller authenticated by each host adapter, preserving the verified subject and grant.
     pub auth: OAuthContext,
+    projection: Option<Projection>,
 }
+type Projection = Arc<dyn Fn(&Value) -> Value + Send + Sync>;
 impl Case {
     /// A call by `human:human`; change `auth` to exercise another caller.
     pub fn new(operation: impl Into<String>, input: Value) -> Self {
@@ -40,7 +42,31 @@ impl Case {
                 "human",
                 &["lists:read", "lists:write", "lists:admin", "items:tick"],
             ),
+            projection: None,
         }
+    }
+    /// Compare `projection` of a successful result rather than the whole result. The harness
+    /// applies it to the baseline's and each front end's result alike. Project out only what the
+    /// operation mints, such as an identifier, revision or timestamp.
+    pub fn compare(mut self, projection: impl Fn(&Value) -> Value + Send + Sync + 'static) -> Self {
+        self.projection = Some(Arc::new(projection));
+        self
+    }
+    fn project(&self, result: &Value) -> Value {
+        match &self.projection {
+            Some(projection) => projection(result),
+            None => result.clone(),
+        }
+    }
+}
+impl fmt::Debug for Case {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Case")
+            .field("operation", &self.operation)
+            .field("input", &self.input)
+            .field("auth", &self.auth)
+            .field("projected", &self.projection.is_some())
+            .finish()
     }
 }
 
@@ -390,7 +416,14 @@ fn refusal(frame: &Frame) -> Option<Refusal> {
         _ => None,
     }
 }
+/// Whether clapham-cli emits an outcome's result alone rather than the complete outcome.
+fn cli_result_is_bare(outcome: &Outcome) -> bool {
+    outcome.content.is_none()
+        && !outcome.is_error
+        && outcome.evidence == clapham::Evidence::Completed
+}
 fn compare(
+    case: &Case,
     expected: &Observation,
     actual: &Observation,
     records: bool,
@@ -440,28 +473,35 @@ fn compare(
         }
         i32::from(actual.category.exit_code())
     } else {
-        let Frame::Outcome(expected) = expected_result else {
+        let Frame::Outcome(baseline) = expected_result else {
             return Err(Failure::new("invalid baseline result"));
         };
+        // A case's projection applies to successful results; a tool error compares whole.
+        let project = |result: &Value| {
+            if baseline.is_error {
+                result.clone()
+            } else {
+                case.project(result)
+            }
+        };
+        let mut expected = baseline.clone();
+        expected.result = baseline.result.as_ref().map(project);
         let matches = match actual_result {
             Frame::Outcome(actual) => {
-                actual.result == expected.result && actual.is_error == expected.is_error
+                actual.result.as_ref().map(project) == expected.result
+                    && actual.is_error == expected.is_error
             }
-            Frame::CliResult(actual) => {
-                let expected_data = if expected.content.is_none()
-                    && !expected.is_error
-                    && expected.evidence == clapham::Evidence::Completed
-                {
-                    // Mirror clapham-cli's output::result_data representation.
-                    match &expected.result {
-                        Some(result) => result.clone(),
-                        None => serde_json::to_value(expected)?,
+            // Mirror clapham-cli's output::result_data representation.
+            Frame::CliResult(actual) => match &expected.result {
+                Some(result) if cli_result_is_bare(&expected) => project(actual) == *result,
+                _ => {
+                    let mut actual = actual.clone();
+                    if let Some(result) = actual.get_mut("result") {
+                        *result = project(result);
                     }
-                } else {
-                    serde_json::to_value(expected)?
-                };
-                *actual == expected_data
-            }
+                    actual == serde_json::to_value(&expected)?
+                }
+            },
             _ => false,
         };
         if !matches {
@@ -587,6 +627,7 @@ pub async fn run(
                     .await
                     .map_err(|e| e.at(driver.name(), &case.operation))?;
                 compare(
+                    case,
                     &baseline,
                     &observation,
                     driver.carries_records(),

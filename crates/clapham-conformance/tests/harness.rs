@@ -259,3 +259,96 @@ async fn refusal_shaped_tool_errors_remain_successful_outcomes() {
         .await
         .unwrap();
 }
+
+/// Each fresh composition mints the next identifier, as an operation minting state would.
+fn minting(content: bool, projected: bool) -> Fixture {
+    use clapham::{Call, Contribution, Operation, Outcome};
+    use serde_json::json;
+    let minted = Arc::new(AtomicUsize::new(0));
+    let mut case = Case::new("items.mint", json!({}));
+    if projected {
+        case = case.compare(|result| {
+            let mut result = result.clone();
+            result.as_object_mut().unwrap().remove("id");
+            result
+        });
+    }
+    Fixture::new(
+        move || {
+            let id = minted.fetch_add(1, Ordering::SeqCst);
+            let descriptor: Operation = serde_json::from_value(json!({
+                "name":"items.mint", "description":"Return a minted identifier.",
+                "input":{"type":"object"},"effect":"query","locality":"workspace",
+                "idempotent":true,"open_world":false
+            }))
+            .unwrap();
+            vec![
+                Contribution::new("items").operation(descriptor, move |_: Call| async move {
+                    let mut outcome = Outcome::new(json!({"id":id,"name":"New"}));
+                    if content {
+                        outcome.content = Some(vec![json!({"type":"text","text":"New"})]);
+                    }
+                    Ok(outcome)
+                }),
+            ]
+        },
+        vec![case],
+    )
+}
+fn rename(o: &mut Observation) {
+    for frame in &mut o.frames {
+        if let Frame::Outcome(outcome) = frame {
+            outcome.result.as_mut().unwrap()["name"] = "Changed".into();
+        }
+    }
+}
+/// Model clapham-cli's data: a completed ordinary result alone, otherwise the whole outcome.
+fn as_cli(o: &mut Observation) {
+    o.exit_code = Some(match o.frames.last().unwrap() {
+        Frame::Refusal(refusal) => i32::from(refusal.category.exit_code()),
+        _ => 0,
+    });
+    for frame in &mut o.frames {
+        if let Frame::Outcome(outcome) = frame {
+            *frame = Frame::CliResult(match &outcome.result {
+                Some(result) if outcome.content.is_none() => result.clone(),
+                _ => serde_json::to_value(&*outcome).unwrap(),
+            });
+        }
+    }
+}
+async fn minted(fixture: &Fixture, change: fn(&mut Observation)) -> Result<Report, Failure> {
+    let driver = Double {
+        change,
+        entered: Arc::new(AtomicUsize::new(0)),
+    };
+    run(fixture, lists_gate(), vec![Box::new(driver)]).await
+}
+#[tokio::test]
+async fn minted_results_differ_without_a_projection() {
+    let failure = minted(&minting(false, false), |_| {}).await.unwrap_err();
+    assert!(failure.to_string().contains("result differs"), "{failure}");
+}
+#[tokio::test]
+async fn projected_minted_results_pass() {
+    minted(&minting(false, true), |_| {}).await.unwrap();
+}
+#[tokio::test]
+async fn projected_results_still_compare_what_they_keep() {
+    let failure = minted(&minting(false, true), rename).await.unwrap_err();
+    assert!(failure.to_string().contains("result differs"), "{failure}");
+}
+#[tokio::test]
+async fn projections_apply_to_cli_data() {
+    for content in [false, true] {
+        minted(&minting(content, true), as_cli).await.unwrap();
+        let failure = minted(&minting(content, true), |o| {
+            rename(o);
+            as_cli(o);
+        })
+        .await
+        .unwrap_err();
+        assert!(failure.to_string().contains("result differs"), "{failure}");
+        assert!(minted(&minting(content, false), as_cli).await.is_err());
+    }
+}

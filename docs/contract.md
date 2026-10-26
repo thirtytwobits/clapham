@@ -293,12 +293,16 @@ hidden before CLI parsing fails as `usage`; one hidden before remote binding fai
 `mcp_selection`. Visible-operation domain refusal fields, including evidence, are compared
 unchanged. A resource policy attached by an exposure or named by a descriptor refuses with its
 operation's declared code and category and `not_dispatched` evidence through every front end.
+A case's projection applies identically to the baseline's result, MCP results and CLI data; what
+it keeps is compared exactly. A case without a projection compares its whole result.
 
 Evidence: [harness tests](../crates/clapham-conformance/tests/harness.rs),
 `dropping_retryable_fails_the_harness`, `changed_refusal_codes_and_categories_fail`,
 `changed_refusal_evidence_fails`,
 `resource_policies_attached_by_exposure_and_descriptor_refuse_in_the_baseline`,
-`wrong_records_early_results_and_duplicate_results_fail` and
-`namespace_collision_and_missing_cases_fail_before_a_driver_starts`;
+`wrong_records_early_results_and_duplicate_results_fail`,
+`namespace_collision_and_missing_cases_fail_before_a_driver_starts`,
+`minted_results_differ_without_a_projection`, `projected_minted_results_pass`,
+`projected_results_still_compare_what_they_keep` and `projections_apply_to_cli_data`;
 [process matrix](../examples/lists/tests/conformance.rs),
 `lists_passes_every_front_end_as_real_processes`.
