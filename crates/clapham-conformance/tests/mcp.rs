@@ -405,6 +405,77 @@ fn unsupported_resource_templates_refuse_before_serving() {
 }
 
 #[tokio::test]
+async fn query_resource_templates_read_with_and_without_parameters() {
+    let mut op = descriptor("probe.item");
+    op.input = json!({
+        "type":"object",
+        "properties":{
+            "list_id":{"type":"string"},
+            "id":{"type":"string"},
+            "store":{"type":"object","additionalProperties":{"type":"string"}}
+        },
+        "required":["list_id","id"],
+        "additionalProperties":false
+    })
+    .as_object()
+    .unwrap()
+    .clone();
+    let contribution = Contribution::new("probe").operation(op.clone(), |call: Call| async move {
+        Ok(Outcome::new(call.input))
+    });
+    let set = compose([contribution], Bounds::default()).unwrap();
+    let template = "probe://{list_id}/{id}{?store*}";
+    let mut wire = Wire::new(
+        Server::new(set, auth())
+            .unwrap()
+            .resources([("probe.item", template)])
+            .unwrap(),
+    );
+    let listed = wire.result(1, "resources/templates/list", json!({})).await;
+    assert_eq!(listed["resourceTemplates"][0]["uriTemplate"], template);
+    for (id, uri, expected) in [
+        (
+            2,
+            "probe://tasks/a?shelf=top&bin=b%2F2",
+            json!({"list_id":"tasks","id":"a","store":{"shelf":"top","bin":"b/2"}}),
+        ),
+        (3, "probe://tasks/a", json!({"list_id":"tasks","id":"a"})),
+    ] {
+        let read = wire.result(id, "resources/read", json!({"uri":uri})).await;
+        assert_eq!(read["contents"][0]["uri"], uri);
+        let text = read["contents"][0]["text"].as_str().unwrap();
+        assert_eq!(serde_json::from_str::<Value>(text).unwrap(), expected);
+    }
+    for (id, uri) in [
+        (4, "probe://tasks/a?shelf"),
+        (5, "probe://tasks/a?shelf=a+b"),
+    ] {
+        wire.send(id, "resources/read", json!({"uri":uri})).await;
+        assert!(wire.response().await["error"].is_object(), "{uri}");
+    }
+    wire.close().await;
+    for template in [
+        "probe://{list_id}{?id}",
+        "probe://{list_id}/{id}{?store}",
+        "probe://{list_id}/{id}{?absent}",
+    ] {
+        let contribution = Contribution::new("probe").operation(op.clone(), |_: Call| async {
+            Ok(Outcome::new(Value::Null))
+        });
+        let set = compose([contribution], Bounds::default()).unwrap();
+        assert_eq!(
+            Server::new(set, auth())
+                .unwrap()
+                .resources([("probe.item", template)])
+                .unwrap_err()
+                .code,
+            "mcp_configuration",
+            "{template}"
+        );
+    }
+}
+
+#[tokio::test]
 async fn describe_admission_is_required_for_discovery_but_does_not_disable_calls() {
     for (decision, code) in [
         (clapham::Admission::Deny, "not_admitted"),

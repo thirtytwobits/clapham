@@ -25,6 +25,7 @@ use crate::{http::stateless_config, stdio::BoundedTransport};
 
 const RECORD: &str = "example.test/record";
 const ACKNOWLEDGE: &str = "example.test/acknowledge";
+const TEMPLATE: &str = "example://{list}/{id}{?text,labels*}";
 
 /// The `held` tool sends two custom notifications, then waits until the test releases it.
 #[derive(Clone)]
@@ -49,8 +50,13 @@ fn scripted() -> (
 
 impl ServerHandler for Scripted {
     fn get_info(&self) -> ServerConfig {
-        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
-            .with_protocol_version(ProtocolVersion::V_2026_07_28)
+        ServerConfig::new(
+            ServerCapabilities::builder()
+                .enable_tools()
+                .enable_resources()
+                .build(),
+        )
+        .with_protocol_version(ProtocolVersion::V_2026_07_28)
     }
 
     fn supported_protocol_versions(&self) -> std::borrow::Cow<'static, [ProtocolVersion]> {
@@ -76,6 +82,29 @@ impl ServerHandler for Scripted {
             held.await.expect("the test releases the held call");
         }
         Ok(CallToolResult::structured(json!({"done":true})).into())
+    }
+
+    async fn list_resource_templates(
+        &self,
+        _: Option<PaginatedRequestParams>,
+        _: RequestContext<RoleServer>,
+    ) -> Result<ListResourceTemplatesResult, ErrorData> {
+        Ok(ListResourceTemplatesResult::with_all_items(vec![
+            ResourceTemplate::new(TEMPLATE, "probe"),
+        ]))
+    }
+
+    /// The contents echo the URI the handler received.
+    async fn read_resource(
+        &self,
+        request: ReadResourceRequestParams,
+        _: RequestContext<RoleServer>,
+    ) -> Result<ReadResourceResponse, ErrorData> {
+        Ok(ReadResourceResult::new(vec![ResourceContents::text(
+            request.uri.clone(),
+            request.uri,
+        )])
+        .into())
     }
 
     async fn on_custom_request(
@@ -188,6 +217,29 @@ async fn custom_requests_reach_the_handler_while_a_call_is_held_over_stdio() {
     assert_eq!(acknowledged["result"]["method"], ACKNOWLEDGE);
     release.send(()).unwrap();
     assert_eq!(stdio.receive().await["id"], 1);
+    stdio.running.cancel().await.unwrap();
+}
+
+#[tokio::test]
+async fn resource_templates_and_read_uris_pass_through_unchanged_over_stdio() {
+    let (handler, _, _) = scripted();
+    let mut stdio = Stdio::start(
+        handler,
+        message(Some(1), "resources/templates/list", json!({})),
+    )
+    .await;
+    let listed = stdio.receive().await;
+    assert_eq!(
+        listed["result"]["resourceTemplates"][0]["uriTemplate"], TEMPLATE,
+        "{listed}"
+    );
+    // Neither expanded from the template nor valid for it: rmcp does not interpret the URI.
+    let uri = "example://a/b%20c?text=&labels=%2F&+?#";
+    stdio
+        .send(message(Some(2), "resources/read", json!({"uri":uri})))
+        .await;
+    let read = stdio.receive().await;
+    assert_eq!(read["result"]["contents"][0]["text"], uri, "{read}");
     stdio.running.cancel().await.unwrap();
 }
 
