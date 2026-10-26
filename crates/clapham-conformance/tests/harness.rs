@@ -83,6 +83,66 @@ async fn changed_refusal_codes_and_categories_fail() {
     .await;
 }
 #[tokio::test]
+async fn changed_refusal_evidence_fails() {
+    rejects(
+        |o| {
+            for frame in &mut o.frames {
+                if let Frame::Refusal(r) = frame {
+                    r.evidence = clapham::Evidence::Uncertain;
+                }
+            }
+        },
+        "evidence",
+    )
+    .await;
+}
+#[tokio::test]
+async fn resource_policies_attached_by_exposure_and_descriptor_refuse_in_the_baseline() {
+    let fixture = lists_fixture();
+    for (operation, list, code, category) in [
+        (
+            "lists.get",
+            serde_json::json!({"id":"private"}),
+            "list_not_found",
+            clapham::Category::NotFound,
+        ),
+        (
+            "items.tick",
+            serde_json::json!({"list_id":"private","id":"p"}),
+            "list_access_denied",
+            clapham::Category::Refused,
+        ),
+    ] {
+        let cases: Vec<_> = fixture
+            .cases
+            .iter()
+            .filter(|case| case.operation == operation && case.input == list)
+            .collect();
+        let [refused, owned] = cases.as_slice() else {
+            panic!("expected a refused and an owned {operation} case");
+        };
+        let observed = InProcess
+            .observe(&fixture, lists_gate(), refused)
+            .await
+            .unwrap();
+        let [Frame::Refusal(refusal)] = observed.frames.as_slice() else {
+            panic!("expected {operation} to refuse: {:?}", observed.frames);
+        };
+        assert_eq!(
+            (refusal.code.as_str(), refusal.category, refusal.evidence),
+            (code, category, clapham::Evidence::NotDispatched)
+        );
+        let observed = InProcess
+            .observe(&fixture, lists_gate(), owned)
+            .await
+            .unwrap();
+        let [Frame::Outcome(outcome)] = observed.frames.as_slice() else {
+            panic!("expected {operation} to complete: {:?}", observed.frames);
+        };
+        assert!(!outcome.is_error);
+    }
+}
+#[tokio::test]
 async fn wrong_records_early_results_and_duplicate_results_fail() {
     rejects(
         |o| {

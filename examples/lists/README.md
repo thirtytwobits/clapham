@@ -1,8 +1,10 @@
 # Lists example
 
-A reference application loading [JSON configuration](configuration.json), registering the
-lists/items providers and adding an operation with a typed Rust builder before composition.
-It starts a Tasks list with two items and keeps server state in memory.
+A reference application composing the lists fixture: its
+[JSON configuration](../../crates/clapham-conformance/src/harness/lists.json), the lists/items
+providers, two resource policies and an operation added in Rust before composition. It starts a
+Tasks list with two items and a Private list belonging to `owner`, and keeps server state in
+memory.
 
 The executable serves MCP through one OAuth authenticator, and its CLI calls that server
 through Clapham's MCP client. Configure the introspection endpoint and resource-server

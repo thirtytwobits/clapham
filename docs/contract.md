@@ -285,14 +285,19 @@ Evidence: [client tests](../crates/clapham-mcp-client/tests/contracts.rs),
 
 ## C12: Cross-adapter conformance
 
-Fresh fixtures compare results, refusals, exit codes, visibility and ordered records.
-The reference executable runs all seven front ends, including the CLI against its daemon over
-MCP Streamable HTTP and stdio. An operation
+Fresh fixtures compare results, refusals, exit codes, visibility and ordered records. A
+fixture composes contributions or a configuration with its resource policies and exposures.
+The reference executable composes the same fixture and runs all seven front ends, including the
+CLI against its daemon over MCP Streamable HTTP and stdio. An operation
 hidden before CLI parsing fails as `usage`; one hidden before remote binding fails as
-`mcp_selection`. Visible-operation domain refusal fields are compared unchanged.
+`mcp_selection`. Visible-operation domain refusal fields, including evidence, are compared
+unchanged. A resource policy attached by an exposure or named by a descriptor refuses with its
+operation's declared code and category and `not_dispatched` evidence through every front end.
 
 Evidence: [harness tests](../crates/clapham-conformance/tests/harness.rs),
 `dropping_retryable_fails_the_harness`, `changed_refusal_codes_and_categories_fail`,
+`changed_refusal_evidence_fails`,
+`resource_policies_attached_by_exposure_and_descriptor_refuse_in_the_baseline`,
 `wrong_records_early_results_and_duplicate_results_fail` and
 `namespace_collision_and_missing_cases_fail_before_a_driver_starts`;
 [process matrix](../examples/lists/tests/conformance.rs),

@@ -9,7 +9,7 @@
   },
   "operations": [
     { "source": "lists", "name": "lists.list" },
-    { "source": "lists", "name": "lists.get" },
+    { "source": "lists", "name": "lists.get", "require": { "policy": "lists.private" } },
     { "source": "lists", "name": "lists.create" },
     { "source": "lists", "name": "lists.rename" },
     { "source": "lists", "name": "lists.compact" },

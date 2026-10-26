@@ -1,7 +1,7 @@
-//! Reference application: mixed JSON/Rust composition and an authenticated CLI that calls
-//! its daemon over MCP.
+//! Reference application: the lists fixture's mixed JSON/Rust configuration and an authenticated
+//! CLI that calls its daemon over MCP.
 
-use clapham::{Bounds, ComposedSet, Configuration, Exposure, OAuthContext};
+use clapham::{Bounds, ComposedSet, OAuthContext};
 use clapham_cli::{Cli, McpBackend};
 use clapham_conformance::{lists_fixture, lists_gate, scripted_access};
 use clapham_mcp_server::{Authenticator, Credential, HttpServer, OAuthIntrospector, Server};
@@ -36,22 +36,10 @@ fn main() -> ExitCode {
 }
 
 fn composed() -> Result<ComposedSet> {
-    let mut contributions = lists_fixture().contributions().into_iter();
-    let lists = contributions.next().expect("lists provider");
-    let items = contributions.next().expect("items provider");
-    Ok(
-        Configuration::from_json(include_str!("../configuration.json"))?
-            .register_provider("lists", lists)
-            .register_provider("items", items)
-            .expose(Exposure::new("items", "items.tick"))
-            .compose_with_options(
-                Bounds::default(),
-                clapham::ComposeOptions {
-                    gate: lists_gate(),
-                    ..Default::default()
-                },
-            )?,
-    )
+    Ok(lists_fixture().compose(clapham::ComposeOptions {
+        gate: lists_gate(),
+        ..Default::default()
+    })?)
 }
 
 fn fixture_mode() -> bool {
