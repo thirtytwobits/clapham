@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.3.1]
+
+### Breaking
+
+The conformance harness compares resource-policy refusals across front ends. `docs/contract.md`
+revises C12. The changes are confined to `clapham-conformance`.
+
+- `Fixture::contributions` is replaced by `Fixture::compose`, which composes fresh state within
+  the fixture's bounds under the caller's options. A host executable composes its fixture
+  through it.
+- `run` compares refusal evidence; a front end that changes a refusal's evidence fails.
+- `lists_fixture` composes a configuration bound to the `https://identity.example.com` issuer
+  and `https://lists.example.com` audience. It adds the list `private`, belonging to `owner`, and
+  four cases. Its configuration attaches the `lists.private` resource policy to `lists.get`, and
+  its `items.tick` descriptor names `items.private` and declares `list_access_denied`.
+  `ListsHandle::contributions` is unchanged.
+
+### Added
+
+- `Fixture::configured` composes a `Configuration` factory with its providers, resource
+  policies, exposures and OAuth resource binding. `Fixture::new` composes contributions directly.
+
+### Documentation
+
+The lists JSON configuration moves from `examples/lists` to `clapham-conformance`, where the
+lists fixture and the reference executable share it.
+
+[API reference for 0.3.1](https://thirtytwobits.github.io/clapham/v0.3.1/) covers all five library
+crates with all features enabled.
+
 ## [0.3.0]
 
 ### Breaking
