@@ -49,5 +49,6 @@ bounded. Oversized existing refusals are not replaced with another domain code. 
 [the adapter guide](../../docs/mcp.md) and [contract](../../docs/contract.md).
 
 Register URI templates with `Server::resources` or `HttpServer::resources`. The adapter checks
-query semantics, string variables and duplicate template shapes before serving.
+query semantics, path and form-style query variables and duplicate template shapes before
+serving.
 

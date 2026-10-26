@@ -105,6 +105,20 @@ Register resource URI templates on `Server::resources` or `HttpServer::resources
 query operations. The adapter validates templates and derives native rmcp annotations from
 operation behaviour. Resource registration belongs to the MCP adapter.
 
+A template is an [RFC 6570](https://www.rfc-editor.org/rfc/rfc6570) URI template. Simple path
+expressions, `{name}`, bind string properties of the operation's input. One
+[form-style query expression](https://www.rfc-editor.org/rfc/rfc6570#section-3.2.8) may end
+the template:
+
+- `{?a,b}` binds optional string properties.
+- `{?name*}` binds every other query parameter into the optional object property `name`, whose
+  values are strings.
+
+A query variable that names a required property, a property of another type or a name another
+expression binds refuses registration. A read URI matches when every path variable and query
+parameter percent-decodes to UTF-8 and every parameter is bound. A query template shares its
+path's shape, so it cannot be registered beside a template of that path alone.
+
 ## Protocol facts
 
 Clapham's MCP design relies on these facts. The
@@ -125,6 +139,7 @@ rmcp source paths are relative to the rmcp 3.6.0 crate root.
 | Extensions are identified as `{vendor-prefix}/{extension-name}` and declared under an `extensions` map in client and server capabilities. A party whose peer lacks an extension reverts to core behaviour or rejects the request. SEP-2133 is Final. | [SEP-2133](https://modelcontextprotocol.io/seps/2133-extensions.md), [`ClientCapabilities.extensions`](https://modelcontextprotocol.io/specification/2026-07-28/schema#clientcapabilities-extensions), [`ServerCapabilities.extensions`](https://modelcontextprotocol.io/specification/2026-07-28/schema#servercapabilities-extensions) |
 | A client declares its capabilities in each request's `_meta` under `io.modelcontextprotocol/clientCapabilities`; servers must not infer them from earlier requests. A server declares its capabilities in `DiscoverResult`. | [`RequestMetaObject`](https://modelcontextprotocol.io/specification/2026-07-28/schema#requestmetaobject-iomodelcontextprotocolclientcapabilities), [`DiscoverResult`](https://modelcontextprotocol.io/specification/2026-07-28/schema#discoverresult-capabilities) |
 | A progress value must increase with each notification; progress carries a number, an optional total and an optional human-readable message, and both sides should rate-limit it. Progress notifications are not a record channel. | [Progress](https://modelcontextprotocol.io/specification/2026-07-28/basic/patterns/progress.md) |
+| Resource templates are RFC 6570 URI templates. `resources/read` names one resource by its `uri`, and servers must validate every resource URI. | [Resource Templates](https://modelcontextprotocol.io/specification/2026-07-28/server/resources#resource-templates), [Reading Resources](https://modelcontextprotocol.io/specification/2026-07-28/server/resources#reading-resources), [Security Considerations](https://modelcontextprotocol.io/specification/2026-07-28/server/resources#security-considerations) |
 | SEP-2998, partial tool results, was closed on 22 September 2026 without acceptance; new SEPs require a Working Group. | [modelcontextprotocol#2998](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2998) |
 
 ### rmcp 3.6.0
@@ -136,4 +151,5 @@ rmcp source paths are relative to the rmcp 3.6.0 crate root.
 | A client receives custom notifications through `ClientHandler::on_custom_notification`. `NotificationContext` carries no originating request id, so a request-scoped notification must carry its own correlation key. | `src/handler/client.rs`, `src/service.rs` (`NotificationContext`) |
 | The serve loop runs each incoming notification's handler in its own task, so handlers are not ordered with one another or with the response. | `src/service.rs` (the serve loop's `JsonRpcMessage::Notification` arm, `spawn_service_task`) |
 | The stateless server answers a client notification `202 Accepted` and drops it without calling the handler. | `src/transport/streamable_http_server/tower.rs` (`ClientJsonRpcMessage::Notification` in the stateless path of `handle_post`) |
+| `ResourceTemplate::uri_template` and `ReadResourceRequestParams::uri` are strings. rmcp serialises a template and passes a read URI to `ServerHandler::read_resource` unchanged, without expanding or validating either. | `src/model/resource.rs` (`ResourceTemplate`), `src/model.rs` (`ReadResourceRequestParams`), `src/handler/server.rs` (`ServerHandler::read_resource`) |
 | Custom requests reach `ServerHandler::on_custom_request`. The serve loop runs each request's handler in its own task, so a custom request is answered while a `tools/call` is held, including on the same stdio connection. | `src/handler/server.rs`, `src/service.rs` (the serve loop's `JsonRpcMessage::Request` arm) |
