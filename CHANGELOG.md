@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.3.2]
+
+### Breaking
+
+`docs/contract.md` revises C12.
+
+- A `resources/read` for a URI that no registered template matches answers JSON-RPC `-32602`
+  (Invalid Params) with the URI under `data.uri`, where it answered `-32002`. MCP 2026-07-28
+  requires `-32602`.
+- `Case` is no longer `UnwindSafe` or `RefUnwindSafe`.
+
+### Added
+
+- A resource template may end with one RFC 6570 form-style query expression. `{?a,b}` binds
+  optional string properties and `{?name*}` binds every other query parameter into an optional
+  object property whose values are strings. Registration refuses a query variable that names a
+  required or non-string property or a name another expression binds, and a query template
+  beside a template of its path alone. Path-only templates are unchanged.
+- `Case::compare` sets a projection that the conformance harness applies to the baseline's
+  successful result and to each front end's MCP result or CLI data before comparing them. A
+  case without a projection compares its whole result.
+
+### Documentation
+
+`docs/mcp.md` records the accepted template forms and the MCP and rmcp facts they rely on.
+`docs/conformance.md` states when a case projects its result.
+
+[API reference for 0.3.2](https://thirtytwobits.github.io/clapham/v0.3.2/) covers all five library
+crates with all features enabled.
+
 ## [0.3.1]
 
 ### Breaking
