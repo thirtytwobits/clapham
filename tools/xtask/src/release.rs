@@ -1,4 +1,4 @@
-//! Validate release metadata against Cargo and extract exactly one changelog section.
+//! Validate release metadata against Cargo. `tools/release.py` checks the changelog.
 
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -7,6 +7,7 @@ use std::{
 };
 
 use serde::Deserialize;
+use serde::de::IgnoredAny;
 use serde_json::Value;
 
 use crate::{Result, capture, cargo};
@@ -19,6 +20,13 @@ struct Release {
     repository: String,
     license: String,
     security_contact: String,
+    // Read by tools/release.py.
+    #[serde(rename = "consumer", default)]
+    _consumer: IgnoredAny,
+    #[serde(rename = "files", default)]
+    _files: IgnoredAny,
+    #[serde(rename = "steps", default)]
+    _steps: IgnoredAny,
     crates: BTreeMap<String, Crate>,
 }
 
@@ -53,7 +61,7 @@ struct Dependency {
     req: String,
 }
 
-pub(crate) fn check(root: &Path, tag: Option<&str>, notes_path: Option<&Path>) -> Result<()> {
+pub(crate) fn check(root: &Path, tag: Option<&str>) -> Result<()> {
     let release: Release = serde_json::from_str(&fs::read_to_string(root.join("release.json"))?)?;
     let metadata: Metadata = serde_json::from_str(&capture(&mut cargo(
         root,
@@ -93,16 +101,8 @@ pub(crate) fn check(root: &Path, tag: Option<&str>, notes_path: Option<&Path>) -
         root,
         &serde_json::from_str(&fs::read_to_string(root.join("provenance.json"))?)?,
     )?;
-    let notes = release_notes(
-        &fs::read_to_string(root.join("CHANGELOG.md"))?,
-        &release.version,
-    )?;
-    // Write only after every check succeeds. Relative paths use the invocation's directory.
-    if let Some(path) = notes_path {
-        fs::write(path, notes)?;
-    }
     println!(
-        "Release v{} metadata, package files and changelog are current.",
+        "Release v{} metadata and package files are current.",
         release.version
     );
     Ok(())
@@ -252,54 +252,6 @@ fn check_provenance(root: &Path, provenance: &Value) -> Result<()> {
     Ok(())
 }
 
-/// Changelog lines beginning with `## ` are reserved for release sections, including
-/// inside fenced examples. This is a section extractor, not a Markdown parser.
-fn release_notes(changelog: &str, version: &str) -> Result<String> {
-    let heading = format!("## [{version}]");
-    let mut found = 0;
-    let mut selected = false;
-    let mut lines = Vec::new();
-    for line in changelog.lines() {
-        if line.starts_with("## ") {
-            selected = line == heading
-                || line
-                    .strip_prefix(&heading)
-                    .is_some_and(|tail| tail.starts_with(" - "));
-            if selected {
-                found += 1;
-            }
-        } else if selected {
-            lines.push(line);
-        }
-    }
-    if found != 1 {
-        return Err(
-            format!("CHANGELOG.md needs exactly one {heading} section, found {found}").into(),
-        );
-    }
-    let subsections: Vec<_> = lines
-        .iter()
-        .enumerate()
-        .filter_map(|(index, line)| line.starts_with("### ").then_some(index))
-        .collect();
-    if subsections.is_empty() {
-        return Err(format!("CHANGELOG.md {heading} needs a subsection").into());
-    }
-    for (position, index) in subsections.iter().copied().enumerate() {
-        let end = subsections
-            .get(position + 1)
-            .copied()
-            .unwrap_or(lines.len());
-        if !lines[index + 1..end]
-            .iter()
-            .any(|line| !line.trim().is_empty())
-        {
-            return Err(format!("CHANGELOG.md {heading} {} is empty", lines[index]).into());
-        }
-    }
-    Ok(format!("{}\n", lines.join("\n").trim()))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -426,44 +378,6 @@ mod tests {
         }
         let unrecorded: Vec<_> = archive.lines().map(str::to_owned).collect();
         assert!(check_files("clapham", &unrecorded, &checkout).is_err());
-    }
-
-    #[test]
-    fn notes_are_only_the_selected_body_and_accept_windows_line_endings() {
-        let changelog = "# Changelog\n\n## [Unreleased]\nFuture\n\n## [0.1.0-rc.1]\n\n### Changes\n\nInitial contract.\n\n### Added\n\nFirst release.\n\n## [0.0.1] - 2026-01-01\nOlder\n";
-        let expected = "### Changes\n\nInitial contract.\n\n### Added\n\nFirst release.\n";
-        assert_eq!(release_notes(changelog, "0.1.0-rc.1").unwrap(), expected);
-        assert_eq!(
-            release_notes(&changelog.replace('\n', "\r\n"), "0.1.0-rc.1").unwrap(),
-            expected
-        );
-        assert!(
-            release_notes(
-                &changelog.replace("### Changes", "### Breaking"),
-                "0.1.0-rc.1"
-            )
-            .is_ok()
-        );
-        for (invalid, reason) in [
-            (
-                changelog
-                    .replace("### Changes", "Changes")
-                    .replace("### Added", "Added"),
-                "needs a subsection",
-            ),
-            (
-                "## [0.1.0-rc.1]\n### Changes\n\n### Added\nNew.\n".into(),
-                "### Changes is empty",
-            ),
-            (
-                changelog.to_owned() + "## [0.1.0-rc.1]\nDuplicate\n",
-                "found 2",
-            ),
-            ("## [0.1.0-rc.2]\nOther\n".into(), "found 0"),
-        ] {
-            let error = release_notes(&invalid, "0.1.0-rc.1").unwrap_err();
-            assert!(error.to_string().contains(reason), "{error}");
-        }
     }
 
     #[test]

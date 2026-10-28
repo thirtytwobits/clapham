@@ -37,6 +37,7 @@ not elapsed time, to prove concurrent behaviour.
 
 Documentation is en-GB, precise and concise. A removal is clean: remove obsolete code,
 tests, documentation and configuration together; do not leave compatibility debris.
+`RELEASING.md` holds the changelog and release rules.
 
 ## MCP claims
 

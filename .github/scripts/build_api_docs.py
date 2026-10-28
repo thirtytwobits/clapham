@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
-"""Build versioned rustdoc from a list of published release tags, without changing the checkout."""
+"""Build a release's API reference archive, or assemble the site from published releases' archives.
+
+`archive` documents the checkout, or a tag with `--tag`, as `clapham-api-TAG.tar.gz`; the push to
+main keeps it as a release file. `site` builds nothing: it extracts the archive attached to each
+published release.
+"""
 
 import argparse
+import hashlib
+import json
 import os
 import re
 import shutil
@@ -70,10 +77,7 @@ def tracing_version(lock: Path) -> str | None:
     return next((package["version"] for package in packages if package["name"] == "tracing"), None)
 
 
-def document(tag: str, site: Path, work: Path) -> None:
-    source = work / tag
-    source.mkdir()
-    extract(tag, source)
+def document(tag: str, source: Path, commit: str, site: Path, work: Path) -> None:
     manifest = str(source / "Cargo.toml")
     target = work / "target"
     # Share compiled dependencies, but never mix rustdoc files from different versions.
@@ -113,7 +117,6 @@ def document(tag: str, site: Path, work: Path) -> None:
         replace_in(index, 'href="../../docs/', f'href="{REPOSITORY}/blob/{tag}/docs/')
         items.append(f'<li><a href="{directory}/">{crate}</a></li>\n')
 
-    commit = git("rev-parse", f"refs/tags/{tag}^{{commit}}")
     body = (
         "<p>Library documentation with all features enabled.</p>\n<ul>\n"
         + "".join(items)
@@ -124,32 +127,96 @@ def document(tag: str, site: Path, work: Path) -> None:
     (output / "index.html").write_text(page(f"Clapham {tag} API reference", body), encoding="utf-8")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("site", type=Path, metavar="OUTPUT_DIRECTORY")
-    parser.add_argument("tags", type=Path, metavar="TAGS_FILE")
-    arguments = parser.parse_args()
+def archive_name(tag: str) -> str:
+    return f"clapham-api-{tag}.tar.gz"
 
-    tags = arguments.tags.read_text(encoding="utf-8").splitlines() if arguments.tags.is_file() else []
-    if not tags:
-        sys.exit("No published releases to document.")
-    for tag in tags:
+
+def archive(arguments: argparse.Namespace) -> None:
+    """Document the checkout, or a tag, into OUTPUT_DIRECTORY/clapham-api-TAG.tar.gz."""
+    root = Path(git("rev-parse", "--show-toplevel"))
+    with tempfile.TemporaryDirectory() as work:
+        work_path = Path(work)
+        if arguments.tag:
+            tag = arguments.tag
+            source = work_path / "source"
+            source.mkdir()
+            extract(tag, source)
+            commit = git("rev-parse", f"refs/tags/{tag}^{{commit}}")
+        else:
+            record = json.loads((root / "release.json").read_text(encoding="utf-8"))
+            tag = f"v{record['version']}"
+            source = root
+            commit = git("rev-parse", "HEAD")
         if not TAG.fullmatch(tag):
             sys.exit(f"Invalid release tag: {tag}")
-    site = arguments.site
+        site = work_path / "site"
+        site.mkdir()
+        document(tag, source, commit, site, work_path)
+        arguments.output.mkdir(parents=True, exist_ok=True)
+        with tarfile.open(arguments.output / archive_name(tag), "w:gz") as tar:
+            tar.add(site / tag, arcname=tag)
+    print(arguments.output / archive_name(tag))
+
+
+def published_tags() -> list[str]:
+    listing = subprocess.run(
+        ["gh", "api", "--paginate", "repos/{owner}/{repo}/releases?per_page=100",
+         "--jq", ".[] | select(.draft == false) | .tag_name"],
+        check=True, capture_output=True, text=True,
+    ).stdout
+    return listing.split()
+
+
+def assemble(arguments: argparse.Namespace) -> None:
+    """Assemble OUTPUT_DIRECTORY from the API reference archive of every published release."""
+    tags = published_tags()
+    if not tags:
+        sys.exit("No published releases to document.")
+    site = arguments.output
     site.mkdir(parents=True, exist_ok=True)
     if any(site.iterdir()):
         sys.exit("Output directory must be empty.")
-
     with tempfile.TemporaryDirectory() as work:
         for tag in tags:
-            document(tag, site, Path(work))
+            if not TAG.fullmatch(tag):
+                sys.exit(f"Invalid release tag: {tag}")
+            downloads = Path(work) / tag
+            name = archive_name(tag)
+            fetched = subprocess.run(
+                ["gh", "release", "download", tag, "--pattern", name, "--pattern", "SHA256SUMS", "--dir", str(downloads)],
+                check=False,
+            )
+            if fetched.returncode != 0 or not (downloads / name).is_file():
+                sys.exit(f"{tag} has no {name}; attach one built by `build_api_docs.py archive --tag {tag}`.")
+            sums = downloads / "SHA256SUMS"
+            if sums.is_file():
+                digest = hashlib.sha256((downloads / name).read_bytes()).hexdigest()
+                if f"{digest}  {name}" not in sums.read_text(encoding="utf-8").splitlines():
+                    sys.exit(f"{name} does not match the SHA256SUMS of {tag}.")
+            with tarfile.open(downloads / name) as tar:
+                if any(member.name != tag and not member.name.startswith(f"{tag}/") for member in tar.getmembers()):
+                    sys.exit(f"{name} holds files outside {tag}/.")
+                tar.extractall(site, filter="data")
 
     body = (
         "<p>Choose a published release. Each reference includes all five library crates with all features enabled.</p>\n"
         "<ul>\n" + "".join(f'<li><a href="{tag}/">{tag}</a></li>\n' for tag in tags) + "</ul>\n"
     )
     (site / "index.html").write_text(page("Clapham API reference", body), encoding="utf-8")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    commands = parser.add_subparsers(required=True, metavar="COMMAND")
+    archiving = commands.add_parser("archive", help=archive.__doc__)
+    archiving.add_argument("output", type=Path, metavar="OUTPUT_DIRECTORY")
+    archiving.add_argument("--tag", help="document this release tag instead of the checkout")
+    archiving.set_defaults(run=archive)
+    assembling = commands.add_parser("site", help=assemble.__doc__)
+    assembling.add_argument("output", type=Path, metavar="OUTPUT_DIRECTORY")
+    assembling.set_defaults(run=assemble)
+    arguments = parser.parse_args()
+    arguments.run(arguments)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,52 @@
   "repository": "https://github.com/thirtytwobits/clapham",
   "license": "MIT",
   "security_contact": "https://github.com/thirtytwobits/clapham/security/advisories/new",
+  "consumer": "clapham",
+  "files": [
+    "clapham-api-v*.tar.gz"
+  ],
+  "steps": {
+    "prepare": [
+      [
+        "python3",
+        "tools/release_steps.py",
+        "prepare",
+        "{previous}",
+        "{version}"
+      ]
+    ],
+    "gates": [
+      [
+        "cargo",
+        "xtask",
+        "check"
+      ],
+      [
+        "cargo",
+        "xtask",
+        "api"
+      ],
+      [
+        "cargo",
+        "xtask",
+        "release-check",
+        "{tag}"
+      ],
+      [
+        "python3",
+        "tools/release_steps.py",
+        "msrv"
+      ]
+    ],
+    "verify": [
+      [
+        "python3",
+        "tools/release_steps.py",
+        "pages",
+        "{tag}"
+      ]
+    ]
+  },
   "crates": {
     "clapham": {
       "path": "crates/clapham",

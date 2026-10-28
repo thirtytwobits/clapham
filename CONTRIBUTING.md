@@ -20,7 +20,7 @@ cargo xtask release-check
 
 `check` runs dependency, crate-file and generated-schema checks, formatting, Clippy with
 warnings denied, tests and documentation with warnings denied, for default features and
-all features. It also validates release metadata, the changelog and Cargo package inventories.
+all features. It also validates release metadata and Cargo package inventories.
 Its documentation check (`cargo xtask docs`) resolves each contract Evidence paragraph's
 backticked function names against the preceding linked Rust file, requires evidence for
 each guarantee, and compares the composing guide's first Rust block with the core README's
@@ -78,7 +78,8 @@ changed surface. After reviewing an intended change, run
 `cargo xtask check` clears `CLAPHAM_WRITE_RECORDS` for child Cargo commands and compares the
 wire record's canonical bytes. An inherited writing flag cannot silently update a stale record.
 
-Use `cargo xtask release-check <tag> --notes <path>` to validate a proposed release tag and
-extract its changelog section. Update `release.json` when a crate intentionally adds or
+Use `cargo xtask release-check <tag>` to validate a proposed release tag against the release
+metadata, and `python3 tools/release.py check` to check `CHANGELOG.md`. A change a consumer sees
+adds its line under `## Unreleased`. Update `release.json` when a crate intentionally adds or
 removes a shipped file. See [RELEASING.md](RELEASING.md) for the release procedure
 and [SECURITY.md](SECURITY.md) for private reporting.

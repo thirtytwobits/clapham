@@ -36,16 +36,13 @@ fn dispatch() -> Result<()> {
         ["api", "--update"] => api::check(&root, true),
         ["schemas"] => schemas::run(&root, false),
         ["schemas", "--check"] => schemas::run(&root, true),
-        ["release-check"] => release::check(&root, None, None),
-        ["release-check", tag] => release::check(&root, Some(tag), None),
-        ["release-check", tag, "--notes", path] => {
-            release::check(&root, Some(tag), Some(Path::new(path)))
-        }
+        ["release-check"] => release::check(&root, None),
+        ["release-check", tag] => release::check(&root, Some(tag)),
         ["help"] | ["--help"] | ["-h"] | [] => {
-            println!("cargo xtask <check|boundaries|docs|api [--update]|schemas [--check]|release-check [<tag> [--notes <path>]]>");
+            println!("cargo xtask <check|boundaries|docs|api [--update]|schemas [--check]|release-check [<tag>]>");
             Ok(())
         }
-        _ => Err("usage: cargo xtask <check|boundaries|docs|api [--update]|schemas [--check]|release-check [<tag> [--notes <path>]]>".into()),
+        _ => Err("usage: cargo xtask <check|boundaries|docs|api [--update]|schemas [--check]|release-check [<tag>]>".into()),
     }
 }
 
@@ -81,7 +78,7 @@ fn check(root: &Path) -> Result<()> {
     boundaries::check(root)?;
     docs::check(root)?;
     schemas::run(root, true)?;
-    release::check(root, None, None)?;
+    release::check(root, None)?;
     run(&mut cargo(root, &["fmt", "--all", "--", "--check"]))?;
     for features in [None, Some("--all-features")] {
         let mut clippy = cargo(

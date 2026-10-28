@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.3.2]
+## 0.3.2
 
 ### Breaking
 
@@ -30,7 +30,7 @@
 [API reference for 0.3.2](https://thirtytwobits.github.io/clapham/v0.3.2/) covers all five library
 crates with all features enabled.
 
-## [0.3.1]
+## 0.3.1
 
 ### Breaking
 
@@ -60,7 +60,7 @@ lists fixture and the reference executable share it.
 [API reference for 0.3.1](https://thirtytwobits.github.io/clapham/v0.3.1/) covers all five library
 crates with all features enabled.
 
-## [0.3.0]
+## 0.3.0
 
 ### Breaking
 
@@ -111,7 +111,7 @@ pinning each rmcp fact.
 [API reference for 0.3.0](https://thirtytwobits.github.io/clapham/v0.3.0/) covers all five library
 crates with all features enabled.
 
-## [0.2.0]
+## 0.2.0
 
 ### Breaking
 
@@ -147,7 +147,7 @@ verified OAuth grants. `docs/contract.md` records the revised guarantees C01 to 
 [API reference for 0.2.0](https://thirtytwobits.github.io/clapham/v0.2.0/) covers all five library
 crates with all features enabled.
 
-## [0.1.1]
+## 0.1.1
 
 ### Breaking
 
@@ -158,7 +158,7 @@ Documentation changes only.
 [API reference for 0.1.1](https://thirtytwobits.github.io/clapham/v0.1.1/) covers all five library
 crates with all features enabled.
 
-## [0.1.0]
+## 0.1.0
 
 ### Breaking
 

@@ -1,8 +1,6 @@
 # Depending on Clapham
 
-Clapham is under development. Use a shared checkout or pin the same repository revision for
-all required Clapham crates, and commit the consumer's Cargo.lock. All libraries require
-Rust 1.88; repository gates use Rust 1.99.0.
+Clapham is under development.
 
 The core operation model has no MCP dependency. Add `clapham-cli` for generated command lines,
 `clapham-mcp-server` for MCP and `clapham-mcp-client` for remote contributions.
