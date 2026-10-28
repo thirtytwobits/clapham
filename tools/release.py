@@ -105,9 +105,22 @@ def parse(version: str) -> tuple[int, int, int, str | None]:
     return int(major), int(minor), int(patch), prerelease
 
 
-def order(version: str) -> tuple[int, int, int, bool, str]:
+Order = tuple[int, int, int, bool, tuple[tuple[int, int, str], ...]]
+
+
+def order(version: str) -> Order:
+    """A key sorting versions by Semantic Versioning precedence.
+
+    A release follows its prereleases. Prerelease identifiers compare one by one: numeric ones by
+    value and before alphanumeric ones, which compare as text; a longer list follows its prefix.
+    """
     major, minor, patch, prerelease = parse(version)
-    return (major, minor, patch, prerelease is None, prerelease or "")
+    identifiers = tuple(
+        (0, int(identifier), "") if identifier.isdigit() else (1, 0, identifier)
+        for identifier in (prerelease or "").split(".")
+        if prerelease is not None
+    )
+    return (major, minor, patch, prerelease is None, identifiers)
 
 
 def bumped(current: str, bump: str) -> str:
@@ -198,7 +211,7 @@ def changelog_problems(changelog: str) -> list[str]:
     problems = []
     if not changelog.startswith("# Changelog\n"):
         problems.append("CHANGELOG.md must begin with `# Changelog`")
-    versions: list[tuple[Entry, tuple[int, int, int, bool, str]]] = []
+    versions: list[tuple[Entry, Order]] = []
     for index, entry in enumerate(entries(changelog)):
         if entry.name == UNRELEASED:
             if index:
