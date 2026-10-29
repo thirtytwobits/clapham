@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.3
+
+### Added
+
+- Each release attaches its API reference, `clapham-api-vVERSION.tar.gz`, and the `SHA256SUMS`
+  of its files.
+
+### Documentation
+
+- `RELEASING.md` holds the release procedure the London Project shares among its pieces.
+
+[API reference for 0.3.3](https://thirtytwobits.github.io/clapham/v0.3.3/) covers all five library
+crates with all features enabled.
+
 ## 0.3.2
 
 ### Breaking
