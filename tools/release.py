@@ -140,22 +140,66 @@ def cargo_version(manifest: str) -> str | None:
 
 
 def set_cargo_version(manifest: str, previous: str, new: str) -> str:
-    """`manifest` with `[workspace.package]` and each path dependency in `[workspace.dependencies]`
-    moved from `previous` to `new`."""
+    """`manifest` with `[workspace.package]` and each of its path dependencies moved from `previous` to `new`."""
     if cargo_version(manifest) != previous:
         raise Refusal(f"Cargo.toml [workspace.package] version is not {previous}")
+    return set_path_dependencies(manifest, previous, new, workspace_package=True)
+
+
+def set_path_dependencies(manifest: str, previous: str, new: str, workspace_package: bool = False) -> str:
+    """`manifest` with each inline path dependency at `previous`, in any dependency table, moved to `new`.
+
+    With `workspace_package`, the `[workspace.package]` version moves too.
+    """
     table = None
     lines = []
     for line in manifest.splitlines(keepends=True):
-        header = re.match(r"\s*\[([^\[\]]+)\]\s*$", line)
+        header = re.match(r"\s*\[\[?([^\[\]]+)\]\]?\s*(#.*)?$", line)
         if header:
             table = header.group(1).strip()
-        elif table == "workspace.package" and re.match(r'\s*version\s*=\s*"', line):
+        elif workspace_package and table == "workspace.package" and re.match(r'\s*version\s*=\s*"', line):
             line = line.replace(f'"{previous}"', f'"{new}"', 1)
-        elif table == "workspace.dependencies" and "path" in line:
+        elif table is not None and table.endswith("dependencies") and re.search(r"\bpath\s*=", line):
             line = re.sub(rf'(version\s*=\s*"[=^~]?){re.escape(previous)}"', rf'\g<1>{new}"', line)
         lines.append(line)
     return "".join(lines)
+
+
+def member_manifests(root: Path) -> list[Path]:
+    """The manifests of the workspace's packages, other than the root manifest."""
+    metadata = json.loads(run("cargo", "metadata", "--no-deps", "--format-version", "1", cwd=root, capture=True))
+    root_manifest = (root / "Cargo.toml").resolve()
+    manifests = {Path(package["manifest_path"]).resolve() for package in metadata["packages"]}
+    return sorted(manifests - {root_manifest})
+
+
+def consumer_patches(manifest: str) -> str:
+    """The `[patch]` tables of `manifest` that a consumer of the release carries, as TOML.
+
+    Workspace patches do not propagate to consumers. Entries that point at a path in the piece are left out.
+    """
+
+    def value(item: object) -> str:
+        if isinstance(item, bool):
+            return "true" if item else "false"
+        if isinstance(item, int):
+            return str(item)
+        if isinstance(item, str):
+            return json.dumps(item)
+        if isinstance(item, list):
+            return "[" + ", ".join(value(element) for element in item) + "]"
+        raise Refusal(f"cannot carry the patch value {item!r} to a consumer")
+
+    text = []
+    for source, entries in tomllib.loads(manifest).get("patch", {}).items():
+        kept = {name: entry for name, entry in entries.items() if "path" not in entry}
+        if kept:
+            key = source if re.fullmatch(r"[A-Za-z0-9_-]+", source) else json.dumps(source)
+            text.append(f"\n[patch.{key}]\n")
+            for name, entry in kept.items():
+                fields = ", ".join(f"{key} = {value(item)}" for key, item in entry.items())
+                text.append(f"{name} = {{ {fields} }}\n")
+    return "".join(text)
 
 
 # CHANGELOG.md
@@ -364,7 +408,13 @@ def prepare(arguments: argparse.Namespace) -> None:
     (root / "release.json").write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     manifest = root / "Cargo.toml"
     if manifest.exists() and cargo_version(manifest.read_text(encoding="utf-8")) is not None:
+        members = member_manifests(root)
         manifest.write_text(set_cargo_version(manifest.read_text(encoding="utf-8"), previous, new), encoding="utf-8")
+        for member in members:
+            text = member.read_text(encoding="utf-8")
+            moved = set_path_dependencies(text, previous, new)
+            if moved != text:
+                member.write_text(moved, encoding="utf-8")
         run("cargo", "update", "--workspace", cwd=root)
     run_steps(record, "prepare", root, version=new, previous=previous, tag=f"v{new}")
     print(
@@ -535,9 +585,14 @@ def verify(arguments: argparse.Namespace) -> None:
         f"- Draft release workflow: {runs[0]['url']}",
     ]
     if record.consumer:
+        run("git", "fetch", "--quiet", "origin", "tag", name, cwd=root)
         with tempfile.TemporaryDirectory() as work:
             consumer = Path(work) / "release-consumer"
             run("cargo", "new", "--lib", "--vcs", "none", str(consumer), cwd=Path(work))
+            # `cargo add` resolves the dependency, so the patches come first.
+            patches = consumer_patches(run("git", "show", f"{commit}:Cargo.toml", cwd=root, capture=True))
+            with (consumer / "Cargo.toml").open("a", encoding="utf-8") as manifest:
+                manifest.write(patches)
             run("cargo", "add", record.consumer, "--git", record.repository, "--tag", name, cwd=consumer)
             run("cargo", "check", cwd=consumer)
             lock = tomllib.loads((consumer / "Cargo.lock").read_text(encoding="utf-8"))
