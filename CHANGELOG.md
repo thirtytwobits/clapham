@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.3
 
 ### Added
 
@@ -10,6 +10,9 @@
 ### Documentation
 
 - `RELEASING.md` holds the release procedure the London Project shares among its pieces.
+
+[API reference for 0.3.3](https://thirtytwobits.github.io/clapham/v0.3.3/) covers all five library
+crates with all features enabled.
 
 ## 0.3.2
 
