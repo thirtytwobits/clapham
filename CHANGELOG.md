@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Each release attaches its API reference, `clapham-api-vVERSION.tar.gz`, and the `SHA256SUMS`
+  of its files.
+
+### Documentation
+
+- `RELEASING.md` holds the release procedure the London Project shares among its pieces.
+
 ## 0.3.2
 
 ### Breaking
