@@ -354,7 +354,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "sse-stream",
+ "sse-stream 0.3.0",
  "thiserror 2.0.21",
  "tokio",
  "tokio-util",
@@ -1559,7 +1559,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "sse-stream",
+ "sse-stream 0.2.6",
  "thiserror 2.0.21",
  "tokio",
  "tokio-stream",
@@ -1759,6 +1759,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "simdutf8"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
+
+[[package]]
 name = "slab"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1791,6 +1797,22 @@ dependencies = [
  "http-body",
  "http-body-util",
  "pin-project-lite",
+]
+
+[[package]]
+name = "sse-stream"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d385160fc0fba84f7b9cc8ef3263e410d0e3ca7ab4927f1356df33145ace69a4"
+dependencies = [
+ "bytes",
+ "futures-util",
+ "http-body",
+ "http-body-util",
+ "memchr",
+ "pin-project-lite",
+ "simdutf8",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
