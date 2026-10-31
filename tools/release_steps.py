@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Clapham's own release steps, which `release.json` lists for `tools/release.py` to run."""
+"""Clapham's own release steps. `release.json` lists `prepare` and `msrv` for `tools/release.py`
+to run; the API documentation workflow runs `pages` after it deploys a release's reference."""
 
 import argparse
 import json
@@ -117,7 +118,7 @@ def pages(arguments: argparse.Namespace) -> None:
     record = json.loads((ROOT / "release.json").read_text(encoding="utf-8"))
     site = pages_url(record["repository"])
     if f'href="{arguments.tag}/"' not in fetch(site):
-        raise Refusal(f"{site} does not list {arguments.tag}; check the API documentation workflow")
+        raise Refusal(f"{site} does not list {arguments.tag}")
     for crate in record["crates"]:
         fetch(f"{site}{arguments.tag}/{crate.replace('-', '_')}/index.html")
     print(f"API reference: {site}{arguments.tag}/")

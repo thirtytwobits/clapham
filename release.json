@@ -40,14 +40,6 @@
         "tools/release_steps.py",
         "msrv"
       ]
-    ],
-    "verify": [
-      [
-        "python3",
-        "tools/release_steps.py",
-        "pages",
-        "{tag}"
-      ]
     ]
   },
   "crates": {
