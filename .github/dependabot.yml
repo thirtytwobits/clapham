@@ -17,3 +17,6 @@ updates:
         update-types:
           - minor
           - patch
+        # docs/mcp.md cites source paths in the pinned rmcp release, so an rmcp update is reviewed alone.
+        exclude-patterns:
+          - rmcp
