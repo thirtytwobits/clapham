@@ -8,11 +8,11 @@ for the five library crates, and `cargo xtask release-check` validates them. Its
   the version's API reference from its changelog entry. Review each reported inventory change.
 - to `gates`: `cargo xtask check`, `api` and `release-check`, then the minimum-version CI lanes.
   Review generated schema, wire and API changes before merging.
-- to `verify`: check that GitHub Pages serves the version's API reference.
 
 The main build's release file is the version's API reference, `clapham-api-vVERSION.tar.gz`.
 Publication deploys the API reference archive of every published release to
-[GitHub Pages](https://thirtytwobits.github.io/clapham/). Pages uses the GitHub Actions
+[GitHub Pages](https://thirtytwobits.github.io/clapham/), then checks that Pages serves the
+published release's reference. Pages uses the GitHub Actions
 publishing source; its `github-pages` environment permits deployments from `main` and `v*` tags.
 Dispatch **API documentation** on `main` to deploy the site again.
 

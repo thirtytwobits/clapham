@@ -1,7 +1,8 @@
 name: API documentation
 
-# Publication deploys the API reference archives attached to the published releases; it builds
-# nothing. The push to main builds each release's archive.
+# Publication deploys the API reference archives attached to the published releases, then checks
+# that Pages serves the published release's reference; it builds nothing. The push to main builds
+# each release's archive.
 on:
   pull_request:
     paths: ['.github/workflows/api-docs.yml', '.github/scripts/build_api_docs.py']
@@ -59,3 +60,20 @@ jobs:
       # v5.0.1; action.yml declares runs.using: node24.
       - uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346
         id: deployment
+
+  check:
+    if: github.event_name == 'release'
+    needs: deploy
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      # v7.0.1; action.yml declares runs.using: node24.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check that Pages serves the release's API reference
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: python3 tools/release_steps.py pages "$RELEASE_TAG"
