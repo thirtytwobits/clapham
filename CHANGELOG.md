@@ -1,10 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 ### Breaking
 
 - The crates need Rust 1.95 or later.
+
+### Documentation
+
+[API reference for 0.4.0](https://thirtytwobits.github.io/clapham/v0.4.0/) covers all five library
+crates with all features enabled.
 
 ## 0.3.3
 
