@@ -8,6 +8,6 @@ and conformance stubs have one-line snapshots; the core snapshot records the con
 or obsolete snapshots. It compares line endings consistently on Linux and Windows.
 Do not edit a snapshot by hand.
 
-`toolchain.json` pins cargo-public-api 0.50.2 and nightly-2025-08-02. The gate reads those
+`toolchain.json` pins cargo-public-api 0.52.0 and nightly-2026-10-01. The gate reads those
 pins, verifies the generator version and selects that nightly explicitly. The adjacent
 `rust-toolchain.toml` selects the same nightly for direct commands in this directory.
