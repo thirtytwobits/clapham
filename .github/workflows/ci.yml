@@ -70,10 +70,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, node24
         with:
           persist-credentials: false
-      - run: rustup toolchain install 1.88.0 --profile minimal
-      - run: cargo +1.88.0 check --locked -p clapham -p clapham-cli
-      - run: cargo +1.88.0 test --locked -p clapham -p clapham-cli
-      - run: cargo +1.88.0 test --locked -p clapham --features serde_json/preserve_order revision_
+      - run: rustup toolchain install 1.95.0 --profile minimal
+      - run: cargo +1.95.0 check --locked -p clapham -p clapham-cli
+      - run: cargo +1.95.0 test --locked -p clapham -p clapham-cli
+      - run: cargo +1.95.0 test --locked -p clapham --features serde_json/preserve_order revision_
 
   mcp-msrv:
     name: MCP MSRV
@@ -83,11 +83,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1, node24
         with:
           persist-credentials: false
-      - run: rustup toolchain install 1.88.0 --profile minimal
-      - run: cargo +1.88.0 test --locked -p clapham-mcp-server -p clapham-mcp-client -p clapham-conformance -p clapham-lists -p clapham-typed --all-features
-      - run: cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features
-      - run: cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features stdio
-      - run: cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features http
+      - run: rustup toolchain install 1.95.0 --profile minimal
+      - run: cargo +1.95.0 test --locked -p clapham-mcp-server -p clapham-mcp-client -p clapham-conformance -p clapham-lists -p clapham-typed --all-features
+      - run: cargo +1.95.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features
+      - run: cargo +1.95.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features stdio
+      - run: cargo +1.95.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features http
 
   api:
     name: API (${{ matrix.os }})
@@ -102,6 +102,6 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup toolchain install 1.99.0 --profile minimal
-      - run: rustup toolchain install nightly-2025-08-02 --profile minimal
-      - run: cargo +1.99.0 install cargo-public-api --version 0.50.2 --locked
+      - run: rustup toolchain install nightly-2026-10-01 --profile minimal
+      - run: cargo +1.99.0 install cargo-public-api --version 0.52.0 --locked
       - run: cargo xtask api

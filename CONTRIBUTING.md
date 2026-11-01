@@ -37,8 +37,8 @@ Node or another build system.
 Install the API tools once:
 
 ```console
-rustup toolchain install nightly-2025-08-02 --profile minimal
-cargo +1.99.0 install cargo-public-api --version 0.50.2 --locked
+rustup toolchain install nightly-2026-10-01 --profile minimal
+cargo +1.99.0 install cargo-public-api --version 0.52.0 --locked
 ```
 
 `api/toolchain.json` records the API tool versions. `cargo xtask api` refuses missing or
@@ -49,13 +49,13 @@ The command runs from any directory in the workspace and normalises line endings
 Check the minimum supported Rust versions with the committed lockfile:
 
 ```console
-cargo +1.88.0 check --locked -p clapham -p clapham-cli
-cargo +1.88.0 test --locked -p clapham -p clapham-cli
-cargo +1.88.0 test --locked -p clapham --features serde_json/preserve_order revision_
-cargo +1.88.0 test --locked -p clapham-mcp-server -p clapham-mcp-client -p clapham-conformance -p clapham-lists -p clapham-typed --all-features
-cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features
-cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features stdio
-cargo +1.88.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features http
+cargo +1.95.0 check --locked -p clapham -p clapham-cli
+cargo +1.95.0 test --locked -p clapham -p clapham-cli
+cargo +1.95.0 test --locked -p clapham --features serde_json/preserve_order revision_
+cargo +1.95.0 test --locked -p clapham-mcp-server -p clapham-mcp-client -p clapham-conformance -p clapham-lists -p clapham-typed --all-features
+cargo +1.95.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features
+cargo +1.95.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features stdio
+cargo +1.95.0 check --locked -p clapham-mcp-server -p clapham-mcp-client --no-default-features --features http
 ```
 
 Generate the public operation, refusal, configuration and catalogue schemas and the CLI output envelope
@@ -66,7 +66,7 @@ with `cargo xtask schemas`. Review and commit changes to `crates/*/schemas/*.jso
 The MCP crates reserve `stdio` and `http` features for their transports. The neutral
 conformance contribution and CLI are implemented, including process output and safeguards.
 The reusable conformance harness and the lists executable cover the CLI, both MCP servers
-and the client bound to both servers. The Rust 1.88 lane includes this complete process matrix.
+and the client bound to both servers. The Rust 1.95 lane includes this complete process matrix.
 
 See [the workspace guide](docs/README.md) for the crate boundaries and CI lanes.
 

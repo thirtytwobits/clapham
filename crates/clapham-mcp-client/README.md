@@ -1,7 +1,7 @@
 # clapham-mcp-client
 
 Host-owned, bounded MCP 2026-07-28 connections that bind remote tools as Clapham operations.
-Requires Rust 1.88. The `stdio` and `http` features are enabled by default and can be selected
+Requires Rust 1.95. The `stdio` and `http` features are enabled by default and can be selected
 independently. No transport is included when default features are disabled.
 
 Create an `McpConfig` with the connection's namespace and a non-secret credential-scope

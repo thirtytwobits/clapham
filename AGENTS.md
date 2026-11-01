@@ -12,9 +12,8 @@ application, a product or another piece's internals. Fixtures use lists and item
 Rust builds with Cargo alone. Do not introduce another build system or a Node dependency
 into a Rust build. The gate toolchain is Rust 1.99.0.
 
-The core, CLI and MCP crates keep Rust 1.88,
-which rmcp 3.6.0 requires. Keep the dependency boundary policy in `tools/xtask` explicit;
-normal, development, build, optional and target-specific dependencies obey it alike.
+The core, CLI and MCP crates keep Rust 1.95, the minimum the London Project sets. Keep the
+dependency boundary policy in `tools/xtask` explicit; normal, development, build, optional and target-specific dependencies obey it alike.
 
 ## Public contracts
 
