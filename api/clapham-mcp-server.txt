@@ -2,17 +2,18 @@ pub mod clapham_mcp_server
 pub struct clapham_mcp_server::Credential
 impl clapham_mcp_server::Credential
 pub fn clapham_mcp_server::Credential::authorization(&self) -> core::option::Option<&str>
-pub fn clapham_mcp_server::Credential::new(authorization: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn clapham_mcp_server::Credential::new(impl core::convert::Into<alloc::string::String>) -> Self
 impl core::clone::Clone for clapham_mcp_server::Credential
-pub fn clapham_mcp_server::Credential::clone(&self) -> clapham_mcp_server::Credential
+pub fn clapham_mcp_server::Credential::clone(&self) -> Self
 impl core::default::Default for clapham_mcp_server::Credential
-pub fn clapham_mcp_server::Credential::default() -> clapham_mcp_server::Credential
+pub fn clapham_mcp_server::Credential::default() -> Self
 impl core::fmt::Debug for clapham_mcp_server::Credential
-pub fn clapham_mcp_server::Credential::fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn clapham_mcp_server::Credential::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Freeze for clapham_mcp_server::Credential
 impl core::marker::Send for clapham_mcp_server::Credential
 impl core::marker::Sync for clapham_mcp_server::Credential
 impl core::marker::Unpin for clapham_mcp_server::Credential
+impl core::marker::UnsafeUnpin for clapham_mcp_server::Credential
 impl core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_server::Credential
 impl core::panic::unwind_safe::UnwindSafe for clapham_mcp_server::Credential
 impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_mcp_server::Credential where B: http_body::Body
@@ -21,17 +22,17 @@ impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::i
 impl<T, U> core::convert::Into<U> for clapham_mcp_server::Credential where U: core::convert::From<T>
 pub fn clapham_mcp_server::Credential::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for clapham_mcp_server::Credential where U: core::convert::Into<T>
-pub type clapham_mcp_server::Credential::Error = core::convert::Infallible
-pub fn clapham_mcp_server::Credential::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+pub type clapham_mcp_server::Credential::Error = never
+pub fn clapham_mcp_server::Credential::try_from(U) -> core::result::Result<T, never>
 impl<T, U> core::convert::TryInto<U> for clapham_mcp_server::Credential where U: core::convert::TryFrom<T>
 pub type clapham_mcp_server::Credential::Error = <U as core::convert::TryFrom<T>>::Error
 pub fn clapham_mcp_server::Credential::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
 impl<T> alloc::borrow::ToOwned for clapham_mcp_server::Credential where T: core::clone::Clone
 pub type clapham_mcp_server::Credential::Owned = T
-pub fn clapham_mcp_server::Credential::clone_into(&self, target: &mut T)
+pub fn clapham_mcp_server::Credential::clone_into(&self, &mut T)
 pub fn clapham_mcp_server::Credential::to_owned(&self) -> T
 impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_mcp_server::Credential where T: core::clone::Clone
-pub fn clapham_mcp_server::Credential::from_ref(input: &T) -> T
+pub fn clapham_mcp_server::Credential::from_ref(&T) -> T
 impl<T> core::any::Any for clapham_mcp_server::Credential where T: 'static + ?core::marker::Sized
 pub fn clapham_mcp_server::Credential::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_mcp_server::Credential where T: ?core::marker::Sized
@@ -39,14 +40,14 @@ pub fn clapham_mcp_server::Credential::borrow(&self) -> &T
 impl<T> core::borrow::BorrowMut<T> for clapham_mcp_server::Credential where T: ?core::marker::Sized
 pub fn clapham_mcp_server::Credential::borrow_mut(&mut self) -> &mut T
 impl<T> core::clone::CloneToUninit for clapham_mcp_server::Credential where T: core::clone::Clone
-pub unsafe fn clapham_mcp_server::Credential::clone_to_uninit(&self, dest: *mut u8)
+pub unsafe fn clapham_mcp_server::Credential::clone_to_uninit(&self, *mut u8)
 impl<T> core::convert::From<T> for clapham_mcp_server::Credential
-pub fn clapham_mcp_server::Credential::from(t: T) -> T
+pub fn clapham_mcp_server::Credential::from(T) -> T
 impl<T> dyn_clone::DynClone for clapham_mcp_server::Credential where T: core::clone::Clone
-pub fn clapham_mcp_server::Credential::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+pub fn clapham_mcp_server::Credential::__clone_box(&self, dyn_clone::sealed::Private) -> *mut ()
 impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_mcp_server::Credential where T: ?core::marker::Sized
-pub fn clapham_mcp_server::Credential::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
-pub fn clapham_mcp_server::Credential::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_server::Credential::and<P, B, E>(self, P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: core::marker::Sized + tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_server::Credential::or<P, B, E>(self, P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: core::marker::Sized + tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
 impl<T> tracing::instrument::Instrument for clapham_mcp_server::Credential
 impl<T> tracing::instrument::WithSubscriber for clapham_mcp_server::Credential
 impl<T> typenum::type_operators::Same for clapham_mcp_server::Credential
@@ -56,29 +57,30 @@ impl<V, T> ppv_lite86::types::VZip<V> for clapham_mcp_server::Credential where V
 pub fn clapham_mcp_server::Credential::vzip(self) -> V
 pub struct clapham_mcp_server::HttpServer
 impl clapham_mcp_server::HttpServer
-pub async fn clapham_mcp_server::HttpServer::handle<B>(&self, request: http::request::Request<B>) -> http::response::Response<http_body_util::combinators::box_body::BoxBody<bytes::bytes::Bytes, core::convert::Infallible>> where B: http_body::Body<Data = bytes::bytes::Bytes> + core::marker::Send + 'static, <B as http_body::Body>::Error: core::fmt::Display
-pub fn clapham_mcp_server::HttpServer::new(set: clapham::composition::ComposedSet, authenticator: impl clapham_mcp_server::Authenticator) -> core::result::Result<Self, clapham::refusal::Refusal>
-pub fn clapham_mcp_server::HttpServer::resources<I, N, U>(self, resources: I) -> core::result::Result<Self, clapham::refusal::Refusal> where I: core::iter::traits::collect::IntoIterator<Item = (N, U)>, N: core::convert::Into<alloc::string::String>, U: core::convert::Into<alloc::string::String>
-pub fn clapham_mcp_server::HttpServer::select<I, S>(self, names: I) -> core::result::Result<Self, clapham::refusal::Refusal> where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::AsRef<str>
-pub fn clapham_mcp_server::HttpServer::with_allowed_hosts<I, S>(self, hosts: I) -> Self where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::Into<alloc::string::String>
-pub fn clapham_mcp_server::HttpServer::with_allowed_origins<I, S>(self, origins: I) -> Self where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::Into<alloc::string::String>
-pub fn clapham_mcp_server::HttpServer::with_authentication_challenge(self, challenge: http::header::value::HeaderValue) -> Self
+pub async fn clapham_mcp_server::HttpServer::handle<B>(&self, http::request::Request<B>) -> http::response::Response<http_body_util::combinators::box_body::BoxBody<bytes::bytes::Bytes, core::convert::Infallible>> where B: http_body::Body<Data = bytes::bytes::Bytes> + core::marker::Send + 'static, <B as http_body::Body>::Error: core::fmt::Display
+pub fn clapham_mcp_server::HttpServer::new(clapham::composition::ComposedSet, impl clapham_mcp_server::Authenticator) -> core::result::Result<Self, clapham::refusal::Refusal>
+pub fn clapham_mcp_server::HttpServer::resources<I, N, U>(self, I) -> core::result::Result<Self, clapham::refusal::Refusal> where I: core::iter::traits::collect::IntoIterator<Item = (N, U)>, N: core::convert::Into<alloc::string::String>, U: core::convert::Into<alloc::string::String>
+pub fn clapham_mcp_server::HttpServer::select<I, S>(self, I) -> core::result::Result<Self, clapham::refusal::Refusal> where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::AsRef<str>
+pub fn clapham_mcp_server::HttpServer::with_allowed_hosts<I, S>(self, I) -> Self where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::Into<alloc::string::String>
+pub fn clapham_mcp_server::HttpServer::with_allowed_origins<I, S>(self, I) -> Self where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::Into<alloc::string::String>
+pub fn clapham_mcp_server::HttpServer::with_authentication_challenge(self, http::header::value::HeaderValue) -> Self
 impl clapham_mcp_server::HttpServer
 pub fn clapham_mcp_server::HttpServer::into_router(self) -> axum::routing::Router
 impl core::clone::Clone for clapham_mcp_server::HttpServer
-pub fn clapham_mcp_server::HttpServer::clone(&self) -> clapham_mcp_server::HttpServer
+pub fn clapham_mcp_server::HttpServer::clone(&self) -> Self
 impl core::fmt::Debug for clapham_mcp_server::HttpServer
-pub fn clapham_mcp_server::HttpServer::fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn clapham_mcp_server::HttpServer::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl<B> tower_service::Service<http::request::Request<B>> for clapham_mcp_server::HttpServer where B: http_body::Body<Data = bytes::bytes::Bytes> + core::marker::Send + 'static, <B as http_body::Body>::Error: core::fmt::Display
-pub type clapham_mcp_server::HttpServer::Error = core::convert::Infallible
+pub type clapham_mcp_server::HttpServer::Error = never
 pub type clapham_mcp_server::HttpServer::Future = core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::result::Result<<clapham_mcp_server::HttpServer as tower_service::Service<http::request::Request<B>>>::Response, <clapham_mcp_server::HttpServer as tower_service::Service<http::request::Request<B>>>::Error>> + core::marker::Send)>>
-pub type clapham_mcp_server::HttpServer::Response = http::response::Response<http_body_util::combinators::box_body::BoxBody<bytes::bytes::Bytes, core::convert::Infallible>>
-pub fn clapham_mcp_server::HttpServer::call(&mut self, request: http::request::Request<B>) -> Self::Future
-pub fn clapham_mcp_server::HttpServer::poll_ready(&mut self, _: &mut core::task::wake::Context<'_>) -> core::task::poll::Poll<core::result::Result<(), Self::Error>>
+pub type clapham_mcp_server::HttpServer::Response = http::response::Response<http_body_util::combinators::box_body::BoxBody<bytes::bytes::Bytes, never>>
+pub fn clapham_mcp_server::HttpServer::call(&mut self, http::request::Request<B>) -> Self::Future
+pub fn clapham_mcp_server::HttpServer::poll_ready(&mut self, &mut core::task::wake::Context<'_>) -> core::task::poll::Poll<core::result::Result<(), Self::Error>>
 impl !core::marker::Freeze for clapham_mcp_server::HttpServer
 impl core::marker::Send for clapham_mcp_server::HttpServer
 impl core::marker::Sync for clapham_mcp_server::HttpServer
 impl core::marker::Unpin for clapham_mcp_server::HttpServer
+impl core::marker::UnsafeUnpin for clapham_mcp_server::HttpServer
 impl !core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_server::HttpServer
 impl !core::panic::unwind_safe::UnwindSafe for clapham_mcp_server::HttpServer
 impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_mcp_server::HttpServer where B: http_body::Body
@@ -91,17 +93,17 @@ impl<T, Request> tower::util::ServiceExt<Request> for clapham_mcp_server::HttpSe
 impl<T, U> core::convert::Into<U> for clapham_mcp_server::HttpServer where U: core::convert::From<T>
 pub fn clapham_mcp_server::HttpServer::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for clapham_mcp_server::HttpServer where U: core::convert::Into<T>
-pub type clapham_mcp_server::HttpServer::Error = core::convert::Infallible
-pub fn clapham_mcp_server::HttpServer::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+pub type clapham_mcp_server::HttpServer::Error = never
+pub fn clapham_mcp_server::HttpServer::try_from(U) -> core::result::Result<T, never>
 impl<T, U> core::convert::TryInto<U> for clapham_mcp_server::HttpServer where U: core::convert::TryFrom<T>
 pub type clapham_mcp_server::HttpServer::Error = <U as core::convert::TryFrom<T>>::Error
 pub fn clapham_mcp_server::HttpServer::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
 impl<T> alloc::borrow::ToOwned for clapham_mcp_server::HttpServer where T: core::clone::Clone
 pub type clapham_mcp_server::HttpServer::Owned = T
-pub fn clapham_mcp_server::HttpServer::clone_into(&self, target: &mut T)
+pub fn clapham_mcp_server::HttpServer::clone_into(&self, &mut T)
 pub fn clapham_mcp_server::HttpServer::to_owned(&self) -> T
 impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_mcp_server::HttpServer where T: core::clone::Clone
-pub fn clapham_mcp_server::HttpServer::from_ref(input: &T) -> T
+pub fn clapham_mcp_server::HttpServer::from_ref(&T) -> T
 impl<T> core::any::Any for clapham_mcp_server::HttpServer where T: 'static + ?core::marker::Sized
 pub fn clapham_mcp_server::HttpServer::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_mcp_server::HttpServer where T: ?core::marker::Sized
@@ -109,14 +111,14 @@ pub fn clapham_mcp_server::HttpServer::borrow(&self) -> &T
 impl<T> core::borrow::BorrowMut<T> for clapham_mcp_server::HttpServer where T: ?core::marker::Sized
 pub fn clapham_mcp_server::HttpServer::borrow_mut(&mut self) -> &mut T
 impl<T> core::clone::CloneToUninit for clapham_mcp_server::HttpServer where T: core::clone::Clone
-pub unsafe fn clapham_mcp_server::HttpServer::clone_to_uninit(&self, dest: *mut u8)
+pub unsafe fn clapham_mcp_server::HttpServer::clone_to_uninit(&self, *mut u8)
 impl<T> core::convert::From<T> for clapham_mcp_server::HttpServer
-pub fn clapham_mcp_server::HttpServer::from(t: T) -> T
+pub fn clapham_mcp_server::HttpServer::from(T) -> T
 impl<T> dyn_clone::DynClone for clapham_mcp_server::HttpServer where T: core::clone::Clone
-pub fn clapham_mcp_server::HttpServer::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+pub fn clapham_mcp_server::HttpServer::__clone_box(&self, dyn_clone::sealed::Private) -> *mut ()
 impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_mcp_server::HttpServer where T: ?core::marker::Sized
-pub fn clapham_mcp_server::HttpServer::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
-pub fn clapham_mcp_server::HttpServer::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_server::HttpServer::and<P, B, E>(self, P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: core::marker::Sized + tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_server::HttpServer::or<P, B, E>(self, P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: core::marker::Sized + tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
 impl<T> tracing::instrument::Instrument for clapham_mcp_server::HttpServer
 impl<T> tracing::instrument::WithSubscriber for clapham_mcp_server::HttpServer
 impl<T> typenum::type_operators::Same for clapham_mcp_server::HttpServer
@@ -126,18 +128,19 @@ impl<V, T> ppv_lite86::types::VZip<V> for clapham_mcp_server::HttpServer where V
 pub fn clapham_mcp_server::HttpServer::vzip(self) -> V
 pub struct clapham_mcp_server::OAuthIntrospector
 impl clapham_mcp_server::OAuthIntrospector
-pub fn clapham_mcp_server::OAuthIntrospector::new(resource: clapham::auth::OAuthResource, endpoint: impl core::convert::Into<alloc::string::String>, client_id: impl core::convert::Into<alloc::string::String>, secret: impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, alloc::boxed::Box<(dyn core::error::Error + core::marker::Send + core::marker::Sync)>>
-pub fn clapham_mcp_server::OAuthIntrospector::with_clock(self, clock: impl core::ops::function::Fn() -> i64 + core::marker::Send + core::marker::Sync + 'static) -> Self
+pub fn clapham_mcp_server::OAuthIntrospector::new(clapham::auth::OAuthResource, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>, impl core::convert::Into<alloc::string::String>) -> core::result::Result<Self, alloc::boxed::Box<(dyn core::error::Error + core::marker::Send + core::marker::Sync)>>
+pub fn clapham_mcp_server::OAuthIntrospector::with_clock(self, impl core::ops::function::Fn() -> i64 + core::marker::Send + core::marker::Sync + 'static) -> Self
 impl clapham_mcp_server::Authenticator for clapham_mcp_server::OAuthIntrospector
-pub fn clapham_mcp_server::OAuthIntrospector::authenticate<'a>(&'a self, credential: &'a clapham_mcp_server::Credential) -> core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::option::Option<clapham::auth::OAuthContext>> + core::marker::Send + 'a)>>
+pub fn clapham_mcp_server::OAuthIntrospector::authenticate<'a>(&'a self, &'a clapham_mcp_server::Credential) -> core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::option::Option<clapham::auth::OAuthContext>> + core::marker::Send + 'a)>>
 impl core::clone::Clone for clapham_mcp_server::OAuthIntrospector
-pub fn clapham_mcp_server::OAuthIntrospector::clone(&self) -> clapham_mcp_server::OAuthIntrospector
+pub fn clapham_mcp_server::OAuthIntrospector::clone(&self) -> Self
 impl core::fmt::Debug for clapham_mcp_server::OAuthIntrospector
-pub fn clapham_mcp_server::OAuthIntrospector::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn clapham_mcp_server::OAuthIntrospector::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl core::marker::Freeze for clapham_mcp_server::OAuthIntrospector
 impl core::marker::Send for clapham_mcp_server::OAuthIntrospector
 impl core::marker::Sync for clapham_mcp_server::OAuthIntrospector
 impl core::marker::Unpin for clapham_mcp_server::OAuthIntrospector
+impl core::marker::UnsafeUnpin for clapham_mcp_server::OAuthIntrospector
 impl !core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_server::OAuthIntrospector
 impl !core::panic::unwind_safe::UnwindSafe for clapham_mcp_server::OAuthIntrospector
 impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_mcp_server::OAuthIntrospector where B: http_body::Body
@@ -146,17 +149,17 @@ impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::i
 impl<T, U> core::convert::Into<U> for clapham_mcp_server::OAuthIntrospector where U: core::convert::From<T>
 pub fn clapham_mcp_server::OAuthIntrospector::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for clapham_mcp_server::OAuthIntrospector where U: core::convert::Into<T>
-pub type clapham_mcp_server::OAuthIntrospector::Error = core::convert::Infallible
-pub fn clapham_mcp_server::OAuthIntrospector::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+pub type clapham_mcp_server::OAuthIntrospector::Error = never
+pub fn clapham_mcp_server::OAuthIntrospector::try_from(U) -> core::result::Result<T, never>
 impl<T, U> core::convert::TryInto<U> for clapham_mcp_server::OAuthIntrospector where U: core::convert::TryFrom<T>
 pub type clapham_mcp_server::OAuthIntrospector::Error = <U as core::convert::TryFrom<T>>::Error
 pub fn clapham_mcp_server::OAuthIntrospector::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
 impl<T> alloc::borrow::ToOwned for clapham_mcp_server::OAuthIntrospector where T: core::clone::Clone
 pub type clapham_mcp_server::OAuthIntrospector::Owned = T
-pub fn clapham_mcp_server::OAuthIntrospector::clone_into(&self, target: &mut T)
+pub fn clapham_mcp_server::OAuthIntrospector::clone_into(&self, &mut T)
 pub fn clapham_mcp_server::OAuthIntrospector::to_owned(&self) -> T
 impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_mcp_server::OAuthIntrospector where T: core::clone::Clone
-pub fn clapham_mcp_server::OAuthIntrospector::from_ref(input: &T) -> T
+pub fn clapham_mcp_server::OAuthIntrospector::from_ref(&T) -> T
 impl<T> core::any::Any for clapham_mcp_server::OAuthIntrospector where T: 'static + ?core::marker::Sized
 pub fn clapham_mcp_server::OAuthIntrospector::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_mcp_server::OAuthIntrospector where T: ?core::marker::Sized
@@ -164,14 +167,14 @@ pub fn clapham_mcp_server::OAuthIntrospector::borrow(&self) -> &T
 impl<T> core::borrow::BorrowMut<T> for clapham_mcp_server::OAuthIntrospector where T: ?core::marker::Sized
 pub fn clapham_mcp_server::OAuthIntrospector::borrow_mut(&mut self) -> &mut T
 impl<T> core::clone::CloneToUninit for clapham_mcp_server::OAuthIntrospector where T: core::clone::Clone
-pub unsafe fn clapham_mcp_server::OAuthIntrospector::clone_to_uninit(&self, dest: *mut u8)
+pub unsafe fn clapham_mcp_server::OAuthIntrospector::clone_to_uninit(&self, *mut u8)
 impl<T> core::convert::From<T> for clapham_mcp_server::OAuthIntrospector
-pub fn clapham_mcp_server::OAuthIntrospector::from(t: T) -> T
+pub fn clapham_mcp_server::OAuthIntrospector::from(T) -> T
 impl<T> dyn_clone::DynClone for clapham_mcp_server::OAuthIntrospector where T: core::clone::Clone
-pub fn clapham_mcp_server::OAuthIntrospector::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+pub fn clapham_mcp_server::OAuthIntrospector::__clone_box(&self, dyn_clone::sealed::Private) -> *mut ()
 impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_mcp_server::OAuthIntrospector where T: ?core::marker::Sized
-pub fn clapham_mcp_server::OAuthIntrospector::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
-pub fn clapham_mcp_server::OAuthIntrospector::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_server::OAuthIntrospector::and<P, B, E>(self, P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: core::marker::Sized + tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_server::OAuthIntrospector::or<P, B, E>(self, P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: core::marker::Sized + tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
 impl<T> tracing::instrument::Instrument for clapham_mcp_server::OAuthIntrospector
 impl<T> tracing::instrument::WithSubscriber for clapham_mcp_server::OAuthIntrospector
 impl<T> typenum::type_operators::Same for clapham_mcp_server::OAuthIntrospector
@@ -181,62 +184,63 @@ impl<V, T> ppv_lite86::types::VZip<V> for clapham_mcp_server::OAuthIntrospector 
 pub fn clapham_mcp_server::OAuthIntrospector::vzip(self) -> V
 pub struct clapham_mcp_server::Server
 impl clapham_mcp_server::Server
-pub fn clapham_mcp_server::Server::new(set: clapham::composition::ComposedSet, auth: clapham::auth::OAuthContext) -> core::result::Result<Self, clapham::refusal::Refusal>
-pub fn clapham_mcp_server::Server::resources<I, N, U>(self, resources: I) -> core::result::Result<Self, clapham::refusal::Refusal> where I: core::iter::traits::collect::IntoIterator<Item = (N, U)>, N: core::convert::Into<alloc::string::String>, U: core::convert::Into<alloc::string::String>
-pub fn clapham_mcp_server::Server::select<I, S>(self, names: I) -> core::result::Result<Self, clapham::refusal::Refusal> where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::AsRef<str>
+pub fn clapham_mcp_server::Server::new(clapham::composition::ComposedSet, clapham::auth::OAuthContext) -> core::result::Result<Self, clapham::refusal::Refusal>
+pub fn clapham_mcp_server::Server::resources<I, N, U>(self, I) -> core::result::Result<Self, clapham::refusal::Refusal> where I: core::iter::traits::collect::IntoIterator<Item = (N, U)>, N: core::convert::Into<alloc::string::String>, U: core::convert::Into<alloc::string::String>
+pub fn clapham_mcp_server::Server::select<I, S>(self, I) -> core::result::Result<Self, clapham::refusal::Refusal> where I: core::iter::traits::collect::IntoIterator<Item = S>, S: core::convert::AsRef<str>
 impl clapham_mcp_server::Server
-pub async fn clapham_mcp_server::Server::serve_io<R, W>(self, read: R, write: W) -> core::result::Result<rmcp::service::RunningService<rmcp::service::server::RoleServer, Self>, alloc::boxed::Box<rmcp::service::server::ServerInitializeError>> where R: tokio::io::async_read::AsyncRead + core::marker::Send + core::marker::Unpin + 'static, W: tokio::io::async_write::AsyncWrite + core::marker::Send + core::marker::Unpin + 'static
+pub async fn clapham_mcp_server::Server::serve_io<R, W>(self, R, W) -> core::result::Result<rmcp::service::RunningService<rmcp::service::server::RoleServer, Self>, alloc::boxed::Box<rmcp::service::server::ServerInitializeError>> where R: tokio::io::async_read::AsyncRead + core::marker::Send + core::marker::Unpin + 'static, W: tokio::io::async_write::AsyncWrite + core::marker::Send + core::marker::Unpin + 'static
 pub async fn clapham_mcp_server::Server::serve_stdio(self) -> core::result::Result<rmcp::service::RunningService<rmcp::service::server::RoleServer, Self>, alloc::boxed::Box<rmcp::service::server::ServerInitializeError>>
 impl core::clone::Clone for clapham_mcp_server::Server
-pub fn clapham_mcp_server::Server::clone(&self) -> clapham_mcp_server::Server
+pub fn clapham_mcp_server::Server::clone(&self) -> Self
 impl core::fmt::Debug for clapham_mcp_server::Server
-pub fn clapham_mcp_server::Server::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn clapham_mcp_server::Server::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 impl rmcp::handler::server::ServerHandler for clapham_mcp_server::Server
-pub async fn clapham_mcp_server::Server::call_tool(&self, request: rmcp::model::CallToolRequestParams, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::mrtr::CallToolResponse, rmcp::model::ErrorData>
-pub async fn clapham_mcp_server::Server::discover(&self, _: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::DiscoverResult, rmcp::model::ErrorData>
+pub async fn clapham_mcp_server::Server::call_tool(&self, rmcp::model::CallToolRequestParams, rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::mrtr::CallToolResponse, rmcp::model::ErrorData>
+pub async fn clapham_mcp_server::Server::discover(&self, rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::DiscoverResult, rmcp::model::ErrorData>
 pub fn clapham_mcp_server::Server::get_info(&self) -> rmcp::model::ServerConfig
-pub fn clapham_mcp_server::Server::get_tool(&self, name: &str) -> core::option::Option<rmcp::model::tool::Tool>
-pub async fn clapham_mcp_server::Server::list_resource_templates(&self, request: core::option::Option<rmcp::model::PaginatedRequestParams>, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::ListResourceTemplatesResult, rmcp::model::ErrorData>
-pub async fn clapham_mcp_server::Server::list_resources(&self, request: core::option::Option<rmcp::model::PaginatedRequestParams>, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::ListResourcesResult, rmcp::model::ErrorData>
-pub async fn clapham_mcp_server::Server::list_tools(&self, request: core::option::Option<rmcp::model::PaginatedRequestParams>, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::ListToolsResult, rmcp::model::ErrorData>
-pub async fn clapham_mcp_server::Server::on_custom_request(&self, request: rmcp::model::CustomRequest, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::CustomResult, rmcp::model::ErrorData>
-pub async fn clapham_mcp_server::Server::read_resource(&self, request: rmcp::model::ReadResourceRequestParams, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::mrtr::ReadResourceResponse, rmcp::model::ErrorData>
+pub fn clapham_mcp_server::Server::get_tool(&self, &str) -> core::option::Option<rmcp::model::tool::Tool>
+pub async fn clapham_mcp_server::Server::list_resource_templates(&self, core::option::Option<rmcp::model::PaginatedRequestParams>, rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::ListResourceTemplatesResult, rmcp::model::ErrorData>
+pub async fn clapham_mcp_server::Server::list_resources(&self, core::option::Option<rmcp::model::PaginatedRequestParams>, rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::ListResourcesResult, rmcp::model::ErrorData>
+pub async fn clapham_mcp_server::Server::list_tools(&self, core::option::Option<rmcp::model::PaginatedRequestParams>, rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::ListToolsResult, rmcp::model::ErrorData>
+pub async fn clapham_mcp_server::Server::on_custom_request(&self, rmcp::model::CustomRequest, rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::CustomResult, rmcp::model::ErrorData>
+pub async fn clapham_mcp_server::Server::read_resource(&self, rmcp::model::ReadResourceRequestParams, rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<rmcp::model::mrtr::ReadResourceResponse, rmcp::model::ErrorData>
 pub fn clapham_mcp_server::Server::supported_protocol_versions(&self) -> alloc::borrow::Cow<'static, [rmcp::model::ProtocolVersion]>
 impl core::marker::Freeze for clapham_mcp_server::Server
 impl core::marker::Send for clapham_mcp_server::Server
 impl core::marker::Sync for clapham_mcp_server::Server
 impl core::marker::Unpin for clapham_mcp_server::Server
+impl core::marker::UnsafeUnpin for clapham_mcp_server::Server
 impl !core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_server::Server
 impl !core::panic::unwind_safe::UnwindSafe for clapham_mcp_server::Server
 impl<A, B, T> hyper_util::server::conn::auto::HttpServerConnExec<A, B> for clapham_mcp_server::Server where B: http_body::Body
 impl<H> rmcp::service::Service<rmcp::service::server::RoleServer> for clapham_mcp_server::Server where H: rmcp::handler::server::ServerHandler
 pub fn clapham_mcp_server::Server::get_info(&self) -> <rmcp::service::server::RoleServer as rmcp::service::ServiceRole>::Info
-pub async fn clapham_mcp_server::Server::handle_notification(&self, notification: <rmcp::service::server::RoleServer as rmcp::service::ServiceRole>::PeerNot, context: rmcp::service::NotificationContext<rmcp::service::server::RoleServer>) -> core::result::Result<(), rmcp::model::ErrorData>
-pub async fn clapham_mcp_server::Server::handle_request(&self, request: <rmcp::service::server::RoleServer as rmcp::service::ServiceRole>::PeerReq, context: rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<<rmcp::service::server::RoleServer as rmcp::service::ServiceRole>::Resp, rmcp::model::ErrorData>
+pub async fn clapham_mcp_server::Server::handle_notification(&self, <rmcp::service::server::RoleServer as rmcp::service::ServiceRole>::PeerNot, rmcp::service::NotificationContext<rmcp::service::server::RoleServer>) -> core::result::Result<(), rmcp::model::ErrorData>
+pub async fn clapham_mcp_server::Server::handle_request(&self, <rmcp::service::server::RoleServer as rmcp::service::ServiceRole>::PeerReq, rmcp::service::RequestContext<rmcp::service::server::RoleServer>) -> core::result::Result<<rmcp::service::server::RoleServer as rmcp::service::ServiceRole>::Resp, rmcp::model::ErrorData>
 pub fn clapham_mcp_server::Server::supported_protocol_versions(&self) -> alloc::borrow::Cow<'static, [rmcp::model::ProtocolVersion]>
 impl<R, S> rmcp::service::DynService<R> for clapham_mcp_server::Server where R: rmcp::service::ServiceRole, S: rmcp::service::Service<R>
 pub fn clapham_mcp_server::Server::get_info(&self) -> <R as rmcp::service::ServiceRole>::Info
-pub fn clapham_mcp_server::Server::handle_notification(&self, notification: <R as rmcp::service::ServiceRole>::PeerNot, context: rmcp::service::NotificationContext<R>) -> core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::result::Result<(), rmcp::model::ErrorData>> + core::marker::Send + '_)>>
-pub fn clapham_mcp_server::Server::handle_request(&self, request: <R as rmcp::service::ServiceRole>::PeerReq, context: rmcp::service::RequestContext<R>) -> core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::result::Result<<R as rmcp::service::ServiceRole>::Resp, rmcp::model::ErrorData>> + core::marker::Send + '_)>>
+pub fn clapham_mcp_server::Server::handle_notification(&self, <R as rmcp::service::ServiceRole>::PeerNot, rmcp::service::NotificationContext<R>) -> core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::result::Result<(), rmcp::model::ErrorData>> + core::marker::Send + '_)>>
+pub fn clapham_mcp_server::Server::handle_request(&self, <R as rmcp::service::ServiceRole>::PeerReq, rmcp::service::RequestContext<R>) -> core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::result::Result<<R as rmcp::service::ServiceRole>::Resp, rmcp::model::ErrorData>> + core::marker::Send + '_)>>
 pub fn clapham_mcp_server::Server::supported_protocol_versions(&self) -> alloc::borrow::Cow<'static, [rmcp::model::ProtocolVersion]>
 impl<S> rmcp::service::ServiceExt<rmcp::service::server::RoleServer> for clapham_mcp_server::Server where S: rmcp::service::Service<rmcp::service::server::RoleServer>
-pub fn clapham_mcp_server::Server::serve_with_ct<T, E, A>(self, transport: T, ct: tokio_util::sync::cancellation_token::CancellationToken) -> impl core::future::future::Future<Output = core::result::Result<rmcp::service::RunningService<rmcp::service::server::RoleServer, S>, rmcp::service::server::ServerInitializeError>> + rmcp::service::MaybeSendFuture where T: rmcp::transport::IntoTransport<rmcp::service::server::RoleServer, E, A>, E: core::error::Error + core::marker::Send + core::marker::Sync + 'static
+pub fn clapham_mcp_server::Server::serve_with_ct<T, E, A>(self, T, tokio_util::sync::cancellation_token::CancellationToken) -> impl core::future::future::Future<Output = core::result::Result<rmcp::service::RunningService<rmcp::service::server::RoleServer, S>, rmcp::service::server::ServerInitializeError>> + rmcp::service::MaybeSendFuture where T: rmcp::transport::IntoTransport<rmcp::service::server::RoleServer, E, A>, E: core::error::Error + core::marker::Send + core::marker::Sync + 'static, S: core::marker::Sized
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_mcp_server::Server where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_mcp_server::Server where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham_mcp_server::Server where U: core::convert::From<T>
 pub fn clapham_mcp_server::Server::into(self) -> U
 impl<T, U> core::convert::TryFrom<U> for clapham_mcp_server::Server where U: core::convert::Into<T>
-pub type clapham_mcp_server::Server::Error = core::convert::Infallible
-pub fn clapham_mcp_server::Server::try_from(value: U) -> core::result::Result<T, <T as core::convert::TryFrom<U>>::Error>
+pub type clapham_mcp_server::Server::Error = never
+pub fn clapham_mcp_server::Server::try_from(U) -> core::result::Result<T, never>
 impl<T, U> core::convert::TryInto<U> for clapham_mcp_server::Server where U: core::convert::TryFrom<T>
 pub type clapham_mcp_server::Server::Error = <U as core::convert::TryFrom<T>>::Error
 pub fn clapham_mcp_server::Server::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
 impl<T> alloc::borrow::ToOwned for clapham_mcp_server::Server where T: core::clone::Clone
 pub type clapham_mcp_server::Server::Owned = T
-pub fn clapham_mcp_server::Server::clone_into(&self, target: &mut T)
+pub fn clapham_mcp_server::Server::clone_into(&self, &mut T)
 pub fn clapham_mcp_server::Server::to_owned(&self) -> T
 impl<T> axum_core::extract::from_ref::FromRef<T> for clapham_mcp_server::Server where T: core::clone::Clone
-pub fn clapham_mcp_server::Server::from_ref(input: &T) -> T
+pub fn clapham_mcp_server::Server::from_ref(&T) -> T
 impl<T> core::any::Any for clapham_mcp_server::Server where T: 'static + ?core::marker::Sized
 pub fn clapham_mcp_server::Server::type_id(&self) -> core::any::TypeId
 impl<T> core::borrow::Borrow<T> for clapham_mcp_server::Server where T: ?core::marker::Sized
@@ -244,14 +248,14 @@ pub fn clapham_mcp_server::Server::borrow(&self) -> &T
 impl<T> core::borrow::BorrowMut<T> for clapham_mcp_server::Server where T: ?core::marker::Sized
 pub fn clapham_mcp_server::Server::borrow_mut(&mut self) -> &mut T
 impl<T> core::clone::CloneToUninit for clapham_mcp_server::Server where T: core::clone::Clone
-pub unsafe fn clapham_mcp_server::Server::clone_to_uninit(&self, dest: *mut u8)
+pub unsafe fn clapham_mcp_server::Server::clone_to_uninit(&self, *mut u8)
 impl<T> core::convert::From<T> for clapham_mcp_server::Server
-pub fn clapham_mcp_server::Server::from(t: T) -> T
+pub fn clapham_mcp_server::Server::from(T) -> T
 impl<T> dyn_clone::DynClone for clapham_mcp_server::Server where T: core::clone::Clone
-pub fn clapham_mcp_server::Server::__clone_box(&self, _: dyn_clone::sealed::Private) -> *mut ()
+pub fn clapham_mcp_server::Server::__clone_box(&self, dyn_clone::sealed::Private) -> *mut ()
 impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_mcp_server::Server where T: ?core::marker::Sized
-pub fn clapham_mcp_server::Server::and<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
-pub fn clapham_mcp_server::Server::or<P, B, E>(self, other: P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_server::Server::and<P, B, E>(self, P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: core::marker::Sized + tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_server::Server::or<P, B, E>(self, P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: core::marker::Sized + tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
 impl<T> tracing::instrument::Instrument for clapham_mcp_server::Server
 impl<T> tracing::instrument::WithSubscriber for clapham_mcp_server::Server
 impl<T> typenum::type_operators::Same for clapham_mcp_server::Server
@@ -267,9 +271,9 @@ pub const clapham_mcp_server::RECORDS_EXTENSION: &str
 pub const clapham_mcp_server::RECORD_NOTIFICATION: &str
 pub const clapham_mcp_server::REQUEST_META_KEYS: &[&str]
 pub trait clapham_mcp_server::Authenticator: core::marker::Send + core::marker::Sync + 'static
-pub fn clapham_mcp_server::Authenticator::authenticate<'a>(&'a self, credential: &'a clapham_mcp_server::Credential) -> clapham_mcp_server::AuthenticationFuture<'a>
+pub fn clapham_mcp_server::Authenticator::authenticate<'a>(&'a self, &'a clapham_mcp_server::Credential) -> clapham_mcp_server::AuthenticationFuture<'a>
 impl clapham_mcp_server::Authenticator for clapham_mcp_server::OAuthIntrospector
-pub fn clapham_mcp_server::OAuthIntrospector::authenticate<'a>(&'a self, credential: &'a clapham_mcp_server::Credential) -> core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::option::Option<clapham::auth::OAuthContext>> + core::marker::Send + 'a)>>
+pub fn clapham_mcp_server::OAuthIntrospector::authenticate<'a>(&'a self, &'a clapham_mcp_server::Credential) -> core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::option::Option<clapham::auth::OAuthContext>> + core::marker::Send + 'a)>>
 impl<F> clapham_mcp_server::Authenticator for F where F: core::ops::function::Fn(&clapham_mcp_server::Credential) -> core::option::Option<clapham::auth::OAuthContext> + core::marker::Send + core::marker::Sync + 'static
-pub fn F::authenticate<'a>(&'a self, credential: &'a clapham_mcp_server::Credential) -> clapham_mcp_server::AuthenticationFuture<'a>
+pub fn F::authenticate<'a>(&'a self, &'a clapham_mcp_server::Credential) -> clapham_mcp_server::AuthenticationFuture<'a>
 pub type clapham_mcp_server::AuthenticationFuture<'a> = core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = core::option::Option<clapham::auth::OAuthContext>> + core::marker::Send + 'a)>>

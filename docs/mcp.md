@@ -1,6 +1,6 @@
 # MCP
 
-Clapham's MCP adapters use rmcp 3.6.0 and MCP 2026-07-28. All library crates require Rust 1.88.
+Clapham's MCP adapters use rmcp 3.6.0 and MCP 2026-07-28. All library crates require Rust 1.95.
 The core operation model has no rmcp dependency.
 
 ## Server

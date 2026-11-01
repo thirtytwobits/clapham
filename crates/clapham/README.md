@@ -1,7 +1,7 @@
 # clapham
 
 Transport-independent operations, typed Rust handlers, shared JSON/Rust configuration,
-OAuth authority, resource policies, validation, refusals and ordered records. Requires Rust 1.88.
+OAuth authority, resource policies, validation, refusals and ordered records. Requires Rust 1.95.
 
 ## Quickstart
 

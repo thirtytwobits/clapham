@@ -20,7 +20,7 @@ credential-scoped revisions and explicit controls over replay.
 
 ## Development
 
-The core, CLI and MCP libraries require Rust 1.88. Repository gates use Rust 1.99.0.
+The core, CLI and MCP libraries require Rust 1.95. Repository gates use Rust 1.99.0.
 Clapham is under development.
 
 - [Typed Rust quickstart](crates/clapham/README.md#quickstart)

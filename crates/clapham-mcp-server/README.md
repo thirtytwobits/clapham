@@ -1,6 +1,6 @@
 # clapham-mcp-server
 
-MCP adapters over the transport-independent operation runner. Requires Rust 1.88 and uses
+MCP adapters over the transport-independent operation runner. Requires Rust 1.95 and uses
 rmcp 3.6.0. The `stdio` and `http` features can be selected independently.
 
 `Server::new` binds verified OAuth authority supplied by the trusted stdio host.

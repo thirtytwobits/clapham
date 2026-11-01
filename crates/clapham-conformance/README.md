@@ -1,7 +1,7 @@
 # clapham-conformance
 
 Deterministic lists/items fixtures and a reusable cross-adapter conformance harness.
-Requires Rust 1.88.
+Requires Rust 1.95.
 
 `Fixture` supplies a fresh contribution or `Configuration` factory, finite `Case` values,
 bounds and scripted OAuth contexts. `run` compares every selected front end with an independent

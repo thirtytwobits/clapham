@@ -1,6 +1,6 @@
 # clapham-cli
 
-A schema-derived command line for an authenticated operation service. Requires Rust 1.88.
+A schema-derived command line for an authenticated operation service. Requires Rust 1.95.
 
 `Cli::connect` discovers the operations visible to the connection's OAuth grant and builds
 commands, argument binding, help and completions. `McpBackend` calls the daemon's MCP server,
