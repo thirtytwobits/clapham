@@ -1,5 +1,6 @@
 //! Copyright (c) Scott A Dixon
 //! Discovery, host auth assignment and immutable remote definitions.
+use crate::clock::{deadline_after, timeout_at};
 use crate::{McpConnection, McpError, records, wire};
 use clapham::{
     Call, Category, Contribution, Effect, Evidence, Handler, HandlerFuture, Locality, Operation,
@@ -11,7 +12,6 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     sync::{Arc, atomic::Ordering},
 };
-use tokio::time::{Instant, timeout_at};
 
 pub(crate) struct Published {
     epoch: u64,
@@ -57,7 +57,8 @@ impl McpCatalogue {
     }
     pub(crate) async fn discover(connection: McpConnection) -> Result<Self, McpError> {
         connection.check()?;
-        let deadline = Instant::now() + connection.0.config.operation_timeout;
+        let clock = connection.0.config.clock.clone();
+        let deadline = deadline_after(clock.as_ref(), connection.0.config.operation_timeout);
         let _ticket = connection
             .0
             .admitted
@@ -203,7 +204,7 @@ impl McpCatalogue {
                 diagnostics,
             })
         };
-        let result = timeout_at(deadline, work).await;
+        let result = timeout_at(clock.as_ref(), deadline, work).await;
         if let Some(guard) = cancel_on_drop {
             guard.disarm();
         }
@@ -448,7 +449,10 @@ impl Handler for Remote {
 }
 impl Remote {
     async fn invoke(&self, call: Call) -> Result<Outcome, Refusal> {
-        let deadline = Instant::now() + self.connection.0.config.operation_timeout;
+        let deadline = deadline_after(
+            self.connection.0.config.clock.as_ref(),
+            self.connection.0.config.operation_timeout,
+        );
         let refused = |error: McpError| error.refusal(Evidence::NotDispatched);
         self.check().map_err(refused)?;
         let name = self

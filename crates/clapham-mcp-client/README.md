@@ -5,7 +5,8 @@ Requires Rust 1.95. The `stdio` and `http` features are enabled by default and c
 independently. No transport is included when default features are disabled.
 
 Create an `McpConfig` with the connection's namespace and a non-secret credential-scope
-revision. Set its shared `clapham::Bounds` and operation deadline as needed. The host approves
+revision. Set its shared `clapham::Bounds`, operation deadline and the `Clock` that deadline runs
+on as needed. The host approves
 an HTTPS endpoint (HTTP is limited to explicit loopback), credentials or creates the process streams and handles process shutdown.
 
 Start with [`McpConnection`], discover a [`McpCatalogue`], then bind a

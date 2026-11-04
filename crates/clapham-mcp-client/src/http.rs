@@ -1,6 +1,11 @@
 //! Copyright (c) Scott A Dixon
 //! Streamable HTTP with bounded response bodies and disabled POST recovery.
-use crate::{McpConfig, McpConnection, McpError, connection::State, wire};
+use crate::{
+    Clock, McpConfig, McpConnection, McpError,
+    clock::{deadline_after, timeout_at},
+    connection::State,
+    wire,
+};
 use futures_util::{StreamExt, stream::BoxStream};
 use http::{HeaderName, HeaderValue};
 use rmcp::{
@@ -17,6 +22,7 @@ use std::{
     },
     time::Duration,
 };
+use tokio::time::Instant;
 
 // SSE field names, separators and an event id around one JSON-RPC message.
 const EVENT_FRAMING: usize = 256;
@@ -47,6 +53,7 @@ struct BoundedHttp {
     client: reqwest::Client,
     limit: usize,
     timeout: Duration,
+    clock: Arc<dyn Clock>,
     state: Arc<State>,
 }
 /// An HTTP failure, with the structured refusal a Clapham server gave for it. Only a caller
@@ -100,15 +107,35 @@ impl BoundedHttp {
         let client = reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .retry(reqwest::retry::never())
-            .connect_timeout(config.operation_timeout)
             .build()
             .map_err(|_| McpError::Configuration)?;
         Ok(Self {
             client,
             limit: config.bounds.message_bytes,
             timeout: config.operation_timeout,
+            clock: config.clock.clone(),
             state,
         })
+    }
+    /// The deadline of a request, including its response body, on the connection's clock. A
+    /// tool call is bounded by its invocation deadline or its caller, so it has none of its own.
+    fn deadline(&self, message: Option<&ClientJsonRpcMessage>) -> Option<Instant> {
+        let call = matches!(message, Some(ClientJsonRpcMessage::Request(request))
+            if matches!(request.request, ClientRequest::CallToolRequest(_)));
+        (!call).then(|| deadline_after(self.clock.as_ref(), self.timeout))
+    }
+    /// Runs `request` until `deadline`, when there is one.
+    async fn within<T>(
+        &self,
+        deadline: Option<Instant>,
+        request: impl Future<Output = Result<T, HttpError>>,
+    ) -> Result<T, HttpError> {
+        match deadline {
+            Some(deadline) => timeout_at(self.clock.as_ref(), deadline, request)
+                .await
+                .unwrap_or_else(|_| Err(error(McpError::Timeout))),
+            None => request.await,
+        }
     }
     fn request(
         &self,
@@ -117,17 +144,11 @@ impl BoundedHttp {
         session: Option<&str>,
         auth: Option<String>,
         headers: HashMap<HeaderName, HeaderValue>,
-        // A tool call, whose record stream may outlive the request deadline.
-        call: bool,
     ) -> reqwest::RequestBuilder {
-        let persistent = method == reqwest::Method::GET;
         let mut request = self
             .client
             .request(method, uri)
             .header("accept", "application/json, text/event-stream");
-        if !persistent && !call {
-            request = request.timeout(self.timeout);
-        }
         if let Some(session) = session {
             request = request.header("mcp-session-id", session);
         }
@@ -139,20 +160,16 @@ impl BoundedHttp {
         }
         request
     }
-    /// The POST carrying `message`. A tool call is bounded by its invocation deadline or its
-    /// caller, so it has no request deadline of its own.
+    /// The POST carrying an encoded message.
     fn post(
         &self,
         uri: &str,
         session: Option<&str>,
         auth: Option<String>,
         headers: HashMap<HeaderName, HeaderValue>,
-        message: &ClientJsonRpcMessage,
         body: Vec<u8>,
     ) -> reqwest::RequestBuilder {
-        let call = matches!(message, ClientJsonRpcMessage::Request(request)
-            if matches!(request.request, ClientRequest::CallToolRequest(_)));
-        self.request(reqwest::Method::POST, uri, session, auth, headers, call)
+        self.request(reqwest::Method::POST, uri, session, auth, headers)
             .header("content-type", "application/json")
             .body(body)
     }
@@ -181,7 +198,30 @@ impl BoundedHttp {
             refusal: server_refusal(response, self.limit).await,
         }))
     }
-    fn stream(&self, response: reqwest::Response) -> BoxStream<'static, Result<Sse, SseError>> {
+    /// The SSE events of `response`. Its body fails with a timeout at `deadline`, when there is one.
+    fn stream(
+        &self,
+        response: reqwest::Response,
+        deadline: Option<Instant>,
+    ) -> BoxStream<'static, Result<Sse, SseError>> {
+        let body = response
+            .bytes_stream()
+            .map(|chunk| chunk.map_err(|_| McpError::Transport));
+        let body = match deadline {
+            None => body.boxed(),
+            Some(deadline) => {
+                let timer = self.clock.sleep_until(deadline);
+                futures_util::stream::unfold(Some((body.boxed(), timer)), |held| async move {
+                    let (mut body, mut timer) = held?;
+                    tokio::select! {
+                        biased;
+                        chunk = body.next() => chunk.map(|chunk| (chunk, Some((body, timer)))),
+                        () = &mut timer => Some((Err(McpError::Timeout), None)),
+                    }
+                })
+                .boxed()
+            }
+        };
         let state = self.state.clone();
         // A response may carry one event beyond the notifications already admitted, so
         // keep-alive comments cannot grow it while records stream. Notifications draw on the
@@ -191,10 +231,10 @@ impl BoundedHttp {
         // Each event is bounded before parsing, and the parser admits it before the next
         // event's bytes are counted, however the transport chunks them.
         let mut events = EventBoundaries::new(self.limit + EVENT_FRAMING);
-        let pieces = response.bytes_stream().flat_map(move |chunk| {
+        let pieces = body.flat_map(move |chunk| {
             futures_util::stream::iter(match chunk {
                 Ok(chunk) => events.split(chunk),
-                Err(_) => vec![Err(McpError::Transport)],
+                Err(error) => vec![Err(error)],
             })
         });
         let bytes = pieces.scan(0usize, move |count, chunk| {
@@ -297,48 +337,50 @@ impl StreamableHttpClient for BoundedHttp {
             .requests
             .begin(&message)
             .map_err(|fault| self.fail(fault))?;
-        let result = async {
-            let body = wire::encode(&message, self.limit).map_err(error)?;
-            let response = self
-                .send(self.post(&uri, session_id.as_deref(), auth, headers, &message, body))
-                .await?;
-            if matches!(response.status().as_u16(), 202 | 204) {
-                return Ok(StreamableHttpPostResponse::Accepted);
-            }
-            let session = response
-                .headers()
-                .get("mcp-session-id")
-                .map(|h| h.to_str().map(str::to_owned))
-                .transpose()
-                .map_err(|_| self.fail(McpError::Protocol))?;
-            if media_type(&response, "text/event-stream") {
-                return Ok(StreamableHttpPostResponse::Sse(
-                    self.stream(response),
-                    session,
-                ));
-            }
-            if !media_type(&response, "application/json") {
-                return Err(self.fail(McpError::Protocol));
-            }
-            let mut bytes = Vec::new();
-            let mut stream = response.bytes_stream();
-            while let Some(chunk) = stream.next().await {
-                let chunk = chunk.map_err(|_| error(McpError::Transport))?;
-                if chunk.len() > self.limit.saturating_sub(bytes.len()) {
-                    self.state.fail(McpError::Limit);
-                    return Err(error(McpError::Limit));
+        let deadline = self.deadline(Some(&message));
+        let result = self
+            .within(deadline, async {
+                let body = wire::encode(&message, self.limit).map_err(error)?;
+                let response = self
+                    .send(self.post(&uri, session_id.as_deref(), auth, headers, body))
+                    .await?;
+                if matches!(response.status().as_u16(), 202 | 204) {
+                    return Ok(StreamableHttpPostResponse::Accepted);
                 }
-                bytes.extend_from_slice(&chunk);
-            }
-            let message =
-                wire::decode(&bytes, &self.state.requests).map_err(|fault| self.fail(fault))?;
-            if let Err(fault) = self.state.observe_bytes(&message, bytes.len()) {
-                self.state.fail(fault.clone());
-                return Err(error(fault));
-            }
-            Ok(StreamableHttpPostResponse::Json(message, session))
-        }
-        .await;
+                let session = response
+                    .headers()
+                    .get("mcp-session-id")
+                    .map(|h| h.to_str().map(str::to_owned))
+                    .transpose()
+                    .map_err(|_| self.fail(McpError::Protocol))?;
+                if media_type(&response, "text/event-stream") {
+                    return Ok(StreamableHttpPostResponse::Sse(
+                        self.stream(response, deadline),
+                        session,
+                    ));
+                }
+                if !media_type(&response, "application/json") {
+                    return Err(self.fail(McpError::Protocol));
+                }
+                let mut bytes = Vec::new();
+                let mut stream = response.bytes_stream();
+                while let Some(chunk) = stream.next().await {
+                    let chunk = chunk.map_err(|_| error(McpError::Transport))?;
+                    if chunk.len() > self.limit.saturating_sub(bytes.len()) {
+                        self.state.fail(McpError::Limit);
+                        return Err(error(McpError::Limit));
+                    }
+                    bytes.extend_from_slice(&chunk);
+                }
+                let message =
+                    wire::decode(&bytes, &self.state.requests).map_err(|fault| self.fail(fault))?;
+                if let Err(fault) = self.state.observe_bytes(&message, bytes.len()) {
+                    self.state.fail(fault.clone());
+                    return Err(error(fault));
+                }
+                Ok(StreamableHttpPostResponse::Json(message, session))
+            })
+            .await;
         if result.is_ok() {
             sending.sent();
         }
@@ -352,15 +394,8 @@ impl StreamableHttpClient for BoundedHttp {
         auth: Option<String>,
         headers: HashMap<HeaderName, HeaderValue>,
     ) -> Result<(), HttpError> {
-        self.send(self.request(
-            reqwest::Method::DELETE,
-            &uri,
-            Some(&session),
-            auth,
-            headers,
-            false,
-        ))
-        .await?;
+        let request = self.request(reqwest::Method::DELETE, &uri, Some(&session), auth, headers);
+        self.within(self.deadline(None), self.send(request)).await?;
         Ok(())
     }
     async fn get_stream(
@@ -377,15 +412,16 @@ impl StreamableHttpClient for BoundedHttp {
             session.as_deref(),
             auth,
             headers,
-            false,
         );
         if let Some(last) = last {
             request = request.header("last-event-id", last);
         }
-        let response = tokio::time::timeout(self.timeout, request.send())
-            .await
-            .map_err(|_| error(McpError::Timeout))?
-            .map_err(|_| error(McpError::Transport))?;
+        // The headers have a deadline; the persistent stream does not.
+        let response = self
+            .within(self.deadline(None), async {
+                request.send().await.map_err(|_| error(McpError::Transport))
+            })
+            .await?;
         if response.status().as_u16() == 405 {
             return Err(StreamableHttpError::ServerDoesNotSupportSse);
         }
@@ -395,7 +431,7 @@ impl StreamableHttpClient for BoundedHttp {
         if !media_type(&response, "text/event-stream") {
             return Err(self.fail(McpError::Protocol));
         }
-        Ok(self.stream(response))
+        Ok(self.stream(response, None))
     }
 }
 #[derive(Debug)]
@@ -445,7 +481,8 @@ impl McpConnection {
         transport_config.max_concurrent_requests = 2 * config.bounds.in_flight;
         transport_config.channel_buffer_capacity = 2 * config.bounds.in_flight;
         transport_config.max_sse_event_size = config.bounds.message_bytes;
-        transport_config.control_request_timeout = config.operation_timeout;
+        // The backend bounds each control POST by the operation deadline on the configured clock.
+        transport_config.control_request_timeout = Duration::MAX;
         let transport = Guard {
             inner: StreamableHttpClientTransport::with_client(backend, transport_config),
             state: state.clone(),
@@ -458,6 +495,7 @@ impl McpConnection {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_clock as clock;
     use axum::{
         Router,
         response::{IntoResponse, Response},
@@ -499,10 +537,12 @@ mod tests {
         (endpoint, task)
     }
 
-    fn backend() -> BoundedHttp {
+    fn backend() -> (BoundedHttp, clock::ManualClock) {
+        let clock = clock::ManualClock::new();
         let mut config = McpConfig::new("remote", "scope");
         config.operation_timeout = Duration::from_secs(3600);
-        BoundedHttp::new(&config, State::new()).unwrap()
+        config.clock = Arc::new(clock.clone());
+        (BoundedHttp::new(&config, State::new()).unwrap(), clock)
     }
 
     #[tokio::test]
@@ -535,7 +575,7 @@ mod tests {
         );
         let (endpoint, task) = serve(app).await;
         tx.send("first".into()).unwrap();
-        let backend = backend();
+        let (backend, clock) = backend();
         let mut stream = backend
             .get_stream(
                 format!("{endpoint}/events").into(),
@@ -550,8 +590,7 @@ mod tests {
             stream.next().await.unwrap().unwrap().data.as_deref(),
             Some("first")
         );
-        tokio::time::pause();
-        tokio::time::advance(backend.timeout * 3).await;
+        clock.advance(backend.timeout * 3);
         tx.send("after deadline".into()).unwrap();
         assert_eq!(
             stream.next().await.unwrap().unwrap().data.as_deref(),
@@ -563,29 +602,17 @@ mod tests {
 
     #[test]
     fn a_tool_call_post_has_no_request_deadline() {
-        let backend = backend();
+        let (backend, clock) = backend();
         let deadline = |message: serde_json::Value| {
-            let message = serde_json::from_value(message).unwrap();
-            backend
-                .post(
-                    "http://127.0.0.1/mcp",
-                    None,
-                    None,
-                    HashMap::new(),
-                    &message,
-                    Vec::new(),
-                )
-                .build()
-                .unwrap()
-                .timeout()
-                .copied()
+            backend.deadline(Some(&serde_json::from_value(message).unwrap()))
         };
         let call = serde_json::json!({"jsonrpc":"2.0","id":1,"method":"tools/call",
             "params":{"name":"export","arguments":{}}});
         let ping = serde_json::json!({"jsonrpc":"2.0","id":2,"method":"ping"});
         // The call is bounded by its invocation deadline or its caller instead.
         assert_eq!(deadline(call), None);
-        assert_eq!(deadline(ping), Some(backend.timeout));
+        assert_eq!(deadline(ping), Some(clock.now() + backend.timeout));
+        assert_eq!(backend.deadline(None), Some(clock.now() + backend.timeout));
     }
 
     #[tokio::test]
@@ -600,7 +627,7 @@ mod tests {
             }),
         );
         let (endpoint, task) = serve(app).await;
-        let mut backend = backend();
+        let (mut backend, _clock) = backend();
         backend.limit = 8192;
         let mut stream = backend
             .get_stream(
@@ -634,10 +661,10 @@ mod tests {
             .header("content-type", "text/event-stream")
             .body(body)
             .unwrap();
-        let mut backend = backend();
+        let (mut backend, _clock) = backend();
         backend.limit = 8192;
         let events: Vec<_> = backend
-            .stream(reqwest::Response::from(response))
+            .stream(reqwest::Response::from(response), None)
             .collect()
             .await;
         assert_eq!(events.len(), 3);
@@ -657,10 +684,10 @@ mod tests {
             .header("content-type", "text/event-stream")
             .body(small.repeat(100) + &oversized)
             .unwrap();
-        let mut backend = backend();
+        let (mut backend, _clock) = backend();
         backend.limit = 8192;
         let events: Vec<_> = backend
-            .stream(reqwest::Response::from(response))
+            .stream(reqwest::Response::from(response), None)
             .collect()
             .await;
         assert_eq!(events.iter().filter(|event| event.is_ok()).count(), 100);
@@ -672,7 +699,7 @@ mod tests {
     async fn padded_http_notifications_charge_received_payload_bytes() {
         let (endpoint, task) = server().await;
         for format in ["json", "sse"] {
-            let backend = backend();
+            let (backend, _clock) = backend();
             backend
                 .state
                 .charge_incoming_bytes(64 * 1024 * 1024 - 128)
@@ -746,7 +773,7 @@ mod tests {
                 )
             };
             let (endpoint, server) = serve(app).await;
-            let backend = backend();
+            let (backend, clock) = backend();
             let deadline = backend.timeout;
             let request = tokio::spawn(async move {
                 if body {
@@ -778,27 +805,15 @@ mod tests {
                 }
             });
             entered.notified().await;
-            tokio::time::pause();
-            tokio::time::advance(deadline * 2).await;
+            clock.advance(deadline);
             let error = request.await.unwrap().unwrap_err();
-            if body {
-                assert!(matches!(
-                    error,
-                    StreamableHttpError::Client(Fault {
-                        error: McpError::Transport,
-                        ..
-                    })
-                ));
-            } else {
-                assert!(matches!(
-                    error,
-                    StreamableHttpError::Client(Fault {
-                        error: McpError::Timeout,
-                        ..
-                    })
-                ));
-            }
-            tokio::time::resume();
+            assert!(matches!(
+                error,
+                StreamableHttpError::Client(Fault {
+                    error: McpError::Timeout,
+                    ..
+                })
+            ));
             server.abort();
         }
     }

@@ -4,6 +4,8 @@ use clapham::{Call, Evidence};
 use clapham_mcp_client::*;
 mod support;
 use support::*;
+#[path = "support/clock.rs"]
+mod clock;
 
 use serde_json::{Value, json};
 use std::{
@@ -817,4 +819,63 @@ fn oauth_context(subject: impl Into<String>, scopes: &[&str]) -> clapham::OAuthC
         subject,
         scopes.iter().copied(),
     )
+}
+
+/// A host's clock drives the connect, discovery and invocation deadlines. Each test advances
+/// the clock to an hour-long deadline once the server holds the request.
+#[tokio::test]
+async fn the_host_clock_drives_connection_discovery_and_call_deadlines() {
+    use futures_util::FutureExt;
+    let clock = clock::ManualClock::new();
+    let config = || {
+        let mut config = config();
+        config.operation_timeout = Duration::from_secs(3600);
+        config.clock = Arc::new(clock.clone());
+        config
+    };
+
+    // The server reads the opening request and never answers it.
+    let (client, remote) = tokio::io::duplex(8192);
+    let (read, write) = tokio::io::split(client);
+    let connecting = McpConnection::stdio(read, write, CancellationToken::new(), config());
+    tokio::pin!(connecting);
+    let mut lines = BufReader::new(remote).lines();
+    tokio::select! {
+        _ = &mut connecting => panic!("an unanswered connection completed"),
+        line = lines.next_line() => assert!(line.unwrap().is_some()),
+    }
+    clock.advance(Duration::from_secs(3599));
+    assert!((&mut connecting).now_or_never().is_none());
+    clock.advance(Duration::from_secs(1));
+    assert_eq!(connecting.await.err(), Some(McpError::Timeout));
+
+    let server = server();
+    let (connection, _tx, _) = connect(server.clone(), config()).await;
+    let executor = binding(&connection).await.executor();
+    server.mode.store(1, Ordering::SeqCst);
+    let calling = executor.call(call());
+    tokio::pin!(calling);
+    tokio::select! {
+        _ = &mut calling => panic!("a call without a reply completed"),
+        () = wait_count(&server.calls, 1) => {}
+    }
+    clock.advance(Duration::from_secs(3599));
+    assert!((&mut calling).now_or_never().is_none());
+    clock.advance(Duration::from_secs(1));
+    let error = calling.await.unwrap_err();
+    assert_eq!(error.code, "mcp_timeout");
+    assert_eq!(error.evidence, Evidence::Uncertain);
+
+    server.mode.store(6, Ordering::SeqCst);
+    let lists = server.lists.load(Ordering::SeqCst);
+    let discovering = connection.discover();
+    tokio::pin!(discovering);
+    tokio::select! {
+        _ = &mut discovering => panic!("an unanswered discovery completed"),
+        () = wait_count(&server.lists, lists + 1) => {}
+    }
+    clock.advance(Duration::from_secs(3599));
+    assert!((&mut discovering).now_or_never().is_none());
+    clock.advance(Duration::from_secs(1));
+    assert_eq!(discovering.await.err(), Some(McpError::Timeout));
 }

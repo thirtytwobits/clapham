@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Breaking
+
+- `McpConfig` has a `clock`, an `Arc<dyn Clock>` that operation and request deadlines run on.
+  `McpConfig::new` uses `TokioClock`; a host whose tests advance their own clock supplies it. A
+  finite HTTP request or response body that passes its deadline fails with `mcp_timeout`.
+
 ## 0.4.0
 
 ### Breaking

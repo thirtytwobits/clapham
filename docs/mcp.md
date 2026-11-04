@@ -94,8 +94,8 @@ remain behavioural information. Register the resulting contribution through the 
 configuration's connection registry or ordinary trusted composition.
 
 Bindings pin definitions, aliases and credential-scope revisions. Tool-list notifications and
-failed refreshes invalidate stale bindings. Call deadlines, lost replies and disconnects
-preserve uncertainty. Redirects, automatic replay and session reinitialisation remain disabled
+failed refreshes invalidate stale bindings. Deadlines run on `McpConfig::clock`. Call deadlines,
+lost replies and disconnects preserve uncertainty. Redirects, automatic replay and session reinitialisation remain disabled
 by the bounded client. Scope changes require a new authenticated connection/binding.
 
 See [the client library](../crates/clapham-mcp-client/README.md),

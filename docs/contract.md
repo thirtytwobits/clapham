@@ -262,6 +262,7 @@ and invocation deadlines are uncertain. Reconnecting does not replay effects. Re
 refusals remain structured tool-error outcomes with their original codes. Records paced by
 acknowledgement are outside the connection's lifetime notification and byte budgets; one sent
 ahead of its acknowledgement is counted. A direct call has no deadline: its caller bounds it.
+Connection, discovery, invocation and finite HTTP request deadlines run on `McpConfig::clock`.
 A server's HTTP refusal before dispatch is `mcp_forbidden` for missing scopes or `mcp_busy`
 for a full queue, with not-dispatched evidence, for a binding; its structured refusal reaches
 a direct call unchanged, as does a tool result the server marks as a refusal. An abandoned
@@ -271,14 +272,16 @@ Evidence: [client tests](../crates/clapham-mcp-client/tests/contracts.rs),
 `effects_describe_behaviour_without_granting_or_removing_oauth_scopes`,
 `notifications_and_refresh_guard_pinned_definitions`,
 `binding_and_selection_revisions_fence_metadata_and_credentials`,
-`applied_effect_with_lost_reply_is_uncertain_and_never_replayed` and
-`discovery_bounds_and_failed_refresh_invalidate_existing_bindings`;
+`applied_effect_with_lost_reply_is_uncertain_and_never_replayed`,
+`discovery_bounds_and_failed_refresh_invalidate_existing_bindings` and
+`the_host_clock_drives_connection_discovery_and_call_deadlines`;
 [client records tests](../crates/clapham-mcp-client/tests/records.rs),
 `a_direct_call_streams_records_without_spending_the_notification_budget`,
 `records_sent_ahead_of_their_acknowledgement_spend_the_notification_budget` and
 `an_abandoned_catalogue_read_closes_the_connection`;
 [client HTTP tests](../crates/clapham-mcp-client/src/http.rs),
-`a_tool_call_post_has_no_request_deadline`;
+`a_tool_call_post_has_no_request_deadline` and
+`finite_requests_and_get_headers_keep_deadlines`;
 [client HTTP integration](../crates/clapham-mcp-client/tests/http.rs),
 `an_unaccepted_credential_refuses_the_connection_as_unauthenticated` and
 `a_refusal_before_dispatch_is_bounded_for_bindings_and_unchanged_for_direct_calls`.

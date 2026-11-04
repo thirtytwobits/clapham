@@ -1,7 +1,7 @@
 //! Copyright (c) Scott A Dixon
 //! Connection lifecycle, admission limits and dispatch certainty.
 use crate::{
-    McpCatalogue,
+    Clock, McpCatalogue, TokioClock,
     binding::Published,
     records::{RECORD_NOTIFICATION, Routes},
 };
@@ -24,7 +24,7 @@ use tokio_util::sync::CancellationToken;
 pub(crate) const REQUEST_ENVELOPE_RESERVE: usize = 4096;
 
 /// Host authority and operation deadline. Reconnect with a new configuration after credentials change.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct McpConfig {
     /// Stable host identity and contribution namespace (ASCII letters, digits, underscore or hyphen).
     pub server_id: String,
@@ -34,15 +34,29 @@ pub struct McpConfig {
     pub operation_timeout: Duration,
     /// Finite shared message, catalogue, queue and lifetime bounds.
     pub bounds: clapham::Bounds,
+    /// The clock operation and request deadlines run on.
+    pub clock: Arc<dyn Clock>,
+}
+impl std::fmt::Debug for McpConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("McpConfig")
+            .field("server_id", &self.server_id)
+            .field("credential_scope_revision", &self.credential_scope_revision)
+            .field("operation_timeout", &self.operation_timeout)
+            .field("bounds", &self.bounds)
+            .finish_non_exhaustive()
+    }
 }
 impl McpConfig {
-    /// Configure a connection with default bounds and a thirty-second operation deadline.
+    /// Configure a connection with default bounds and a thirty-second operation deadline on
+    /// [`TokioClock`].
     pub fn new(server_id: impl Into<String>, credential_scope_revision: impl Into<String>) -> Self {
         Self {
             server_id: server_id.into(),
             credential_scope_revision: credential_scope_revision.into(),
             operation_timeout: Duration::from_secs(30),
             bounds: clapham::Bounds::default(),
+            clock: Arc::new(TokioClock),
         }
     }
     /// Configure an operator's connection, such as a command line against its daemon: the
@@ -340,8 +354,11 @@ impl McpConnection {
         config: McpConfig,
         state: Arc<State>,
     ) -> Result<Self, McpError> {
-        let service = tokio::time::timeout(
-            config.operation_timeout,
+        let deadline =
+            crate::clock::deadline_after(config.clock.as_ref(), config.operation_timeout);
+        let service = crate::clock::timeout_at(
+            config.clock.as_ref(),
+            deadline,
             rmcp::service::serve_client_with_lifecycle_and_ct(
                 Handler {
                     routes: state.routes.clone(),
