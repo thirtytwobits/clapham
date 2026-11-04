@@ -1,12 +1,17 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
 ### Breaking
 
 - `McpConfig` has a `clock`, an `Arc<dyn Clock>` that operation and request deadlines run on.
   `McpConfig::new` uses `TokioClock`; a host whose tests advance their own clock supplies it. A
   finite HTTP request or response body that passes its deadline fails with `mcp_timeout`.
+
+### Documentation
+
+[API reference for 0.5.0](https://thirtytwobits.github.io/clapham/v0.5.0/) covers all five library
+crates with all features enabled.
 
 ## 0.4.0
 
