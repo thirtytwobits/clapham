@@ -1,11 +1,11 @@
 //! Copyright (c) Scott A Dixon
 //! A Clapham server's operation catalogue, under its catalogue extension.
+use crate::clock::{deadline_after, timeout_at};
 use crate::{McpConnection, McpError, wire};
 use clapham::Operation;
 use rmcp::model::*;
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
-use tokio::time::{Instant, timeout_at};
 
 pub(crate) const CATALOGUE_EXTENSION: &str = "io.github.thirtytwobits.clapham/catalogue";
 
@@ -18,7 +18,8 @@ impl McpConnection {
     /// read closes the connection, so its request state cannot outlive it.
     pub async fn operations(&self) -> Result<Vec<Operation>, McpError> {
         self.check()?;
-        let deadline = Instant::now() + self.0.config.operation_timeout;
+        let clock = self.0.config.clock.clone();
+        let deadline = deadline_after(clock.as_ref(), self.0.config.operation_timeout);
         let _ticket = self.0.admitted.try_acquire().map_err(|_| McpError::Busy)?;
         let mut cancel_on_drop = None;
         let work = async {
@@ -79,7 +80,7 @@ impl McpConnection {
             }
             Err(McpError::Limit)
         };
-        let result = timeout_at(deadline, work).await;
+        let result = timeout_at(clock.as_ref(), deadline, work).await;
         if let Some(guard) = cancel_on_drop {
             guard.disarm();
         }

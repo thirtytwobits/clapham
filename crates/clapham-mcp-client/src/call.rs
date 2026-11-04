@@ -4,17 +4,21 @@ use crate::{McpConnection, McpError, records, wire};
 use clapham::{Evidence, Outcome, RecordSink, Refusal};
 use rmcp::{model::*, service::ServiceError};
 use serde_json::json;
-use tokio::time::{Instant, timeout_at};
+use tokio::time::Instant;
 
 /// Tool-result metadata from a Clapham server naming the outcome's absent fields.
 const ABSENT_META_KEY: &str = "io.github.thirtytwobits.clapham/absent";
 /// Tool-result metadata from a Clapham server marking a refusal.
 const REFUSAL_META_KEY: &str = "io.github.thirtytwobits.clapham/refusal";
 
-/// Run `future`, or stop at `deadline` when there is one.
-async fn within<F: Future>(deadline: Option<Instant>, future: F) -> Option<F::Output> {
+/// Run `future`, or stop at `deadline` on `clock` when there is one.
+async fn within<F: Future>(
+    clock: &dyn crate::Clock,
+    deadline: Option<Instant>,
+    future: F,
+) -> Option<F::Output> {
     match deadline {
-        Some(deadline) => timeout_at(deadline, future).await.ok(),
+        Some(deadline) => crate::clock::timeout_at(clock, deadline, future).await.ok(),
         None => Some(future.await),
     }
 }
@@ -77,7 +81,8 @@ impl McpConnection {
             .admitted
             .try_acquire()
             .map_err(|_| refused(McpError::Busy))?;
-        let _active = within(deadline, self.0.active.acquire())
+        let clock = self.0.config.clock.as_ref();
+        let _active = within(clock, deadline, self.0.active.acquire())
             .await
             .ok_or_else(|| refused(McpError::Timeout))?
             .map_err(|_| refused(McpError::Transport))?;
@@ -121,7 +126,7 @@ impl McpConnection {
                 }
             }
         };
-        let response = match within(deadline, streaming).await {
+        let response = match within(clock, deadline, streaming).await {
             None => return Err(McpError::Timeout.refusal(Evidence::Uncertain)),
             Some(Err(refusal)) => return Err(refusal),
             Some(Ok(response)) => response,

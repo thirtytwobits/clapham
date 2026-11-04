@@ -112,6 +112,7 @@ pub type clapham_mcp_client::McpCatalogue::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_client::McpCatalogue where T: ?core::marker::Sized
 pub struct clapham_mcp_client::McpConfig
 pub clapham_mcp_client::McpConfig::bounds: clapham::bounds::Bounds
+pub clapham_mcp_client::McpConfig::clock: alloc::rcs::arc::Arc<dyn clapham_mcp_client::Clock>
 pub clapham_mcp_client::McpConfig::credential_scope_revision: alloc::string::String
 pub clapham_mcp_client::McpConfig::operation_timeout: core::time::Duration
 pub clapham_mcp_client::McpConfig::server_id: alloc::string::String
@@ -127,8 +128,8 @@ impl core::marker::Send for clapham_mcp_client::McpConfig
 impl core::marker::Sync for clapham_mcp_client::McpConfig
 impl core::marker::Unpin for clapham_mcp_client::McpConfig
 impl core::marker::UnsafeUnpin for clapham_mcp_client::McpConfig
-impl core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_client::McpConfig
-impl core::panic::unwind_safe::UnwindSafe for clapham_mcp_client::McpConfig
+impl !core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_client::McpConfig
+impl !core::panic::unwind_safe::UnwindSafe for clapham_mcp_client::McpConfig
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_mcp_client::McpConfig where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_mcp_client::McpConfig where ST: ?core::marker::Sized, DT: ?core::marker::Sized
 impl<T, U> core::convert::Into<U> for clapham_mcp_client::McpConfig where U: core::convert::From<T>
@@ -405,3 +406,64 @@ impl<T> tracing::instrument::WithSubscriber for clapham_mcp_client::McpToolBindi
 impl<T> typenum::type_operators::Same for clapham_mcp_client::McpToolBinding
 pub type clapham_mcp_client::McpToolBinding::Output = T
 impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_client::McpToolBinding where T: ?core::marker::Sized
+pub struct clapham_mcp_client::TokioClock
+impl clapham_mcp_client::Clock for clapham_mcp_client::TokioClock
+pub fn clapham_mcp_client::TokioClock::now(&self) -> tokio::time::instant::Instant
+pub fn clapham_mcp_client::TokioClock::sleep_until(&self, tokio::time::instant::Instant) -> clapham_mcp_client::Sleep
+impl core::clone::Clone for clapham_mcp_client::TokioClock
+pub fn clapham_mcp_client::TokioClock::clone(&self) -> Self
+impl core::default::Default for clapham_mcp_client::TokioClock
+pub fn clapham_mcp_client::TokioClock::default() -> Self
+impl core::fmt::Debug for clapham_mcp_client::TokioClock
+pub fn clapham_mcp_client::TokioClock::fmt(&self, &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+impl core::marker::Copy for clapham_mcp_client::TokioClock
+impl core::marker::Freeze for clapham_mcp_client::TokioClock
+impl core::marker::Send for clapham_mcp_client::TokioClock
+impl core::marker::Sync for clapham_mcp_client::TokioClock
+impl core::marker::Unpin for clapham_mcp_client::TokioClock
+impl core::marker::UnsafeUnpin for clapham_mcp_client::TokioClock
+impl core::panic::unwind_safe::RefUnwindSafe for clapham_mcp_client::TokioClock
+impl core::panic::unwind_safe::UnwindSafe for clapham_mcp_client::TokioClock
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Initialized, zerocopy::pointer::invariant::Initialized> for clapham_mcp_client::TokioClock where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<ST, DT> zerocopy::pointer::invariant::CastableFrom<ST, zerocopy::pointer::invariant::Uninit, zerocopy::pointer::invariant::Uninit> for clapham_mcp_client::TokioClock where ST: ?core::marker::Sized, DT: ?core::marker::Sized
+impl<T, U> core::convert::Into<U> for clapham_mcp_client::TokioClock where U: core::convert::From<T>
+pub fn clapham_mcp_client::TokioClock::into(self) -> U
+impl<T, U> core::convert::TryFrom<U> for clapham_mcp_client::TokioClock where U: core::convert::Into<T>
+pub type clapham_mcp_client::TokioClock::Error = never
+pub fn clapham_mcp_client::TokioClock::try_from(U) -> core::result::Result<T, never>
+impl<T, U> core::convert::TryInto<U> for clapham_mcp_client::TokioClock where U: core::convert::TryFrom<T>
+pub type clapham_mcp_client::TokioClock::Error = <U as core::convert::TryFrom<T>>::Error
+pub fn clapham_mcp_client::TokioClock::try_into(self) -> core::result::Result<U, <U as core::convert::TryFrom<T>>::Error>
+impl<T> alloc::borrow::ToOwned for clapham_mcp_client::TokioClock where T: core::clone::Clone
+pub type clapham_mcp_client::TokioClock::Owned = T
+pub fn clapham_mcp_client::TokioClock::clone_into(&self, &mut T)
+pub fn clapham_mcp_client::TokioClock::to_owned(&self) -> T
+impl<T> core::any::Any for clapham_mcp_client::TokioClock where T: 'static + ?core::marker::Sized
+pub fn clapham_mcp_client::TokioClock::type_id(&self) -> core::any::TypeId
+impl<T> core::borrow::Borrow<T> for clapham_mcp_client::TokioClock where T: ?core::marker::Sized
+pub fn clapham_mcp_client::TokioClock::borrow(&self) -> &T
+impl<T> core::borrow::BorrowMut<T> for clapham_mcp_client::TokioClock where T: ?core::marker::Sized
+pub fn clapham_mcp_client::TokioClock::borrow_mut(&mut self) -> &mut T
+impl<T> core::clone::CloneToUninit for clapham_mcp_client::TokioClock where T: core::clone::Clone
+pub unsafe fn clapham_mcp_client::TokioClock::clone_to_uninit(&self, *mut u8)
+impl<T> core::convert::From<T> for clapham_mcp_client::TokioClock
+pub fn clapham_mcp_client::TokioClock::from(T) -> T
+impl<T> dyn_clone::DynClone for clapham_mcp_client::TokioClock where T: core::clone::Clone
+pub fn clapham_mcp_client::TokioClock::__clone_box(&self, dyn_clone::sealed::Private) -> *mut ()
+impl<T> outref::AsOut<T> for clapham_mcp_client::TokioClock where T: core::marker::Copy
+pub fn clapham_mcp_client::TokioClock::as_out(&mut self) -> outref::Out<'_, T>
+impl<T> tower_http::follow_redirect::policy::PolicyExt for clapham_mcp_client::TokioClock where T: ?core::marker::Sized
+pub fn clapham_mcp_client::TokioClock::and<P, B, E>(self, P) -> tower_http::follow_redirect::policy::and::And<T, P> where T: core::marker::Sized + tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+pub fn clapham_mcp_client::TokioClock::or<P, B, E>(self, P) -> tower_http::follow_redirect::policy::or::Or<T, P> where T: core::marker::Sized + tower_http::follow_redirect::policy::Policy<B, E>, P: tower_http::follow_redirect::policy::Policy<B, E>
+impl<T> tracing::instrument::Instrument for clapham_mcp_client::TokioClock
+impl<T> tracing::instrument::WithSubscriber for clapham_mcp_client::TokioClock
+impl<T> typenum::type_operators::Same for clapham_mcp_client::TokioClock
+pub type clapham_mcp_client::TokioClock::Output = T
+impl<T> zerocopy::pointer::invariant::Read<zerocopy::pointer::invariant::Exclusive, zerocopy::pointer::invariant::BecauseExclusive> for clapham_mcp_client::TokioClock where T: ?core::marker::Sized
+pub trait clapham_mcp_client::Clock: core::marker::Send + core::marker::Sync
+pub fn clapham_mcp_client::Clock::now(&self) -> tokio::time::instant::Instant
+pub fn clapham_mcp_client::Clock::sleep_until(&self, tokio::time::instant::Instant) -> clapham_mcp_client::Sleep
+impl clapham_mcp_client::Clock for clapham_mcp_client::TokioClock
+pub fn clapham_mcp_client::TokioClock::now(&self) -> tokio::time::instant::Instant
+pub fn clapham_mcp_client::TokioClock::sleep_until(&self, tokio::time::instant::Instant) -> clapham_mcp_client::Sleep
+pub type clapham_mcp_client::Sleep = core::pin::Pin<alloc::boxed::Box<(dyn core::future::future::Future<Output = ()> + core::marker::Send + 'static)>>

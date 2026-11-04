@@ -153,6 +153,7 @@
         "README.md",
         "src/binding.rs",
         "src/call.rs",
+        "src/clock.rs",
         "src/connection.rs",
         "src/http.rs",
         "src/lib.rs",
@@ -164,6 +165,7 @@
         "tests/http.rs",
         "tests/records.rs",
         "tests/rmcp_facts.rs",
+        "tests/support/clock.rs",
         "tests/support/mod.rs"
       ]
     },
