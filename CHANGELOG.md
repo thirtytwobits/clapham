@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- The libraries build on sha2 0.11.
+
 ## 0.5.1
 
 ### Fixed
