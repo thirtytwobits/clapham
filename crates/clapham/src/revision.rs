@@ -12,7 +12,10 @@ pub(crate) fn digest(domain: &[u8], value: impl Serialize) -> String {
     hasher.update(domain);
     serde_json::to_writer(&mut HashWriter(&mut hasher), &canonical)
         .expect("JSON values are serialisable");
-    format!("sha256:{:x}", hasher.finalize())
+    format!(
+        "sha256:{}",
+        base16ct::lower::encode_string(&hasher.finalize())
+    )
 }
 
 fn canonicalise(value: Value) -> Value {

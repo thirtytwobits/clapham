@@ -418,7 +418,10 @@ fn binding_digest(value: Value) -> String {
     let mut hash = Sha256::new();
     hash.update(b"clapham.mcp-binding.v1\0");
     hash.update(canonical(value).to_string().as_bytes());
-    format!("sha256:{:x}", hash.finalize())
+    format!(
+        "sha256:{}",
+        base16ct::lower::encode_string(&hash.finalize())
+    )
 }
 
 struct Remote {

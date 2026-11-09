@@ -266,10 +266,9 @@ impl Server {
                 None,
             ));
         }
-        let revision = format!(
-            "{:x}",
-            Sha256::digest(serde_json::to_vec(items).expect("MCP models serialize"))
-        );
+        let revision = base16ct::lower::encode_string(&Sha256::digest(
+            serde_json::to_vec(items).expect("MCP models serialize"),
+        ));
         let prefix = format!("{kind}:{revision}");
         let (start, page) = match request.and_then(|r| r.cursor) {
             None => (0, 1),
