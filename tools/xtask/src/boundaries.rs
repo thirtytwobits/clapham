@@ -82,7 +82,7 @@ struct Dependency {
     rename: Option<String>,
 }
 
-// Audited against rmcp 3.6.0's Cargo.toml feature graph. Only `default` forwards
+// Audited against rmcp 3.9.0's Cargo.toml feature graph. Only `default` forwards
 // `server`; `tower` and `auth` do not enable any server feature. Re-audit on a bump.
 // These enable server code, either directly or through a workspace feature.
 const RMCP_SERVER_FEATURES: &[&str] = &[
@@ -408,7 +408,7 @@ mod tests {
             ] {
                 let fixture = Fixture::new();
                 fs::write(fixture.0.join("Cargo.toml"), "[workspace]\nmembers = [\"crates/clapham-mcp-client\"]\nexclude = [\"external\"]\nresolver = \"3\"\n").unwrap();
-                fixture.crate_at("external", "[package]\nname = \"rmcp\"\nversion = \"3.6.0\"\n[features]\ndefault = [\"server\"]\nserver = []\nserver-side-http = []\n");
+                fixture.crate_at("external", "[package]\nname = \"rmcp\"\nversion = \"3.9.0\"\n[features]\ndefault = [\"server\"]\nserver = []\nserver-side-http = []\n");
                 fixture.crate_at("crates/clapham-mcp-client", &format!("[package]\nname = \"clapham-mcp-client\"\nversion = \"0.1.0\"\n[{section}]\nwire = {{ package = \"rmcp\", path = \"../../external\", {dependency} }}\n[features]\n{feature}\n"));
                 let errors = validate(&fixture.metadata()).unwrap_err().join("\n");
                 assert!(

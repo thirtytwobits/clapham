@@ -1,4 +1,4 @@
-//! Evidence for the rmcp 3.6.0 client behaviour recorded in `docs/mcp.md`.
+//! Evidence for the rmcp 3.9.0 client behaviour recorded in `docs/mcp.md`.
 
 use std::sync::Mutex;
 

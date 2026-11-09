@@ -1,4 +1,4 @@
-//! Evidence for the rmcp 3.6.0 server behaviour recorded in `docs/mcp.md`, through the
+//! Evidence for the rmcp 3.9.0 server behaviour recorded in `docs/mcp.md`, through the
 //! stdio transport and stateless HTTP configuration that Clapham serves.
 
 use std::sync::{Arc, Mutex};

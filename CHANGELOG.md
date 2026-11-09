@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.0
+
+### Breaking
+
+- `clapham-mcp-server` and `clapham-mcp-client` build on rmcp 3.9.0, pinned exactly. `Server`
+  implements rmcp 3.9.0's `ServerHandler` and `Service`, and `serve_io` and `serve_stdio` return
+  its `RunningService`.
+
+### Fixed
+
+- rmcp 3.9.0 closes RUSTSEC-2026-0457, the OAuth client's SSRF filter checking host strings
+  rather than resolved addresses, and RUSTSEC-2026-0462, unbounded response body buffering in the
+  Streamable HTTP clients.
+
+### Documentation
+
+- `docs/mcp.md` cites the rmcp 3.9.0 source for each rmcp fact.
+
+[API reference for 0.6.0](https://thirtytwobits.github.io/clapham/v0.6.0/) covers all five library
+crates with all features enabled.
+
 ## 0.5.2
 
 ### Fixed
