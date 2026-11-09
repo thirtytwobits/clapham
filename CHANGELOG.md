@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
 ### Breaking
 
@@ -17,6 +17,9 @@
 ### Documentation
 
 - `docs/mcp.md` cites the rmcp 3.9.0 source for each rmcp fact.
+
+[API reference for 0.6.0](https://thirtytwobits.github.io/clapham/v0.6.0/) covers all five library
+crates with all features enabled.
 
 ## 0.5.2
 
