@@ -497,7 +497,7 @@ impl HttpServer {
     }
 }
 
-/// An OPTIONS request with `request`'s target and headers. rmcp 3.6.0 keeps its
+/// An OPTIONS request with `request`'s target and headers. rmcp 3.9.0 keeps its
 /// Host/Origin validator private; the probe follows that exact policy and stops at 405,
 /// without parsing a body or constructing a handler.
 fn policy_probe<B>(request: &Request<B>) -> Request<Empty<Bytes>> {

@@ -1,6 +1,6 @@
 # MCP
 
-Clapham's MCP adapters use rmcp 3.6.0 and MCP 2026-07-28. All library crates require Rust 1.95.
+Clapham's MCP adapters use rmcp 3.9.0 and MCP 2026-07-28. All library crates require Rust 1.95.
 The core operation model has no rmcp dependency.
 
 ## Server
@@ -125,7 +125,7 @@ shape, so it cannot be registered beside a template of that path alone.
 Clapham's MCP design relies on these facts. The
 [server fact tests](../crates/clapham-mcp-server/src/rmcp_facts.rs) and
 [client fact tests](../crates/clapham-mcp-client/tests/rmcp_facts.rs) pin each rmcp row.
-rmcp source paths are relative to the rmcp 3.6.0 crate root.
+rmcp source paths are relative to the rmcp 3.9.0 crate root.
 
 ### MCP 2026-07-28
 
@@ -144,7 +144,7 @@ rmcp source paths are relative to the rmcp 3.6.0 crate root.
 | A server must answer a `resources/read` for a resource that does not exist with JSON-RPC `-32602` (Invalid Params); the specification's example carries the URI under `data.uri`. Clients should also accept `-32002`, which earlier protocol versions used. | [Resources: Error Handling](https://modelcontextprotocol.io/specification/2026-07-28/server/resources#error-handling) |
 | SEP-2998, partial tool results, was closed on 22 September 2026 without acceptance; new SEPs require a Working Group. | [modelcontextprotocol#2998](https://github.com/modelcontextprotocol/modelcontextprotocol/pull/2998) |
 
-### rmcp 3.6.0
+### rmcp 3.9.0
 
 | Fact | Source |
 |---|---|
