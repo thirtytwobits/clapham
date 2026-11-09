@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.1
+
+### Fixed
+
+- The `Cargo.lock` each crate ships resolves uuid 1.29.0.
+
+### Documentation
+
+[API reference for 0.5.1](https://thirtytwobits.github.io/clapham/v0.5.1/) covers all five library
+crates with all features enabled.
+
 ## 0.5.0
 
 ### Breaking
