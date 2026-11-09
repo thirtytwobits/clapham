@@ -1,10 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.5.2
 
 ### Fixed
 
 - The libraries build on sha2 0.11.
+
+### Documentation
+
+[API reference for 0.5.2](https://thirtytwobits.github.io/clapham/v0.5.2/) covers all five library
+crates with all features enabled.
 
 ## 0.5.1
 
