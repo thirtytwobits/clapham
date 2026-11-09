@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- The `Cargo.lock` each crate ships resolves uuid 1.29.0.
+
 ## 0.5.0
 
 ### Breaking
