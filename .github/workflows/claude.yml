@@ -34,7 +34,7 @@ jobs:
         with:
           # Full history lets Claude diff a pull request against main.
           fetch-depth: 0
-      - uses: anthropics/claude-code-action@4845bacbb38b3c4b15d948f035349786f678e068 # v1.0.259, composite
+      - uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # v1.0.259, composite
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: --model claude-opus-5-5
