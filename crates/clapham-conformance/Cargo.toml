@@ -47,7 +47,7 @@ http = "1"
 http-body = "1"
 http-body-util = "0.1"
 tower-service = "0.3"
-jsonschema = { version = "0.60.0", default-features = false }
+jsonschema = { version = "0.61.1", default-features = false }
 
 [lints]
 workspace = true
