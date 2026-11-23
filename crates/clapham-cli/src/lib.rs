@@ -194,7 +194,7 @@ impl Cli {
         settings::preview(operation.descriptor(), preview)?;
         let timeout = matches
             .get_one::<String>(settings::TIMEOUT)
-            .map(|value| humantime::parse_duration(value).map_err(|error| usage(error.to_string())))
+            .map(|value| settings::timeout(value))
             .transpose()?;
         let output = OutputOptions {
             format: settings::format(

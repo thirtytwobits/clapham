@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Breaking
+
+- `clapham-cli`'s `--timeout` refuses months and years, which `humantime` took as 30.44 and 365.25
+  days.
+
+### Fixed
+
+- `clapham-cli` parses `--timeout` with `jiff` in place of `humantime`, which is unmaintained
+  (RUSTSEC-2026-0542). A day is 24 hours and a week seven days.
+- The lockfile takes `url` 2.5.9 for RUSTSEC-2026-0592, a stack overflow in `Url::origin()`.
+
 ## 0.6.0
 
 ### Breaking
