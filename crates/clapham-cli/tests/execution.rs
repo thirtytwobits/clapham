@@ -152,8 +152,25 @@ fn controls_bind_without_reading_a_clock_or_starting_a_timer() {
     assert_eq!(parsed.output.format, Format::Ndjson);
     assert!(parsed.output.raw);
     assert!(parsed.preview);
+    for (timeout, expected) in [
+        ("500ms", Duration::from_millis(500)),
+        ("2m", Duration::from_secs(120)),
+        ("1h 30m", Duration::from_secs(5_400)),
+        ("2d", Duration::from_secs(2 * 86_400)),
+        ("1w", Duration::from_secs(7 * 86_400)),
+    ] {
+        let parsed = cli
+            .parse_from(
+                ["lists-app", "lists", "action", "--timeout", timeout],
+                io::empty(),
+            )
+            .unwrap();
+        assert_eq!(parsed.timeout, Some(expected), "--timeout {timeout}");
+    }
     for args in [
         vec!["lists-app", "lists", "action", "--timeout", "later"],
+        vec!["lists-app", "lists", "action", "--timeout", "-5s"],
+        vec!["lists-app", "lists", "action", "--timeout", "1mo"],
         vec!["lists-app", "lists", "action", "--format", "xml"],
         vec!["lists-app", "completions", "unknown"],
     ] {

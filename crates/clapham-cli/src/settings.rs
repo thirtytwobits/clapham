@@ -120,6 +120,18 @@ pub(crate) fn command(command: Command) -> Command {
         )
 }
 
+/// The duration `value` names, such as `500ms`, `2m` or `1.25s`. A day is 24 hours and a week
+/// seven days.
+pub(crate) fn timeout(value: &str) -> Result<Duration, Refusal> {
+    let span: jiff::Span = value
+        .parse()
+        .map_err(|error: jiff::Error| usage(error.to_string()))?;
+    let duration = span
+        .to_duration(jiff::SpanRelativeTo::days_are_24_hours())
+        .map_err(|error| usage(error.to_string()))?;
+    Duration::try_from(duration).map_err(|error| usage(error.to_string()))
+}
+
 pub(crate) fn confirmation(operation: &Operation, yes: bool) -> Result<(), Refusal> {
     if (matches!(
         operation.effect,
