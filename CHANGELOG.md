@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0
 
 ### Breaking
 
@@ -12,6 +12,11 @@
 - `clapham-cli` parses `--timeout` with `jiff` in place of `humantime`, which is unmaintained
   (RUSTSEC-2026-0542). A day is 24 hours and a week seven days.
 - The lockfile takes `url` 2.5.9 for RUSTSEC-2026-0592, a stack overflow in `Url::origin()`.
+
+### Documentation
+
+[API reference for 0.7.0](https://thirtytwobits.github.io/clapham/v0.7.0/) covers all five library
+crates with all features enabled.
 
 ## 0.6.0
 
